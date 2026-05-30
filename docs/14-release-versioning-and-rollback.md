@@ -1,8 +1,8 @@
-﻿# Release, versioning, and rollback
+# Release, versioning, and rollback
 
 This document focuses on release compatibility, versioning, rollback, and safe evolution of the architecture comparison sample.
 
-Deployment topology is covered separately in `[05-deployment-comparison.md](05-deployment-comparison.md)`. The important release point here is that each topology creates different compatibility boundaries. Microservices expose compatibility pressure at HTTP/API and database boundaries. Virtual actors expose compatibility pressure at grain interface, grain state, serialization, runtime, and activation boundaries.
+Deployment topology is covered separately in [05-deployment-comparison.md](05-deployment-comparison.md). The important release point here is that each topology creates different compatibility boundaries. Microservices expose compatibility pressure at HTTP/API and database boundaries. Virtual actors expose compatibility pressure at grain interface, grain state, serialization, runtime, and activation boundaries.
 
 Neither style removes the need for versioning. Each style moves versioning concerns to different places.
 

@@ -2,7 +2,7 @@
 
 This document focuses on how the two implementations change over time after the first working version exists.
 
-Release compatibility, rollback, and versioning are covered separately in `[14-release-versioning-and-rollback.md](14-release-versioning-and-rollback.md)`. This document focuses on long-term ownership, feature evolution, refactoring pressure, testing maintenance, and operational confidence.
+Release compatibility, rollback, and versioning are covered separately in [14-release-versioning-and-rollback.md](14-release-versioning-and-rollback.md). This document focuses on long-term ownership, feature evolution, refactoring pressure, testing maintenance, and operational confidence.
 
 ## Summary
 

@@ -1,4 +1,4 @@
-﻿# Known limitations and interpretation guide
+# Known limitations and interpretation guide
 
 This document explains what the comparison sample does not prove, what is intentionally simplified, and how to interpret results responsibly.
 
@@ -193,7 +193,7 @@ Production applications should generally use end-to-end OpenTelemetry-based obse
 - alerting
 - service-level objectives
 
-The current implementation keeps observability understandable and low-friction for the demo. See `[13-correlation-id-logging.md](13-correlation-id-logging.md)` and `[16-observability-and-operations.md](16-observability-and-operations.md)` for the detailed observability guidance.
+The current implementation keeps observability understandable and low-friction for the demo. See [13-correlation-id-logging.md](13-correlation-id-logging.md) and [16-observability-and-operations.md](16-observability-and-operations.md) for the detailed observability guidance.
 
 ## No production security model
 
@@ -275,7 +275,7 @@ For example:
 - `RejectedSubmissions` means rejected logical submissions, not every technical failure.
 - `IdempotentDuplicateResponses` means duplicate submissions that returned an existing logical result.
 
-These meanings are documented in `[12-scenario-guide.md](12-scenario-guide.md)` and protected by regression tests.
+These meanings are documented in [12-scenario-guide.md](12-scenario-guide.md) and protected by regression tests.
 
 ## Race conditions are not intentionally demonstrated
 
