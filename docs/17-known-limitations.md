@@ -1,8 +1,8 @@
-﻿# Known limitations and interpretation guide
+# Known limitations and interpretation guide
 
-This document explains what the comparison sample does **not** prove, what is intentionally simplified, and how to interpret results responsibly.
+This document explains what the comparison sample does not prove, what is intentionally simplified, and how to interpret results responsibly.
 
-The project is useful as an architecture comparison case study, but it is not a production system and it is not a universal benchmark.
+The project is useful as an architecture comparison case study. It is not a production system, a production reference architecture, or a universal benchmark.
 
 ## Summary
 
@@ -14,21 +14,21 @@ The sample is designed to compare architectural trade-offs around:
 - concurrency under contention
 - compensation
 - timeout policy
-- release/versioning concerns
+- release and versioning concerns
 - operational diagnostics
 
-The sample is **not** designed to prove that one architecture is always faster, simpler, safer, or cheaper than the other.
+The sample is not designed to prove that one architecture is always faster, simpler, safer, cheaper, or easier to operate than the other.
 
 ## This is not a benchmark
 
 Elapsed times in the UI are useful for understanding local demo behavior, but they should not be interpreted as general production performance results.
 
-The local elapsed time is affected by:
+Local elapsed time is affected by:
 
 - machine performance
 - process startup state
 - local HTTP overhead
-- SQLite/local storage behavior
+- SQLite or local storage behavior
 - Orleans local runtime behavior
 - logging overhead
 - gateway orchestration shape
@@ -43,8 +43,8 @@ A production benchmark would need:
 - statistical sampling
 - latency percentiles
 - throughput measurements
-- CPU/memory/network metrics
-- database/storage metrics
+- CPU, memory, and network metrics
+- database and storage metrics
 - realistic deployment topology
 - comparable scaling strategy for both designs
 
@@ -87,7 +87,7 @@ Virtual actors are always faster than microservices.
 
 The strongest comparison dimension in this project is state ownership.
 
-The scenarios are designed to make questions visible:
+The scenarios are designed to make these questions visible:
 
 - Who owns inventory state?
 - Who protects the inventory invariant?
@@ -98,7 +98,7 @@ The scenarios are designed to make questions visible:
 
 The project compares how the two styles express those responsibilities.
 
-It does not attempt to compare every aspect of architecture, such as:
+The project does not attempt to compare every aspect of architecture, such as:
 
 - team structure in a large organization
 - cloud cost at scale
@@ -110,7 +110,7 @@ It does not attempt to compare every aspect of architecture, such as:
 
 ## Simplified persistence model
 
-The sample uses lightweight/local persistence patterns suitable for a demo.
+The sample uses lightweight local persistence patterns suitable for a demo.
 
 A production implementation would need stronger consideration of:
 
@@ -118,7 +118,7 @@ A production implementation would need stronger consideration of:
 - backup and restore
 - transaction isolation
 - optimistic or pessimistic concurrency
-- outbox/inbox patterns
+- outbox and inbox patterns
 - idempotency record retention
 - schema evolution
 - data retention and archival
@@ -130,7 +130,7 @@ The sample demonstrates the shape of state ownership, not a complete production 
 
 The payment scenarios are intentionally simplified.
 
-The sample currently models:
+The sample models:
 
 - successful payment authorization
 - explicit payment failure
@@ -139,7 +139,7 @@ The sample currently models:
 Real payment systems often require more complex handling:
 
 - asynchronous provider callbacks
-- authorization vs capture
+- authorization versus capture
 - cancellation and refund flows
 - provider-specific timeout behavior
 - reconciliation jobs
@@ -152,7 +152,7 @@ The sample uses deterministic payment behavior so the architecture comparison re
 
 ## Timeout behavior is simplified
 
-The `Payment timeout after reservation` scenario treats timeout as failure:
+The payment timeout after reservation scenario treats timeout as failure:
 
 ```text
 reserve inventory
@@ -173,7 +173,7 @@ reconcile later
 complete or reject after confirmation
 ```
 
-That more realistic policy introduces additional lifecycle complexity. The sample documents the ambiguity but does not implement the full pending/reconciliation lifecycle.
+That more realistic policy introduces additional lifecycle complexity. The sample documents the ambiguity but does not implement the full pending and reconciliation lifecycle.
 
 ## No full distributed tracing backend
 
@@ -181,11 +181,11 @@ The sample uses `X-Correlation-ID` for lightweight correlation.
 
 This is useful for local diagnostics, but it is not a full tracing platform.
 
-A production-grade observability stack would likely include:
+Production applications should generally use end-to-end OpenTelemetry-based observability. A production-grade observability stack would likely include:
 
 - W3C Trace Context
-- `Activity` / `ActivitySource`
-- OpenTelemetry
+- .NET `Activity` and `ActivitySource`
+- OpenTelemetry instrumentation
 - trace export
 - metrics export
 - structured log aggregation
@@ -193,7 +193,7 @@ A production-grade observability stack would likely include:
 - alerting
 - service-level objectives
 
-The current implementation keeps observability understandable and low-friction for the demo.
+The current implementation keeps observability understandable and low-friction for the demo. See `13-correlation-id-logging.md` and `16-observability-and-operations.md` for the detailed observability guidance.
 
 ## No production security model
 
@@ -223,7 +223,7 @@ A production deployment would need:
 - containerization or service packaging
 - environment-specific configuration
 - health checks
-- readiness/liveness probes
+- readiness and liveness probes
 - autoscaling rules
 - rolling deployment strategy
 - database migration pipeline
@@ -231,7 +231,7 @@ A production deployment would need:
 - secrets management
 - monitoring and alerting
 
-The release/deployment documentation describes these concerns conceptually. The sample does not implement all of them.
+The release and deployment documentation describes these concerns conceptually. The sample does not implement all of them.
 
 ## No universal architecture winner
 
@@ -271,11 +271,11 @@ Changing the meaning of these values is a behavior change.
 
 For example:
 
-- `CompletedOrders` means unique successful logical orders, not raw successful HTTP responses.
-- `RejectedOrders` means rejected logical submissions, not every technical failure.
-- `IdempotentResponses` means duplicate submissions that returned an existing logical result.
+- `UniqueSuccessfulOrders` means unique successful logical orders, not raw successful HTTP responses.
+- `RejectedSubmissions` means rejected logical submissions, not every technical failure.
+- `IdempotentDuplicateResponses` means duplicate submissions that returned an existing logical result.
 
-These meanings are documented and protected by regression tests.
+These meanings are documented in `12-scenario-guide.md` and protected by regression tests.
 
 ## Race conditions are not intentionally demonstrated
 
@@ -295,7 +295,7 @@ Simplified because payment always succeeds and no fulfillment, shipping, fraud, 
 
 Simplified because inventory rejection is immediate and deterministic. Real systems may support backorders, substitutions, allocation priority, or warehouse-specific stock.
 
-### Payment failure compensation
+### Payment failure with compensation
 
 Simplified because compensation always succeeds. Real systems need to handle compensation failures and retries.
 
@@ -341,6 +341,5 @@ Do not use the project to claim:
 - The sample is a teaching and comparison tool, not a production reference architecture.
 - Timings are local-demo observations, not benchmark conclusions.
 - Correctness and state ownership are the most important comparison dimensions.
-- Timeout, payment, persistence, security, and deployment are intentionally simplified.
+- Timeout, payment, persistence, security, observability, and deployment are intentionally simplified.
 - Both microservices and virtual actors require release, versioning, testing, and operational discipline.
-
