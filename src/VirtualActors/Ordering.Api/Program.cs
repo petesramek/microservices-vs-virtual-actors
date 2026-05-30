@@ -1,4 +1,4 @@
-using ArchitectureComparison.Contracts;
+﻿using ArchitectureComparison.Contracts;
 using Ordering.Grains.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +12,24 @@ builder.Host.UseOrleans(siloBuilder =>
 });
 
 var app = builder.Build();
+// correlation-id-logging
+app.Use(async (context, next) =>
+{
+    var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(correlationId))
+    {
+        await next();
+        return;
+    }
+
+    using var scope = app.Logger.BeginScope(new Dictionary<string, object>
+    {
+        ["CorrelationId"] = correlationId
+    });
+
+    app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+    await next();
+});
 
 app.MapGet("/", () => Results.Ok(new { Name = "Ordering API", Phase = "Virtual Actors" }));
 app.MapGet("/health/live", () => Results.Ok("Healthy"));
@@ -64,3 +82,4 @@ static OrderResponse ToResponse(Ordering.Grains.Contracts.GrainOrderResult resul
 }
 
 public partial class Program;
+

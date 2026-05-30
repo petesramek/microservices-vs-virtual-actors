@@ -10,6 +10,15 @@ namespace Comparison.Ui.Services;
 public sealed class ScenarioRunnerClient(HttpClient httpClient)
 {
     /// <summary>
+    /// Gets backend status from the gateway.
+    /// </summary>
+    /// <returns>The backend status response.</returns>
+    public async Task<BackendStatusResponse?> GetStatusAsync()
+    {
+        return await httpClient.GetFromJsonAsync<BackendStatusResponse>("/api/status");
+    }
+
+    /// <summary>
     /// Runs a scenario for the selected architecture.
     /// </summary>
     /// <param name="architecture">The architecture header value.</param>

@@ -1,0 +1,16 @@
+@using ArchitectureComparison.Contracts
+
+<article class="status-pill @GetStatusClass(Status)">
+    <span>@Status.Name</span>
+    <strong>@(Status.IsOnline ? "Online" : "Offline")</strong>
+</article>
+
+@code {
+    [Parameter]
+    public required ServiceStatus Status { get; set; }
+
+    private static string GetStatusClass(ServiceStatus status)
+    {
+        return status.IsOnline ? "status-online" : "status-offline";
+    }
+}

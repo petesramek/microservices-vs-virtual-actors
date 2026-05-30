@@ -1,4 +1,4 @@
-using ArchitectureComparison.Contracts;
+﻿using ArchitectureComparison.Contracts;
 using Inventory.Api.Data;
 using Inventory.Api.Models;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +15,24 @@ builder.Services.AddDbContext<InventoryDbContext>(options =>
 });
 
 var app = builder.Build();
+// correlation-id-logging
+app.Use(async (context, next) =>
+{
+    var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(correlationId))
+    {
+        await next();
+        return;
+    }
+
+    using var scope = app.Logger.BeginScope(new Dictionary<string, object>
+    {
+        ["CorrelationId"] = correlationId
+    });
+
+    app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+    await next();
+});
 
 await EnsureDatabaseAsync(app.Services);
 
@@ -113,3 +131,4 @@ static async Task EnsureDatabaseAsync(IServiceProvider services)
 }
 
 public partial class Program;
+

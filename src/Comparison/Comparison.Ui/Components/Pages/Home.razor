@@ -1,85 +1,281 @@
-﻿@page "/"
+﻿
+@page "/"
 @rendermode InteractiveServer
 @inject ScenarioRunnerClient Client
+@using Comparison.Ui.Models
 
-<h2>Scenario runner</h2>
+<section class="page-heading">
+    <div>
+        <h2>Scenario runner</h2>
+        <p>Run the same order workflow through the microservice-style implementation, the virtual actor-style implementation, or both.</p>
+    </div>
+</section>
 
-<EditForm Model="model" FormName="ScenarioRunner" OnValidSubmit="RunAsync">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+<section class="status-strip" aria-label="Backend status">
+    @if (backendStatus is null && !isLoadingStatus)
+    {
+        <article class="status-pill status-offline">
+            <span>Gateway</span>
+            <strong>Unknown</strong>
+        </article>
+    }
+    else if (backendStatus is not null)
+    {
+        <StatusPill Status="backendStatus.Gateway" />
+        <StatusPill Status="backendStatus.Microservices" />
+        <StatusPill Status="backendStatus.VirtualActors" />
+    }
+    else
+    {
+        <article class="status-pill status-neutral">
+            <span>Backends</span>
+            <strong>Checking...</strong>
+        </article>
+    }
 
-    <fieldset disabled="@isRunning">
-        <label>Architecture</label>
-        <InputSelect @bind-Value="architecture">
-            <option value="both">Both</option>
-            <option value="microservices">Microservices</option>
-            <option value="virtual-actors">Virtual Actors</option>
-        </InputSelect>
+    <button type="button" class="status-refresh" @onclick="LoadStatusAsync" disabled="@isLoadingStatus">
+        @(isLoadingStatus ? "Refreshing..." : "Refresh status")
+    </button>
+</section>
 
-        <label>Scenario</label>
-        <InputSelect @bind-Value="model.Scenario">
-            @foreach (var value in Enum.GetValues<ScenarioKind>())
-            {
-                <option value="@value">@value</option>
-            }
-        </InputSelect>
-
-        <label>Product ID</label>
-        <InputText @bind-Value="model.ProductId" />
-
-        <label>Customer ID</label>
-        <InputText @bind-Value="model.CustomerId" />
-
-        <label>Quantity</label>
-        <InputNumber @bind-Value="model.Quantity" />
-
-        <label>Initial stock</label>
-        <InputNumber @bind-Value="model.InitialStock" />
-
-        <label>Concurrent requests</label>
-        <InputNumber @bind-Value="model.ConcurrentRequests" />
-
-        <label>Idempotency key</label>
-        <InputText @bind-Value="model.IdempotencyKey" />
-
-        <button type="submit" disabled="@isRunning">@(isRunning ? "Running..." : "Run scenario")</button>
-    </fieldset>
-</EditForm>
-
-@if (isRunning)
+@if (!string.IsNullOrWhiteSpace(statusErrorMessage))
 {
-    <p>Running scenario...</p>
-}
-
-@if (!string.IsNullOrWhiteSpace(errorMessage))
-{
-    <section class="card">
-        <h3>Scenario failed</h3>
-        <p>@errorMessage</p>
-        <p>Make sure Comparison.Gateway is running on <code>http://localhost:5100</code> and backend services are running on their configured ports.</p>
+    <section class="card status-error-card">
+        <strong>Backend status unavailable.</strong>
+        <span>@statusErrorMessage</span>
     </section>
 }
 
-@if (response is not null)
-{
-    <section class="results">
-        @if (response.Microservices is not null)
+<section class="scenario-dashboard">
+    <aside class="scenario-controls">
+        <EditForm Model="model" FormName="ScenarioRunner" OnValidSubmit="RunAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <fieldset disabled="@isRunning">
+                <div class="control-section">
+                    <label>Architecture</label>
+                    <InputSelect @bind-Value="architecture">
+                        <option value="both">Both</option>
+                        <option value="microservices">Microservices</option>
+                        <option value="virtual-actors">Virtual Actors</option>
+                    </InputSelect>
+                </div>
+
+                <div class="control-section">
+                    <label>Scenario</label>
+                    <InputSelect @bind-Value="selectedScenario">
+                        @foreach (var value in Enum.GetValues<ScenarioKind>())
+                        {
+                            <option value="@value">@FormatScenario(value)</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <section class="scenario-hint">
+                    <strong>Defaults:</strong>
+                    <span>@GetDefaultHint(model.Scenario)</span>
+                </section>
+
+                <button type="submit" disabled="@isRunning" class="run-button">
+                    @(isRunning ? "Running scenario..." : "Run scenario")
+                </button>
+
+                <button type="button" class="advanced-toggle" @onclick="ToggleAdvancedSettings" disabled="@isRunning" aria-expanded="@showAdvancedSettings">
+                    <span class="advanced-toggle-icon" aria-hidden="true">@(showAdvancedSettings ? "-" : "+")</span>
+                    <span>@(showAdvancedSettings ? "Hide advanced scenario settings" : "Show advanced scenario settings")</span>
+                </button>
+
+                @if (showAdvancedSettings)
+                {
+                    <section class="advanced-panel">
+                        <div class="control-grid">
+                            <div class="control-section">
+                                <label>Initial stock</label>
+                                <InputNumber @bind-Value="model.InitialStock" />
+                                <ValidationMessage For="() => model.InitialStock" />
+                            </div>
+
+                            <div class="control-section">
+                                <label>Quantity</label>
+                                <InputNumber @bind-Value="model.Quantity" />
+                                <ValidationMessage For="() => model.Quantity" />
+                            </div>
+
+                            <div class="control-section">
+                                <label>Concurrent requests</label>
+                                <InputNumber @bind-Value="model.ConcurrentRequests" disabled="@(!model.UsesConcurrentRequests)" />
+                                <ValidationMessage For="() => model.ConcurrentRequests" />
+                                <span class="field-note @(model.UsesConcurrentRequests ? "field-note-active" : "field-note-muted")">
+                                    @GetConcurrentRequestsNote(model.Scenario)
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="control-section">
+                            <label>Product ID</label>
+                            <InputText @bind-Value="model.ProductId" />
+                            <ValidationMessage For="() => model.ProductId" />
+                        </div>
+
+                        <div class="control-section">
+                            <label>Customer ID</label>
+                            <InputText @bind-Value="model.CustomerId" />
+                            <ValidationMessage For="() => model.CustomerId" />
+                        </div>
+
+                        <div class="control-section">
+                            <label>Idempotency key</label>
+                            <InputText @bind-Value="model.IdempotencyKey" />
+                            <ValidationMessage For="() => model.IdempotencyKey" />
+                        </div>
+
+                        <button type="button" class="secondary-button" @onclick="ResetAdvancedSettings" disabled="@isRunning">
+                            Reset advanced settings to scenario defaults
+                        </button>
+                    </section>
+                }
+            </fieldset>
+        </EditForm>
+    </aside>
+
+    <section class="scenario-results-panel">
+        @if (isRunning)
         {
-            <ResultCard Title="Microservices" Result="response.Microservices" />
+            <section class="card state-card running-state progress-card">
+                <span class="state-kicker">Running</span>
+                <h3>@FormatScenario(model.Scenario)</h3>
+                <p>@GetRunningDescription()</p>
+
+                <ol class="progress-steps" aria-label="Scenario progress">
+                    @for (var index = 0; index < progressSteps.Count; index++)
+                    {
+                        <li class="progress-step @GetProgressStepClass(index)">
+                            <span class="progress-step-icon" aria-hidden="true">@GetProgressStepIcon(index)</span>
+                            <span>@progressSteps[index]</span>
+                        </li>
+                    }
+                </ol>
+            </section>
         }
-        @if (response.VirtualActors is not null)
+        else if (!string.IsNullOrWhiteSpace(errorMessage))
         {
-            <ResultCard Title="Virtual Actors" Result="response.VirtualActors" />
+            <section class="card state-card error-state">
+                <span class="state-kicker">Error</span>
+                <h3>Scenario failed</h3>
+                <p>@errorMessage</p>
+                <p>Make sure Comparison.Gateway is running on <code>http://localhost:5100</code> and backend services are running on their configured ports.</p>
+            </section>
+        }
+        else if (response is null)
+        {
+            <section class="card state-card empty-state">
+                <span class="state-kicker">Ready</span>
+                <h3>No scenario run yet</h3>
+                <p>Choose a scenario and click <strong>Run scenario</strong> to compare the two implementations side by side.</p>
+                <ul>
+                    <li>Use <strong>Both</strong> to compare microservices and virtual actors.</li>
+                    <li>Open advanced settings only when you want to customize stock, quantity, or identifiers.</li>
+                    <li>Fields that do not apply to the selected scenario are disabled and ignored when the scenario runs.</li>
+                </ul>
+            </section>
+        }
+        else
+        {
+            <section class="comparison-summary card">
+                <span class="state-kicker">@FormatScenario(response.Scenario)</span>
+                <h3>@GetScenarioSummary(response)</h3>
+                <p>@GetScenarioDescription(response.Scenario)</p>
+                @if (lastRunCompletedAt is not null)
+                {
+                    <p class="run-completion-note">
+                        Completed at @lastRunCompletedAt.Value.ToLocalTime().ToString("HH:mm:ss")
+                        @if (lastUiElapsedMilliseconds is not null)
+                        {
+                            <span> · UI request time @lastUiElapsedMilliseconds ms</span>
+                        }
+                    </p>
+                }
+            </section>
+
+            <section class="results">
+                @if (response.Microservices is not null)
+                {
+                    <ResultCard Title="Microservices" Result="response.Microservices" />
+                }
+                @if (response.VirtualActors is not null)
+                {
+                    <ResultCard Title="Virtual Actors" Result="response.VirtualActors" />
+                }
+            </section>
         }
     </section>
-}
+</section>
 
 @code {
     private string architecture = "both";
-    private RunScenarioRequest model = new();
+    private ScenarioFormModel model = ScenarioFormModel.Create(ScenarioKind.SuccessfulOrder);
     private RunScenarioResponse? response;
+    private BackendStatusResponse? backendStatus;
     private string? errorMessage;
+    private string? statusErrorMessage;
     private bool isRunning;
+    private bool isLoadingStatus;
+    private bool showAdvancedSettings;
+    private int currentProgressStep;
+    private IReadOnlyList<string> progressSteps = Array.Empty<string>();
+    private DateTimeOffset? lastRunCompletedAt;
+    private long? lastUiElapsedMilliseconds;
+
+    private ScenarioKind selectedScenario
+    {
+        get => model.Scenario;
+        set
+        {
+            if (model.Scenario == value)
+            {
+                return;
+            }
+
+            model.Scenario = value;
+            model.ResetAdvancedSettings();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatusAsync();
+    }
+
+    private async Task LoadStatusAsync()
+    {
+        isLoadingStatus = true;
+        statusErrorMessage = null;
+
+        try
+        {
+            backendStatus = await Client.GetStatusAsync();
+        }
+        catch (Exception exception)
+        {
+            backendStatus = null;
+            statusErrorMessage = exception.Message;
+        }
+        finally
+        {
+            isLoadingStatus = false;
+        }
+    }
+
+    private void ToggleAdvancedSettings()
+    {
+        showAdvancedSettings = !showAdvancedSettings;
+    }
+
+    private void ResetAdvancedSettings()
+    {
+        model.ResetAdvancedSettings();
+    }
 
     private async Task RunAsync()
     {
@@ -91,18 +287,199 @@
         isRunning = true;
         errorMessage = null;
         response = null;
+        progressSteps = GetProgressSteps(architecture);
+        currentProgressStep = 0;
+
+        using var progressCancellationTokenSource = new CancellationTokenSource();
+        var progressTask = AdvanceProgressAsync(progressCancellationTokenSource.Token);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         try
         {
-            response = await Client.RunAsync(architecture, model);
+            var runTask = Client.RunAsync(architecture, model.ToRequest());
+            var minimumDisplayTask = Task.Delay(750);
+            await Task.WhenAll(runTask, minimumDisplayTask);
+            response = await runTask;
+
+            stopwatch.Stop();
+            lastUiElapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+            lastRunCompletedAt = DateTimeOffset.Now;
+            currentProgressStep = Math.Max(0, progressSteps.Count - 1);
+            await LoadStatusAsync();
         }
         catch (Exception exception)
         {
+            stopwatch.Stop();
             errorMessage = exception.Message;
         }
         finally
         {
+            await progressCancellationTokenSource.CancelAsync();
+
+            try
+            {
+                await progressTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when scenario execution completes before the visual progress loop.
+            }
+
             isRunning = false;
         }
     }
+
+    private async Task AdvanceProgressAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await Task.Delay(300, cancellationToken);
+
+            if (progressSteps.Count > 0 && currentProgressStep < progressSteps.Count - 1)
+            {
+                currentProgressStep++;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private IReadOnlyList<string> GetProgressSteps(string selectedArchitecture)
+    {
+        if (selectedArchitecture.Equals("microservices", StringComparison.OrdinalIgnoreCase))
+        {
+            return
+            [
+                "Preparing scenario request",
+                "Calling Orders.Api through the gateway",
+                "Reading final inventory",
+                "Building microservices result"
+            ];
+        }
+
+        if (selectedArchitecture.Equals("virtual-actors", StringComparison.OrdinalIgnoreCase))
+        {
+            return
+            [
+                "Preparing scenario request",
+                "Calling Ordering.Api through the gateway",
+                "Reading final inventory",
+                "Building virtual actors result"
+            ];
+        }
+
+        return
+        [
+            "Preparing scenario request",
+            "Calling microservices backend",
+            "Calling virtual actors backend",
+            "Building side-by-side comparison"
+        ];
+    }
+
+    private string GetRunningDescription()
+    {
+        return architecture switch
+        {
+            "microservices" => "Running the workflow through the microservice-style backend.",
+            "virtual-actors" => "Running the workflow through the virtual actor-style backend.",
+            _ => "Running the workflow through both architecture styles."
+        };
+    }
+
+    private string GetProgressStepClass(int index)
+    {
+        if (index < currentProgressStep)
+        {
+            return "progress-completed";
+        }
+
+        return index == currentProgressStep ? "progress-active" : "progress-pending";
+    }
+
+    private string GetProgressStepIcon(int index)
+    {
+        if (index < currentProgressStep)
+        {
+            return "✓";
+        }
+
+        return index == currentProgressStep ? "●" : "○";
+    }
+
+    private static string GetDefaultHint(ScenarioKind scenario)
+    {
+        var defaults = ScenarioDefaults.For(scenario);
+        var baseHint = $"initial stock {defaults.InitialStock}, quantity {defaults.Quantity}";
+        return scenario switch
+        {
+            ScenarioKind.ConcurrentOrders => $"{baseHint}, concurrent requests {defaults.ConcurrentRequests}",
+            ScenarioKind.HotProductContention => $"{baseHint}, concurrent requests {defaults.ConcurrentRequests}; all orders target one hot product.",
+            ScenarioKind.DuplicateRequest => $"{baseHint}, concurrent requests {defaults.ConcurrentRequests}; all submissions reuse the same idempotency key.",
+            _ => $"{baseHint}; concurrent requests is ignored."
+        };
+    }
+
+    private static string GetConcurrentRequestsNote(ScenarioKind scenario)
+    {
+        return scenario switch
+        {
+            ScenarioKind.ConcurrentOrders => "Used by this scenario. Must be between 1 and 100 for local demo safety.",
+            ScenarioKind.HotProductContention => "Used by this scenario. All requests target the same product. Must be between 1 and 100 for local demo safety.",
+            ScenarioKind.DuplicateRequest => "Used by this scenario. All submissions reuse the same order identity and idempotency key. Must be between 1 and 100 for local demo safety.",
+            _ => "Not used by this scenario. This value is ignored when the scenario runs."
+        };
+    }
+
+    private static string FormatScenario(ScenarioKind scenario)
+    {
+        return scenario switch
+        {
+            ScenarioKind.SuccessfulOrder => "Successful order",
+            ScenarioKind.InsufficientInventory => "Insufficient inventory",
+            ScenarioKind.PaymentFailureCompensation => "Payment failure compensation",
+            ScenarioKind.PaymentTimeoutAfterReservation => "Payment timeout after reservation",
+            ScenarioKind.ConcurrentOrders => "Concurrent orders",
+            ScenarioKind.DuplicateRequest => "Duplicate request",
+            ScenarioKind.HotProductContention => "Hot product contention",
+            _ => scenario.ToString()
+        };
+    }
+
+    private static string GetScenarioSummary(RunScenarioResponse result)
+    {
+        var completed = new[] { result.Microservices, result.VirtualActors }
+            .Where(item => item is not null)
+            .All(item => item!.CompletedOrders > 0 || item.Status == OrderStatus.Completed);
+
+        return result.Scenario switch
+        {
+            ScenarioKind.SuccessfulOrder when completed => "Both implementations completed the happy path.",
+            ScenarioKind.InsufficientInventory => "The order is rejected when inventory is unavailable.",
+            ScenarioKind.PaymentFailureCompensation => "Inventory is released after payment failure.",
+            ScenarioKind.PaymentTimeoutAfterReservation => "Inventory is released after payment timeout.",
+            ScenarioKind.ConcurrentOrders => "Concurrent requests are processed without over-reserving inventory.",
+            ScenarioKind.HotProductContention => "Concurrent requests are concentrated on one hot product without over-reserving inventory.",
+            ScenarioKind.DuplicateRequest => "Duplicate requests return an idempotent result.",
+            _ => "Scenario completed."
+        };
+    }
+
+    private static string GetScenarioDescription(ScenarioKind scenario)
+    {
+        return scenario switch
+        {
+            ScenarioKind.SuccessfulOrder => "Inventory is available, payment succeeds, and the order completes.",
+            ScenarioKind.InsufficientInventory => "The requested quantity is greater than available inventory, so payment is not attempted.",
+            ScenarioKind.PaymentFailureCompensation => "Inventory is reserved first, payment fails, and the reservation is released.",
+            ScenarioKind.PaymentTimeoutAfterReservation => "Inventory is reserved first, payment authorization times out, and the reservation is released. Payment timeout is treated as failed in this demo.",
+            ScenarioKind.ConcurrentOrders => "Multiple orders compete for the same product stock at the same time.",
+            ScenarioKind.HotProductContention => "Many orders target the same product, showing that both designs still have a contention point for one hot inventory identity.",
+            ScenarioKind.DuplicateRequest => "The same idempotency key is submitted multiple times concurrently and should only reserve inventory once.",
+            _ => "The selected scenario was executed."
+        };
+    }
 }
+
+
+
+

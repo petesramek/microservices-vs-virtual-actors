@@ -1,197 +1,267 @@
-# Microservices vs Virtual Actors
+﻿# Microservices vs Virtual Actors
 
-Hands-on comparison of microservice-style and virtual actor-style designs for the same order workflow.
+This repository is an architecture comparison case study for the same order workflow implemented in two styles:
 
-This repository compares development model, state ownership, communication, concurrency, failure handling, deployment, scaling, and operational trade-offs.
+- a microservices-style implementation with explicit HTTP service boundaries
+- a virtual actor-style implementation with identity-based state ownership and serialized execution per actor identity
 
-It is not trying to prove that one model is always better.
+The project is designed to make architectural trade-offs visible across implementation, state ownership, concurrency, idempotency, compensation, timeout handling, testing, release/deployment, versioning, observability, operations, and long-term maintenance.
 
-## Comparison focus
+> This project is not a benchmark. Local elapsed times are useful for understanding the sample topology, but they should not be interpreted as universal performance conclusions.
 
-- Microservices: service/capability boundaries, independently deployable APIs, service-owned state.
-- Virtual actors: stateful identity boundaries, actor-owned state, runtime-managed activation and concurrency.
+## What this project demonstrates
 
-## Workflow
+The comparison focuses on practical architecture questions:
 
-The same order workflow is used for both implementations:
+- Who owns inventory state?
+- Who protects inventory invariants?
+- Who owns order workflow decisions?
+- How is idempotency protected under concurrent duplicate submissions?
+- How does each style handle contention for one hot product?
+- How are payment failure and timeout compensation expressed?
+- How are scenario outcomes tested and documented?
+- How would each style be released, versioned, operated, and maintained?
 
-1. Place an order.
-2. Reserve inventory.
-3. Authorize payment.
-4. Complete or reject the order.
-5. Release inventory when payment fails.
-6. Prevent inventory over-reservation under concurrent load.
-7. Handle duplicate requests with idempotency keys.
+## Architecture styles compared
 
-## Acceptance scenarios
+### Microservices-style path
 
-Both implementations must satisfy the same acceptance scenarios:
+The microservices-style path uses separate services for the main workflow responsibilities:
 
-- Successful order
-- Insufficient inventory
-- Payment failure compensation
-- Concurrent orders do not over-reserve inventory
-- Duplicate order request is idempotent
+- `Orders.Api` owns order workflow orchestration.
+- `Inventory.Api` owns inventory state and reservation invariants.
+- `Payments.Api` owns payment authorization behavior.
+- `Comparison.Gateway` runs the same scenario against each architecture path.
+- `Comparison.Ui` provides the interactive scenario dashboard.
 
-## Projects
+This style makes service boundaries and independent deployment explicit. The trade-off is that every boundary introduces compatibility, reliability, versioning, and observability concerns.
 
-- `ArchitectureComparison.Contracts` — shared contracts and scenario models.
-- `Comparison.Gateway` — backend selection/proxy layer using `X-Architecture`.
-- `Comparison.Ui` — Blazor Server comparison dashboard.
-- `Orders.Api`, `Inventory.Api`, `Payments.Api` — microservice-style implementation.
-- `Ordering.Api`, `Ordering.Grains`, `Ordering.Silo` — virtual actor-style implementation.
-- `ArchitectureComparison.AcceptanceTests` — gateway-level acceptance tests.
-- `Microservices.Tests` — microservice workflow tests.
-- `VirtualActors.Tests` — Orleans workflow tests.
+### Virtual actor-style path
 
-## Dashboard
+The virtual actor-style path expresses the workflow through stateful identities:
 
-The Blazor Server dashboard includes:
+- `OrderGrain` owns one logical order workflow.
+- `InventoryItemGrain` owns one product inventory identity.
+- `PaymentAccountGrain` owns payment behavior.
+- `Ordering.Api` exposes the actor-backed workflow entry point.
 
-- scenario runner
-- side-by-side architecture results
-- event timelines
-- topology page
-- trade-offs page
+This style makes identity-based state ownership explicit. The trade-off is that grain interface compatibility, persistent grain state evolution, runtime behavior, activation lifecycle, and hot identity behavior become important design and operational concerns.
 
-## How to build and test
+## Scenario list
 
-```bash
+The UI exposes the following comparison scenarios:
+
+### Successful order
+
+Demonstrates the happy path. Inventory is available, payment succeeds, and the order completes.
+
+Expected shape:
+
+- total request submissions: `1`
+- unique successful orders: `1`
+- rejected submissions: `0`
+- idempotent duplicate responses: `0`
+- remaining inventory decreases by the requested quantity
+
+### Insufficient inventory
+
+Demonstrates business rejection before payment. Inventory is not available, so the order is rejected and payment should not be attempted.
+
+Expected shape:
+
+- total request submissions: `1`
+- unique successful orders: `0`
+- rejected submissions: `1`
+- reason: `InsufficientInventory`
+
+### Payment failure compensation
+
+Demonstrates compensation after a known downstream failure. Inventory is reserved, payment explicitly fails, and inventory is released.
+
+Expected shape:
+
+- total request submissions: `1`
+- unique successful orders: `0`
+- rejected submissions: `1`
+- remaining inventory returns to initial stock
+- reason: `PaymentFailed`
+
+### Payment timeout after reservation
+
+Demonstrates timeout handling after inventory has already been reserved. The sample treats timeout as failed, releases inventory, and rejects the order.
+
+Expected shape:
+
+- total request submissions: `1`
+- unique successful orders: `0`
+- rejected submissions: `1`
+- remaining inventory returns to initial stock
+- reason: `PaymentTimeout`
+
+### Concurrent orders
+
+Demonstrates many independent order submissions competing for the same product stock.
+
+Expected shape when demand exceeds stock:
+
+- completed submissions do not exceed available stock divided by quantity
+- extra submissions are rejected
+- remaining inventory does not go below zero
+
+### Hot product contention
+
+Demonstrates many concurrent requests targeting one hot product identity.
+
+Expected shape with initial stock `25`, quantity `1`, and `50` concurrent requests:
+
+- total request submissions: `50`
+- unique successful orders: `25`
+- rejected submissions: `25`
+- remaining inventory: `0`
+- reason: `SomeOrdersRejected`
+
+### Duplicate request
+
+Demonstrates idempotency under repeated duplicate submissions. The scenario submits the same logical order multiple times concurrently using the same order identity and idempotency key.
+
+Expected shape with initial stock `10`, quantity `2`, and `20` duplicate submissions:
+
+- total request submissions: `20`
+- unique successful orders: `1`
+- rejected submissions: `0`
+- idempotent duplicate responses: `19`
+- remaining inventory: `8`
+- reason: `IdempotentResultReturned`
+
+## Result terminology
+
+The UI result cards use request-submission terminology consistently:
+
+- **Total request submissions**: how many requests were submitted for the scenario run.
+- **Unique successful orders**: how many unique logical orders completed successfully.
+- **Rejected submissions**: how many logical submissions were rejected.
+- **Idempotent duplicate responses**: how many duplicate submissions returned an existing logical result.
+- **Remaining inventory**: the final inventory quantity after the scenario run.
+- **Elapsed**: local elapsed time for the architecture path in this sample topology.
+
+These values are semantic contracts for the comparison. For example, `CompletedOrders` means unique successful logical orders, not raw successful HTTP responses.
+
+## How to run locally
+
+Start the backend services and UI according to the project launch settings. At minimum, the comparison UI expects the comparison gateway and backend services to be running on their configured local ports.
+
+Typical validation commands:
+
+```powershell
 dotnet restore
-dotnet test
+dotnet build --configuration Release
+dotnet test --configuration Release --no-build
 ```
 
-On Windows PowerShell:
+Then run the services needed for the UI scenario dashboard.
 
-```powershell
-./scripts/test-build.ps1
-```
+## Testing
 
-For the complete validation pass:
+The project includes scenario regression tests that protect the agreed scenario result semantics.
 
-```powershell
-./scripts/validate-e2e.ps1
-```
+The regression tests cover:
 
-## Run locally with .NET
+- successful order
+- insufficient inventory
+- payment failure compensation
+- payment timeout after reservation
+- hot product contention
+- duplicate request with concurrent duplicate submissions
 
-Run the backend services in separate terminals.
+The regression suite is intentionally focused on result semantics:
 
-### Microservices backend
+- total request submissions
+- unique successful orders
+- rejected submissions
+- idempotent duplicate responses
+- remaining inventory
+- reason
 
-```bash
-dotnet run --project src/Microservices/Inventory.Api --urls http://localhost:5201
-dotnet run --project src/Microservices/Payments.Api --urls http://localhost:5202
-dotnet run --project src/Microservices/Orders.Api --urls http://localhost:5200
-```
+When scenario behavior changes intentionally, update the regression tests and the documentation together.
 
-Or on Windows PowerShell:
+## Observability
 
-```powershell
-./scripts/run-microservices.ps1
-```
+The sample uses lightweight header-based correlation for local diagnostics.
 
-### Virtual actors backend
-
-```bash
-dotnet run --project src/VirtualActors/Ordering.Api --urls http://localhost:5300
-```
-
-Or on Windows PowerShell:
-
-```powershell
-./scripts/run-virtual-actors.ps1
-```
-
-### Comparison layer
-
-```bash
-dotnet run --project src/Comparison/Comparison.Gateway --urls http://localhost:5100
-dotnet run --project src/Comparison/Comparison.Ui --urls http://localhost:5000
-```
-
-Or on Windows PowerShell:
-
-```powershell
-./scripts/run-comparison.ps1
-```
-
-Open:
+The UI generates a correlation ID and sends it as:
 
 ```text
-http://localhost:5000
+X-Correlation-ID
 ```
 
-## Run with Docker Compose
+The gateway forwards the correlation ID to backend calls, and backend services add it to structured logging scopes.
 
-Run the full comparison stack:
+Use the correlation ID shown in the UI to find related logs across:
 
-```bash
-docker compose -f deploy/docker-compose.full.yml up --build
-```
+- `Comparison.Gateway`
+- `Orders.Api`
+- `Inventory.Api`
+- `Payments.Api`
+- `Ordering.Api`
 
-Open:
+The project deliberately keeps correlation metadata out of scenario request and response contracts.
 
-```text
-http://localhost:5000
-```
+## Documentation map
 
-Run only the microservice-style stack:
+Architecture deep-dive documents:
 
-```bash
-docker compose -f deploy/microservices/docker-compose.yml up --build
-```
+- [Scenario comparison matrix](docs/16-scenario-comparison-matrix.md) explains each scenario across purpose, expected result, state ownership, concurrency or failure lesson, release/versioning note, and operational note.
+- [Release, deployment, and versioning](docs/17-release-deployment-and-versioning.md) compares deployment units, compatibility boundaries, rollback risks, and versioning strategy for both architecture styles.
+- [Maintenance and evolution](docs/18-maintenance-and-evolution.md) compares how both architecture styles evolve when payment behavior, inventory rules, workflow steps, timeout policy, idempotency, and result contracts change.
+- [Observability and operations](docs/19-observability-and-operations.md) explains correlation IDs, runtime diagnostics, important log dimensions, scenario-specific operational notes, and production observability considerations.
+- [Known limitations](docs/20-known-limitations.md) explains what the sample does not prove, how to interpret timings, and which production concerns are intentionally simplified.
 
-Run only the virtual actor-style stack:
+Additional scenario and implementation docs may exist under `docs/` for earlier project phases and implementation milestones.
 
-```bash
-docker compose -f deploy/virtual-actors/docker-compose.yml up --build
-```
+## How to interpret timings
 
-## Header-based architecture selection
+Elapsed times are local demo observations. They are useful for understanding the shape of this sample topology, but they are not benchmark proof.
 
-The comparison gateway uses this header:
+Timing can be affected by:
 
-```http
-X-Architecture: microservices
-```
+- local machine performance
+- service warmup
+- local HTTP overhead
+- SQLite/local persistence behavior
+- Orleans runtime behavior
+- logging overhead
+- gateway orchestration
+- contention on one product identity
 
-or:
+Use timings to ask better questions. Do not use them to claim universal performance superiority for either architecture style.
 
-```http
-X-Architecture: virtual-actors
-```
+## Known limitations
 
-or:
+This project intentionally simplifies several production concerns:
 
-```http
-X-Architecture: both
-```
+- no production authentication or authorization model
+- no full distributed tracing backend
+- no production-grade payment integration
+- no full deployment platform
+- no multi-region or autoscaling design
+- simplified persistence and migration strategy
+- simplified timeout policy
+- no intentionally unsafe race-condition scenario in the main comparison
 
-## Documentation
+See [Known limitations](docs/20-known-limitations.md) for the full interpretation guide.
 
-- [Problem](docs/01-problem.md)
-- [Microservices design](docs/02-microservices-design.md)
-- [Virtual actors design](docs/03-virtual-actors-design.md)
-- [Development comparison](docs/04-development-comparison.md)
-- [Deployment comparison](docs/05-deployment-comparison.md)
-- [Scaling comparison](docs/06-scaling-comparison.md)
-- [Trade-offs](docs/07-tradeoffs.md)
-- [Local validation](docs/08-local-validation.md)
-- [UI dashboard](docs/09-ui-dashboard.md)
-- [End-to-end validation](docs/10-end-to-end-validation.md)
-- [Out of scope](docs/11-out-of-scope.md)
+## Key takeaway
 
-## Repository hygiene
+The central comparison is not whether microservices or virtual actors are universally better.
 
-Before publishing, run:
+The central comparison is how each style expresses and maintains:
 
-```powershell
-./scripts/check-repo-hygiene.ps1
-```
+- state ownership
+- concurrency guarantees
+- workflow coordination
+- compensation policy
+- idempotency behavior
+- release compatibility
+- operational diagnostics
+- long-term evolution
 
-Generated phase scripts, template zip files, and local database files should not be committed to the public repository root.
-
-## Notes
-
-The repository is intentionally small. The value is in seeing the same workflow implemented, tested, deployed, and scaled through two different architectural models.

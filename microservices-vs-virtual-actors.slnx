@@ -1,5 +1,11 @@
 <Solution>
   <Project Path="src/Shared/ArchitectureComparison.Contracts/ArchitectureComparison.Contracts.csproj" />
+  <Folder Name="/src/" />
+  <Folder Name="/src/Comparison/" />
+  <Folder Name="/src/Shared/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Comparison.ScenarioRegressionTests/Comparison.ScenarioRegressionTests.csproj" />
+  </Folder>
   <Project Path="src/Comparison/Comparison.Gateway/Comparison.Gateway.csproj" />
   <Project Path="src/Comparison/Comparison.Ui/Comparison.Ui.csproj" />
   <Project Path="src/Microservices/Orders.Api/Orders.Api.csproj" />

@@ -1,45 +1,40 @@
-# Trade-offs
+﻿# Trade-offs
 
-This repository keeps the trade-offs explicit instead of treating either model as universally better.
+## Concurrency
 
-## Microservices
+Both implementations should prevent over-reservation in the concurrent orders scenario.
 
-Pros:
+This does not mean microservices are automatically concurrency-safe. It means the microservice implementation has explicit concurrency control at the state owner, `Inventory.Api`.
 
-- Independent deployment.
-- Clear business capability boundaries.
-- Natural fit for separate teams and ownership.
-- Independent service scaling.
-- Explicit API contracts.
+The virtual actor implementation prevents over-reservation through `InventoryItemGrain`, which serializes operations for a product identity.
 
-Cons:
+The comparison is therefore:
 
-- More operational surface area.
-- More network calls and failure modes.
-- Distributed workflow consistency must be designed explicitly.
-- Local development requires more processes.
-- Idempotency and compensation are required for realistic workflows.
+- microservices: explicit protection at the service-owned state boundary
+- virtual actors: natural per-identity serialization through the actor model
 
-## Virtual actors
+## Performance timing
 
-Pros:
+Elapsed time in the UI is local demo feedback, not a benchmark.
 
-- Natural fit for stateful identities.
-- Per-identity coordination is localized.
-- Turn-based actor execution can simplify some concurrency problems.
-- Runtime manages activation and placement.
-- Workflow code can be easier to follow when the domain is identity-centric.
+The microservice workflow crosses more HTTP boundaries:
 
-Cons:
+- gateway to Orders.Api
+- Orders.Api to Inventory.Api
+- Orders.Api to Payments.Api
 
-- Orleans runtime behavior must be understood.
-- Clustering, persistence, and placement become architectural concerns.
-- Hot actors can become bottlenecks.
-- Deployment independence is not the same as independent microservice deployment.
-- Not every service boundary should become an actor.
+The virtual actor workflow keeps more coordination inside the Orleans runtime path.
+
+Production performance depends on network topology, persistence, placement, hot keys, deployment shape, and operational tuning.
 
 ## Practical takeaway
 
-Microservices are often a good fit when the system boundary is organizational, deployable, and capability-oriented.
+Microservices are useful when boundaries are organizational, deployable, and capability-oriented.
 
-Virtual actors are often a good fit when the hard part is coordinating many stateful identities with concurrent operations.
+Virtual actors are useful when state is naturally partitioned by identity and the difficult part is coordinating many stateful identities.
+
+## Hot identities
+
+A hot product is a useful reminder that virtual actors do not remove contention. They make the contention explicit by state identity.
+
+In the microservice implementation, the hot product is protected by Inventory.Api and its state store. In the virtual actor implementation, the hot product is protected by InventoryItemGrain for that product identity.

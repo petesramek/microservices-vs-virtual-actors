@@ -93,7 +93,9 @@ public sealed record ArchitectureRunResult(
     int RejectedOrders,
     int RemainingInventory,
     long ElapsedMilliseconds,
-    IReadOnlyList<ScenarioEvent> Events);
+    IReadOnlyList<ScenarioEvent> Events,
+    int TotalRequestSubmissions = 0,
+    int IdempotentResponses = 0);
 
 /// <summary>
 /// Timeline event emitted by a scenario run.
@@ -101,3 +103,4 @@ public sealed record ArchitectureRunResult(
 /// <param name="Source">The source service or actor.</param>
 /// <param name="Message">The event message.</param>
 public sealed record ScenarioEvent(string Source, string Message);
+

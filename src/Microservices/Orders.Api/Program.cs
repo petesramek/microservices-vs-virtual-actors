@@ -1,3 +1,5 @@
+﻿using System.Text.Json;
+using System.Collections.Concurrent;
 using ArchitectureComparison.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Orders.Api.Clients;
@@ -28,6 +30,75 @@ builder.Services.AddHttpClient<IPaymentsClient, HttpPaymentsClient>(client =>
 });
 
 var app = builder.Build();
+// correlation-id-logging
+app.Use(async (context, next) =>
+{
+    var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(correlationId))
+    {
+        await next();
+        return;
+    }
+
+    using var scope = app.Logger.BeginScope(new Dictionary<string, object>
+    {
+        ["CorrelationId"] = correlationId
+    });
+
+    app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+    await next();
+});
+
+// orders-api-idempotency-keyed-gate
+var orderIdempotencyLocks = new ConcurrentDictionary<string, SemaphoreSlim>();
+
+app.Use(async (context, next) =>
+{
+    if (!HttpMethods.IsPost(context.Request.Method) || !context.Request.Path.Equals("/api/orders"))
+    {
+        await next();
+        return;
+    }
+
+    context.Request.EnableBuffering();
+
+    RunScenarioRequest? request = null;
+    try
+    {
+        request = await JsonSerializer.DeserializeAsync<RunScenarioRequest>(
+            context.Request.Body,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web),
+            context.RequestAborted);
+    }
+    finally
+    {
+        context.Request.Body.Position = 0;
+    }
+
+    if (string.IsNullOrWhiteSpace(request?.IdempotencyKey))
+    {
+        await next();
+        return;
+    }
+
+    var requestLock = orderIdempotencyLocks.GetOrAdd(request.IdempotencyKey, _ => new SemaphoreSlim(1, 1));
+    await requestLock.WaitAsync(context.RequestAborted);
+
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        requestLock.Release();
+
+        if (requestLock.CurrentCount == 1)
+        {
+            orderIdempotencyLocks.TryRemove(request.IdempotencyKey, out _);
+        }
+    }
+});
+
 
 await EnsureDatabaseAsync(app.Services);
 
@@ -135,3 +206,5 @@ static async Task EnsureDatabaseAsync(IServiceProvider services)
 }
 
 public partial class Program;
+
+

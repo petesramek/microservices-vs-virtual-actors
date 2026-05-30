@@ -42,6 +42,22 @@
 </section>
 
 <section class="card callout">
+    <h3>Concurrency note</h3>
+    <p>The concurrent orders scenario is not intended to show that microservices are inherently unsafe. Both implementations are expected to prevent over-reservation.</p>
+    <ul>
+        <li><strong>Microservices:</strong> Inventory.Api owns inventory state and must explicitly protect the reservation invariant.</li>
+        <li><strong>Virtual actors:</strong> InventoryItemGrain owns product inventory state and serializes calls for a product identity.</li>
+    </ul>
+    <p>The important difference is where the concurrency rule lives. Microservices require explicit concurrency control at the state owner. Virtual actors make per-identity serialization a natural part of the programming model.</p>
+</section>
+
+<section class="card callout">
+    <h3>Performance note</h3>
+    <p>Elapsed time in the dashboard is useful for local feedback, but it is not a benchmark.</p>
+    <p>The microservice path crosses more HTTP service boundaries in this sample. The virtual actor path keeps more workflow coordination inside the Orleans runtime path. Production performance depends on persistence, network topology, placement, hot keys, deployment shape, and operational tuning.</p>
+</section>
+
+<section class="card callout">
     <h3>Practical takeaway</h3>
     <p>Microservices are useful when the system boundary is deployable, organizational, and capability-oriented.</p>
     <p>Virtual actors are useful when the hard part is coordinating many stateful identities with concurrent operations.</p>

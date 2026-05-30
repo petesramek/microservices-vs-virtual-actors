@@ -1,4 +1,4 @@
-namespace ArchitectureComparison.Contracts;
+﻿namespace ArchitectureComparison.Contracts;
 
 /// <summary>
 /// Defines the supported comparison scenarios.
@@ -19,6 +19,7 @@ public enum ScenarioKind
     /// Inventory is reserved but payment fails and compensation is required.
     /// </summary>
     PaymentFailureCompensation,
+    PaymentTimeoutAfterReservation,
 
     /// <summary>
     /// Multiple orders compete for limited inventory.
@@ -28,5 +29,8 @@ public enum ScenarioKind
     /// <summary>
     /// The same request is submitted more than once with the same idempotency key.
     /// </summary>
-    DuplicateRequest
+    DuplicateRequest,
+    HotProductContention
 }
+
+

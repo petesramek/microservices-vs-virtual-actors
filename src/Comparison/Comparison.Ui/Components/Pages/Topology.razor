@@ -14,6 +14,7 @@
             <li><strong>Inventory.Api</strong> owns stock and reservations.</li>
             <li><strong>Payments.Api</strong> simulates payment authorization.</li>
         </ol>
+        <p><strong>Concurrency boundary:</strong> Inventory.Api is the state owner and must explicitly protect inventory updates.</p>
         <div class="diagram">
             <span>Comparison.Ui</span>
             <span>Comparison.Gateway</span>
@@ -34,6 +35,7 @@
             <li><strong>InventoryItemGrain</strong> owns product inventory state.</li>
             <li><strong>PaymentAccountGrain</strong> simulates payment authorization.</li>
         </ol>
+        <p><strong>Concurrency boundary:</strong> InventoryItemGrain serializes operations for one product identity. Hot product identities can still become bottlenecks.</p>
         <div class="diagram">
             <span>Comparison.Ui</span>
             <span>Comparison.Gateway</span>
@@ -43,4 +45,9 @@
             <span>PaymentAccountGrain</span>
         </div>
     </article>
+</section>
+
+<section class="card callout">
+    <h3>Timing interpretation</h3>
+    <p>Local elapsed times mainly reflect this sample's topology. Microservices perform multiple HTTP calls between services. Virtual actors usually perform more work inside the local Orleans runtime path. Treat these times as demo feedback, not as a production performance claim.</p>
 </section>
