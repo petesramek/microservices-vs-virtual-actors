@@ -37,7 +37,7 @@ public sealed class ScenarioResultRegressionTests
     /// Verifies that insufficient inventory reports one rejected submission without reducing inventory.
     /// </summary>
     [Fact]
-    public async Task InsufficientInventory_Should_Report_RejectedSubmission()
+    public async Task InsufficientInventory_Should_RejectOneSubmissionAndLeaveInventoryUnchanged()
     {
         var client = CreateClient();
         var request = CreateRequest(ScenarioKind.InsufficientInventory, initialStock: 1, quantity: 2, concurrentRequests: 10);
@@ -57,7 +57,7 @@ public sealed class ScenarioResultRegressionTests
     /// Verifies that payment failure compensation releases the reserved inventory.
     /// </summary>
     [Fact]
-    public async Task PaymentFailureCompensation_Should_ReleaseInventory()
+    public async Task PaymentFailureCompensation_Should_ReleaseInventoryAndRejectSubmission()
     {
         var client = CreateClient();
         var request = CreateRequest(ScenarioKind.PaymentFailureCompensation, initialStock: 10, quantity: 2, concurrentRequests: 10);
@@ -278,5 +278,6 @@ public sealed class ScenarioResultRegressionTests
         private sealed record StoredOrder(Guid OrderId, OrderStatus Status, string? Reason);
     }
 }
+
 
 

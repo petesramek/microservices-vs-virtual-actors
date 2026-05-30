@@ -64,7 +64,7 @@ public sealed class VirtualActorOrderWorkflowTests
     }
 
     [Fact]
-    public async Task Concurrent_orders_do_not_overreserve_inventory()
+    public async Task OrdersApi_Should_NotOverReserveInventoryForConcurrentOrders()
     {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 3);
@@ -82,7 +82,7 @@ public sealed class VirtualActorOrderWorkflowTests
     }
 
     [Fact]
-    public async Task Duplicate_order_grain_call_is_idempotent()
+    public async Task OrderGrain_Should_ReturnExistingResultForDuplicateOrder()
     {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
@@ -130,4 +130,5 @@ public sealed class VirtualActorOrderWorkflowTests
         return $"product-{Guid.NewGuid():N}";
     }
 }
+
 

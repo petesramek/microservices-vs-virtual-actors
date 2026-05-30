@@ -52,7 +52,7 @@ public sealed class ComparisonGatewayAcceptanceTests
     }
 
     [Fact]
-    public async Task Gateway_rejects_unknown_architecture_header()
+    public async Task Gateway_Should_RejectUnknownArchitectureHeader()
     {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
@@ -134,4 +134,5 @@ public sealed class ComparisonGatewayAcceptanceTests
         }
     }
 }
+
 

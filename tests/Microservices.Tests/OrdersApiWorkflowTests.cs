@@ -61,7 +61,7 @@ public sealed class OrdersApiWorkflowTests
     }
 
     [Fact]
-    public async Task Concurrent_orders_do_not_overreserve_inventory()
+    public async Task OrdersApi_Should_NotOverReserveInventoryForConcurrentOrders()
     {
         using var factory = new OrdersApiFactory();
         using var client = factory.CreateClient();
@@ -86,7 +86,7 @@ public sealed class OrdersApiWorkflowTests
     }
 
     [Fact]
-    public async Task Duplicate_request_is_idempotent()
+    public async Task OrdersApi_Should_ReturnExistingOrderForDuplicateIdempotencyKey()
     {
         using var factory = new OrdersApiFactory();
         using var client = factory.CreateClient();
@@ -116,4 +116,5 @@ public sealed class OrdersApiWorkflowTests
         return (await response.Content.ReadFromJsonAsync<OrderResponse>())!;
     }
 }
+
 
