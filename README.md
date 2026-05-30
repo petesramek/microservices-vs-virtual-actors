@@ -150,7 +150,7 @@ These values are semantic contracts for the comparison. For example, `CompletedO
 
 Start the backend services and UI according to the project launch settings. At minimum, the comparison UI expects the comparison gateway and backend services to be running on their configured local ports.
 
-Typical validation commands:
+### Validate build and tests
 
 ```powershell
 dotnet restore
@@ -158,7 +158,47 @@ dotnet build --configuration Release
 dotnet test --configuration Release --no-build
 ```
 
-Then run the services needed for the UI scenario dashboard.
+### Option A — run from Visual Studio
+
+The repository can be run directly from Visual Studio by configuring multiple startup projects.
+
+Set these projects to start together:
+
+- `src/Microservices/Inventory.Api`
+- `src/Microservices/Payments.Api`
+- `src/Microservices/Orders.Api`
+- `src/VirtualActors/Ordering.Api`
+- `src/Comparison/Comparison.Gateway`
+- `src/Comparison/Comparison.Ui`
+
+Then start debugging/running from Visual Studio and open the UI at:
+
+```text
+http://localhost:5000
+```
+
+This is the most convenient local development flow when working inside Visual Studio because each service keeps its own launch profile and output window.
+### Option B — run all local services
+
+```powershell
+./scripts/run-all-local.ps1
+```
+
+This starts the microservices backend, virtual actor backend, comparison gateway, and UI.
+
+### Option C — run the backend groups separately
+
+```powershell
+./scripts/run-microservices.ps1
+./scripts/run-virtual-actors.ps1
+./scripts/run-comparison.ps1
+```
+
+Open the UI at:
+
+```text
+http://localhost:5000
+```
 
 ## Testing
 
@@ -264,4 +304,6 @@ The central comparison is how each style expresses and maintains:
 - release compatibility
 - operational diagnostics
 - long-term evolution
+
+
 

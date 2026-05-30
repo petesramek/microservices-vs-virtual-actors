@@ -116,3 +116,22 @@ bin/
 obj/
 TestResults/
 ```
+
+### Visual Studio local validation
+
+As an alternative to scripts or Docker Compose, the full stack can be validated from Visual Studio by configuring multiple startup projects:
+
+- `Inventory.Api`
+- `Payments.Api`
+- `Orders.Api`
+- `Ordering.Api`
+- `Comparison.Gateway`
+- `Comparison.Ui`
+
+Expected result:
+
+- all startup projects launch successfully
+- the comparison dashboard opens at `http://localhost:5000`
+- backend status indicators are online
+- scenarios can be run with architecture set to `Both`
+

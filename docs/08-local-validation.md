@@ -1,4 +1,4 @@
-# Local validation
+﻿# Local validation
 
 This checklist is intended to keep the repository honest after each phase.
 
@@ -63,3 +63,26 @@ http://localhost:5000
 - `X-Architecture: virtual-actors` returns only the virtual actor result.
 - `X-Architecture: both` returns side-by-side results.
 - Docker Compose can build all projects from a clean checkout.
+
+### Visual Studio multi-startup validation
+
+Visual Studio is a supported local development flow. Configure multiple startup projects and start these projects together:
+
+- `src/Microservices/Inventory.Api`
+- `src/Microservices/Payments.Api`
+- `src/Microservices/Orders.Api`
+- `src/VirtualActors/Ordering.Api`
+- `src/Comparison/Comparison.Gateway`
+- `src/Comparison/Comparison.Ui`
+
+Expected local URLs:
+
+- Inventory API: `http://localhost:5201`
+- Payments API: `http://localhost:5202`
+- Orders API: `http://localhost:5200`
+- Ordering API: `http://localhost:5300`
+- Comparison Gateway: `http://localhost:5100`
+- Comparison UI: `http://localhost:5000`
+
+After startup, open `http://localhost:5000` and run scenarios with architecture set to `Both`.
+
