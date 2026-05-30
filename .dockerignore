@@ -1,0 +1,10 @@
+.git
+.github
+bin
+obj
+.vs
+.vscode
+TestResults
+*.db
+*.db-shm
+*.db-wal

@@ -1,0 +1,35 @@
+@using ArchitectureComparison.Contracts
+
+<article class="card">
+    <h3>@Title</h3>
+    <dl>
+        <dt>Status</dt>
+        <dd>@Result.Status</dd>
+        <dt>Reason</dt>
+        <dd>@(Result.Reason ?? "-")</dd>
+        <dt>Completed</dt>
+        <dd>@Result.CompletedOrders</dd>
+        <dt>Rejected</dt>
+        <dd>@Result.RejectedOrders</dd>
+        <dt>Remaining inventory</dt>
+        <dd>@Result.RemainingInventory</dd>
+        <dt>Elapsed</dt>
+        <dd>@Result.ElapsedMilliseconds ms</dd>
+    </dl>
+
+    <h4>Timeline</h4>
+    <ol>
+        @foreach (var item in Result.Events)
+        {
+            <li><strong>@item.Source</strong>: @item.Message</li>
+        }
+    </ol>
+</article>
+
+@code {
+    [Parameter]
+    public required string Title { get; set; }
+
+    [Parameter]
+    public required ArchitectureRunResult Result { get; set; }
+}

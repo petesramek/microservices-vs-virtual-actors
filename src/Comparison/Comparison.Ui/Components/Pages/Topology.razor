@@ -1,0 +1,46 @@
+@page "/topology"
+@rendermode InteractiveServer
+
+<h2>Architecture topology</h2>
+
+<section class="topology-grid">
+    <article class="card">
+        <h3>Microservices</h3>
+        <p>The microservice-style implementation splits the workflow by independently deployable business capability.</p>
+        <ol class="flow">
+            <li><strong>Comparison.Ui</strong> submits a scenario.</li>
+            <li><strong>Comparison.Gateway</strong> routes to Orders.Api when `X-Architecture` is `microservices`.</li>
+            <li><strong>Orders.Api</strong> coordinates the workflow.</li>
+            <li><strong>Inventory.Api</strong> owns stock and reservations.</li>
+            <li><strong>Payments.Api</strong> simulates payment authorization.</li>
+        </ol>
+        <div class="diagram">
+            <span>Comparison.Ui</span>
+            <span>Comparison.Gateway</span>
+            <span>Orders.Api</span>
+            <span>Inventory.Api</span>
+            <span>Payments.Api</span>
+        </div>
+    </article>
+
+    <article class="card">
+        <h3>Virtual actors</h3>
+        <p>The virtual actor-style implementation splits the workflow by stateful identity.</p>
+        <ol class="flow">
+            <li><strong>Comparison.Ui</strong> submits a scenario.</li>
+            <li><strong>Comparison.Gateway</strong> routes to Ordering.Api when `X-Architecture` is `virtual-actors`.</li>
+            <li><strong>Ordering.Api</strong> calls grains through Orleans.</li>
+            <li><strong>OrderGrain</strong> owns the order workflow.</li>
+            <li><strong>InventoryItemGrain</strong> owns product inventory state.</li>
+            <li><strong>PaymentAccountGrain</strong> simulates payment authorization.</li>
+        </ol>
+        <div class="diagram">
+            <span>Comparison.Ui</span>
+            <span>Comparison.Gateway</span>
+            <span>Ordering.Api</span>
+            <span>OrderGrain</span>
+            <span>InventoryItemGrain</span>
+            <span>PaymentAccountGrain</span>
+        </div>
+    </article>
+</section>

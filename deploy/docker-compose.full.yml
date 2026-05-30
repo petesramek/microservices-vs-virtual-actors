@@ -1,0 +1,74 @@
+services:
+  comparison-ui:
+    build:
+      context: ..
+      dockerfile: src/Comparison/Comparison.Ui/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      Gateway__BaseUrl: http://comparison-gateway:8080
+    depends_on:
+      - comparison-gateway
+
+  comparison-gateway:
+    build:
+      context: ..
+      dockerfile: src/Comparison/Comparison.Gateway/Dockerfile
+    ports:
+      - "5100:8080"
+    environment:
+      ArchitectureEndpoints__MicroservicesBaseUrl: http://orders-api:8080
+      ArchitectureEndpoints__VirtualActorsBaseUrl: http://ordering-api:8080
+    depends_on:
+      - orders-api
+      - ordering-api
+
+  orders-api:
+    build:
+      context: ..
+      dockerfile: src/Microservices/Orders.Api/Dockerfile
+    ports:
+      - "5200:8080"
+    environment:
+      Services__InventoryBaseUrl: http://inventory-api:8080
+      Services__PaymentsBaseUrl: http://payments-api:8080
+      ConnectionStrings__Default: Data Source=/data/orders.db
+    volumes:
+      - orders-data:/data
+    depends_on:
+      - inventory-api
+      - payments-api
+
+  inventory-api:
+    build:
+      context: ..
+      dockerfile: src/Microservices/Inventory.Api/Dockerfile
+    ports:
+      - "5201:8080"
+    environment:
+      ConnectionStrings__Default: Data Source=/data/inventory.db
+    volumes:
+      - inventory-data:/data
+
+  payments-api:
+    build:
+      context: ..
+      dockerfile: src/Microservices/Payments.Api/Dockerfile
+    ports:
+      - "5202:8080"
+    environment:
+      ConnectionStrings__Default: Data Source=/data/payments.db
+    volumes:
+      - payments-data:/data
+
+  ordering-api:
+    build:
+      context: ..
+      dockerfile: src/VirtualActors/Ordering.Api/Dockerfile
+    ports:
+      - "5300:8080"
+
+volumes:
+  orders-data:
+  inventory-data:
+  payments-data:

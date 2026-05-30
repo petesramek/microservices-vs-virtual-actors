@@ -1,0 +1,108 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@inject ScenarioRunnerClient Client
+
+<h2>Scenario runner</h2>
+
+<EditForm Model="model" FormName="ScenarioRunner" OnValidSubmit="RunAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <fieldset disabled="@isRunning">
+        <label>Architecture</label>
+        <InputSelect @bind-Value="architecture">
+            <option value="both">Both</option>
+            <option value="microservices">Microservices</option>
+            <option value="virtual-actors">Virtual Actors</option>
+        </InputSelect>
+
+        <label>Scenario</label>
+        <InputSelect @bind-Value="model.Scenario">
+            @foreach (var value in Enum.GetValues<ScenarioKind>())
+            {
+                <option value="@value">@value</option>
+            }
+        </InputSelect>
+
+        <label>Product ID</label>
+        <InputText @bind-Value="model.ProductId" />
+
+        <label>Customer ID</label>
+        <InputText @bind-Value="model.CustomerId" />
+
+        <label>Quantity</label>
+        <InputNumber @bind-Value="model.Quantity" />
+
+        <label>Initial stock</label>
+        <InputNumber @bind-Value="model.InitialStock" />
+
+        <label>Concurrent requests</label>
+        <InputNumber @bind-Value="model.ConcurrentRequests" />
+
+        <label>Idempotency key</label>
+        <InputText @bind-Value="model.IdempotencyKey" />
+
+        <button type="submit" disabled="@isRunning">@(isRunning ? "Running..." : "Run scenario")</button>
+    </fieldset>
+</EditForm>
+
+@if (isRunning)
+{
+    <p>Running scenario...</p>
+}
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <section class="card">
+        <h3>Scenario failed</h3>
+        <p>@errorMessage</p>
+        <p>Make sure Comparison.Gateway is running on <code>http://localhost:5100</code> and backend services are running on their configured ports.</p>
+    </section>
+}
+
+@if (response is not null)
+{
+    <section class="results">
+        @if (response.Microservices is not null)
+        {
+            <ResultCard Title="Microservices" Result="response.Microservices" />
+        }
+        @if (response.VirtualActors is not null)
+        {
+            <ResultCard Title="Virtual Actors" Result="response.VirtualActors" />
+        }
+    </section>
+}
+
+@code {
+    private string architecture = "both";
+    private RunScenarioRequest model = new();
+    private RunScenarioResponse? response;
+    private string? errorMessage;
+    private bool isRunning;
+
+    private async Task RunAsync()
+    {
+        if (isRunning)
+        {
+            return;
+        }
+
+        isRunning = true;
+        errorMessage = null;
+        response = null;
+
+        try
+        {
+            response = await Client.RunAsync(architecture, model);
+        }
+        catch (Exception exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isRunning = false;
+        }
+    }
+}

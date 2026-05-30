@@ -1,0 +1,48 @@
+@page "/tradeoffs"
+@rendermode InteractiveServer
+
+<h2>Trade-offs</h2>
+
+<section class="topology-grid">
+    <article class="card">
+        <h3>Microservices</h3>
+        <h4>Pros</h4>
+        <ul>
+            <li>Independent deployment boundaries.</li>
+            <li>Clear ownership by business capability.</li>
+            <li>Different services can scale independently.</li>
+            <li>Explicit API contracts between services.</li>
+        </ul>
+        <h4>Cons</h4>
+        <ul>
+            <li>More deployable units and runtime processes.</li>
+            <li>More service-to-service network calls.</li>
+            <li>Compensation and idempotency must be explicit.</li>
+            <li>Local development and operations have more moving parts.</li>
+        </ul>
+    </article>
+
+    <article class="card">
+        <h3>Virtual actors</h3>
+        <h4>Pros</h4>
+        <ul>
+            <li>Natural fit for many stateful identities.</li>
+            <li>Per-identity coordination is localized.</li>
+            <li>Inventory reservations are serialized by product identity.</li>
+            <li>Workflow code can be easier to follow when state belongs to an actor.</li>
+        </ul>
+        <h4>Cons</h4>
+        <ul>
+            <li>The Orleans runtime becomes part of the operational model.</li>
+            <li>Hot grains can become bottlenecks.</li>
+            <li>Persistence, placement, and clustering choices matter.</li>
+            <li>Deployment independence is different from microservice boundaries.</li>
+        </ul>
+    </article>
+</section>
+
+<section class="card callout">
+    <h3>Practical takeaway</h3>
+    <p>Microservices are useful when the system boundary is deployable, organizational, and capability-oriented.</p>
+    <p>Virtual actors are useful when the hard part is coordinating many stateful identities with concurrent operations.</p>
+</section>

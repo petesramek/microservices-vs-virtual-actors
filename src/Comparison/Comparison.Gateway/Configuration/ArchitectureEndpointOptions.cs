@@ -1,0 +1,28 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace Comparison.Gateway.Configuration;
+
+/// <summary>
+/// Represents backend endpoint configuration for architecture implementations.
+/// </summary>
+public sealed class ArchitectureEndpointOptions
+{
+    /// <summary>
+    /// The configuration section name.
+    /// </summary>
+    public const string SectionName = "ArchitectureEndpoints";
+
+    /// <summary>
+    /// Gets the base URL of the microservice-style Orders API.
+    /// </summary>
+    [Required]
+    [Url]
+    public string MicroservicesBaseUrl { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Gets the base URL of the virtual actor-style Ordering API.
+    /// </summary>
+    [Required]
+    [Url]
+    public string VirtualActorsBaseUrl { get; init; } = string.Empty;
+}

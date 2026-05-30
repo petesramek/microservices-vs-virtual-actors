@@ -1,0 +1,153 @@
+﻿body {
+    font-family: system-ui, sans-serif;
+    margin: 0;
+    color: #1f2937;
+    background: #f9fafb;
+}
+
+.shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+}
+
+.hero h1 {
+    margin-bottom: .25rem;
+}
+
+.hero p {
+    margin-top: 0;
+    color: #4b5563;
+}
+
+.nav {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.nav a {
+    color: #374151;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    padding: .45rem .8rem;
+    text-decoration: none;
+}
+
+.nav a.active {
+    color: white;
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+form {
+    max-width: 520px;
+}
+
+fieldset {
+    display: grid;
+    gap: .75rem;
+    padding: 1rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: .75rem;
+}
+
+fieldset:disabled {
+    opacity: .7;
+}
+
+input, select, button {
+    padding: .6rem;
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+    font-weight: 600;
+    background: #2563eb;
+    color: white;
+    border: 0;
+    border-radius: .5rem;
+}
+
+button:disabled {
+    cursor: wait;
+    background: #93c5fd;
+}
+
+.results,
+.topology-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: .75rem;
+    padding: 1rem;
+}
+
+.card h3 {
+    margin-top: 0;
+}
+
+.card dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: .35rem .8rem;
+}
+
+.card dt {
+    font-weight: 700;
+}
+
+.flow {
+    padding-left: 1.25rem;
+}
+
+.flow li {
+    margin-bottom: .35rem;
+}
+
+.diagram {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: 1rem;
+}
+
+.diagram span {
+    background: #eef2ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+    border-radius: .5rem;
+    padding: .45rem .6rem;
+    font-weight: 600;
+}
+
+.callout {
+    margin-top: 1rem;
+}
+
+@media (max-width: 720px) {
+    .hero {
+        display: block;
+    }
+
+    .nav {
+        margin-top: 1rem;
+    }
+}

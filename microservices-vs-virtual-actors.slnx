@@ -1,0 +1,14 @@
+<Solution>
+  <Project Path="src/Shared/ArchitectureComparison.Contracts/ArchitectureComparison.Contracts.csproj" />
+  <Project Path="src/Comparison/Comparison.Gateway/Comparison.Gateway.csproj" />
+  <Project Path="src/Comparison/Comparison.Ui/Comparison.Ui.csproj" />
+  <Project Path="src/Microservices/Orders.Api/Orders.Api.csproj" />
+  <Project Path="src/Microservices/Inventory.Api/Inventory.Api.csproj" />
+  <Project Path="src/Microservices/Payments.Api/Payments.Api.csproj" />
+  <Project Path="src/VirtualActors/Ordering.Api/Ordering.Api.csproj" />
+  <Project Path="src/VirtualActors/Ordering.Grains/Ordering.Grains.csproj" />
+  <Project Path="src/VirtualActors/Ordering.Silo/Ordering.Silo.csproj" />
+  <Project Path="tests/AcceptanceTests/ArchitectureComparison.AcceptanceTests.csproj" />
+  <Project Path="tests/Microservices.Tests/Microservices.Tests.csproj" />
+  <Project Path="tests/VirtualActors.Tests/VirtualActors.Tests.csproj" />
+</Solution>
