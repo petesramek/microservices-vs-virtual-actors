@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using ArchitectureComparison.Contracts;
 using FluentAssertions;
@@ -12,13 +12,13 @@ namespace ArchitectureComparison.AcceptanceTests;
 /// <summary>
 /// Acceptance tests for the comparison gateway contract.
 /// </summary>
-public sealed class GatewayAcceptanceTests
+public sealed class ComparisonGatewayAcceptanceTests
 {
     [Theory]
     [InlineData("microservices")]
     [InlineData("virtual-actors")]
     [InlineData("both")]
-    public async Task Gateway_runs_selected_architecture(string architecture)
+    public async Task Gateway_Should_RunSelectedArchitecture(string architecture)
     {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
@@ -134,3 +134,4 @@ public sealed class GatewayAcceptanceTests
         }
     }
 }
+

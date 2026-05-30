@@ -1,4 +1,4 @@
-using ArchitectureComparison.Contracts;
+﻿using ArchitectureComparison.Contracts;
 using FluentAssertions;
 using Ordering.Grains.Interfaces;
 using Xunit;
@@ -9,21 +9,21 @@ namespace VirtualActors.Tests;
 /// Tests for the virtual actor-style order workflow.
 /// </summary>
 [Collection(OrleansClusterCollection.Name)]
-public sealed class VirtualActorWorkflowTests
+public sealed class VirtualActorOrderWorkflowTests
 {
     private readonly OrleansClusterFixture _fixture;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="VirtualActorWorkflowTests"/> class.
+    /// Initializes a new instance of the <see cref="VirtualActorOrderWorkflowTests"/> class.
     /// </summary>
     /// <param name="fixture">The Orleans cluster fixture.</param>
-    public VirtualActorWorkflowTests(OrleansClusterFixture fixture)
+    public VirtualActorOrderWorkflowTests(OrleansClusterFixture fixture)
     {
         _fixture = fixture;
     }
 
     [Fact]
-    public async Task Successful_order_completes()
+    public async Task OrdersApi_Should_CompleteSuccessfulOrder()
     {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
@@ -36,7 +36,7 @@ public sealed class VirtualActorWorkflowTests
     }
 
     [Fact]
-    public async Task Insufficient_inventory_rejects_order()
+    public async Task OrdersApi_Should_RejectOrderWhenInventoryIsInsufficient()
     {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 1);
@@ -50,7 +50,7 @@ public sealed class VirtualActorWorkflowTests
     }
 
     [Fact]
-    public async Task Payment_failure_releases_inventory()
+    public async Task OrdersApi_Should_ReleaseInventoryWhenPaymentFails()
     {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
@@ -130,3 +130,4 @@ public sealed class VirtualActorWorkflowTests
         return $"product-{Guid.NewGuid():N}";
     }
 }
+

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -7,18 +7,18 @@ using Comparison.Gateway.Clients;
 using FluentAssertions;
 using Xunit;
 
-namespace Comparison.ScenarioRegressionTests;
+namespace Comparison.ScenarioResultRegressionTests;
 
 /// <summary>
 /// Regression tests for scenario result metrics produced by the comparison gateway client.
 /// </summary>
-public sealed class ScenarioRegressionTests
+public sealed class ScenarioResultRegressionTests
 {
     /// <summary>
     /// Verifies that a successful order reports one request submission and one unique successful order.
     /// </summary>
     [Fact]
-    public async Task SuccessfulOrder_Should_Report_OneSuccessfulSubmission()
+    public async Task SuccessfulOrder_Should_ReportOneUniqueSuccessfulOrder()
     {
         var client = CreateClient();
         var request = CreateRequest(ScenarioKind.SuccessfulOrder, initialStock: 10, quantity: 2, concurrentRequests: 10);
@@ -278,4 +278,5 @@ public sealed class ScenarioRegressionTests
         private sealed record StoredOrder(Guid OrderId, OrderStatus Status, string? Reason);
     }
 }
+
 

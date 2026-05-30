@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using ArchitectureComparison.Contracts;
 using FluentAssertions;
 using Microservices.Tests.Infrastructure;
@@ -9,10 +9,10 @@ namespace Microservices.Tests;
 /// <summary>
 /// Tests for the microservice-style order workflow through Orders.Api.
 /// </summary>
-public sealed class OrdersMicroserviceWorkflowTests
+public sealed class OrdersApiWorkflowTests
 {
     [Fact]
-    public async Task Successful_order_completes()
+    public async Task OrdersApi_Should_CompleteSuccessfulOrder()
     {
         using var factory = new OrdersApiFactory();
         using var client = factory.CreateClient();
@@ -26,7 +26,7 @@ public sealed class OrdersMicroserviceWorkflowTests
     }
 
     [Fact]
-    public async Task Insufficient_inventory_rejects_order()
+    public async Task OrdersApi_Should_RejectOrderWhenInventoryIsInsufficient()
     {
         using var factory = new OrdersApiFactory();
         using var client = factory.CreateClient();
@@ -41,7 +41,7 @@ public sealed class OrdersMicroserviceWorkflowTests
     }
 
     [Fact]
-    public async Task Payment_failure_releases_inventory()
+    public async Task OrdersApi_Should_ReleaseInventoryWhenPaymentFails()
     {
         using var factory = new OrdersApiFactory();
         using var client = factory.CreateClient();
@@ -116,3 +116,4 @@ public sealed class OrdersMicroserviceWorkflowTests
         return (await response.Content.ReadFromJsonAsync<OrderResponse>())!;
     }
 }
+
