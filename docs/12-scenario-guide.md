@@ -35,6 +35,57 @@ Result cards use the following terminology consistently:
 
 A request submission is an attempt sent to the backend. A unique successful order is a logical order that completed successfully. These counts are not always the same, especially in duplicate request and concurrent scenarios.
 
+The following diagrams summarize the main scenario shapes without replacing the detailed scenario notes below.
+
+```mermaid
+sequenceDiagram
+    participant Runner as Scenario runner
+    participant Workflow as Workflow owner
+    participant Inventory as Inventory owner
+    participant Payment as Payment owner
+
+    Runner->>Workflow: Submit order
+    Workflow->>Inventory: Reserve inventory
+    Inventory-->>Workflow: Reservation accepted
+    Workflow->>Payment: Authorize payment
+    Payment-->>Workflow: Payment authorized
+    Workflow-->>Runner: Fulfilled result
+```
+
+```mermaid
+sequenceDiagram
+    participant Runner as Scenario runner
+    participant Workflow as Workflow owner
+    participant Inventory as Inventory owner
+    participant Payment as Payment owner
+
+    Runner->>Workflow: Submit order
+    Workflow->>Inventory: Reserve inventory
+    Inventory-->>Workflow: Reservation accepted
+    Workflow->>Payment: Authorize payment
+    Payment-->>Workflow: Payment failed or timed out
+    Workflow->>Inventory: Release reservation
+    Inventory-->>Workflow: Reservation released
+    Workflow-->>Runner: Rejected result
+```
+
+```mermaid
+flowchart LR
+    Requests[Duplicate request submissions]
+    SameIdentity[Same order identity and idempotency key]
+    Owner[Idempotency owner]
+    Unique[One unique successful order]
+    Duplicates[Idempotent duplicate responses]
+    Inventory[Inventory reserved once]
+
+    Requests --> SameIdentity
+    SameIdentity --> Owner
+    Owner --> Unique
+    Owner --> Duplicates
+    Unique --> Inventory
+```
+
+
 ## Successful order
 
 ### Purpose

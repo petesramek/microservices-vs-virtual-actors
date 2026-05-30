@@ -1,4 +1,4 @@
-﻿# Maintenance and evolution
+# Maintenance and evolution
 
 This document focuses on how the two implementations change over time after the first working version exists.
 
@@ -30,6 +30,39 @@ The core maintenance question is not which style changes less.
 The better question is:
 
 > When business behavior changes, where does the change land, and how safely can that change be understood, tested, released, and operated?
+
+```mermaid
+flowchart LR
+    Change[Business behavior change]
+
+    subgraph Microservices impact
+        ServiceOwner[Service owner]
+        ApiContract[HTTP/API contract]
+        ServiceData[Service-owned data]
+        Orchestration[Workflow orchestration]
+        IntegrationTests[Integration and contract tests]
+    end
+
+    subgraph Virtual actors impact
+        IdentityModel[Actor identity model]
+        GrainInterface[Grain interface]
+        GrainState[Persistent grain state]
+        ActorWorkflow[Actor workflow behavior]
+        GrainTests[Grain and workflow tests]
+    end
+
+    Change --> ServiceOwner
+    Change --> ApiContract
+    Change --> ServiceData
+    Change --> Orchestration
+    Change --> IntegrationTests
+    Change --> IdentityModel
+    Change --> GrainInterface
+    Change --> GrainState
+    Change --> ActorWorkflow
+    Change --> GrainTests
+```
+
 
 ## Maintenance model comparison
 

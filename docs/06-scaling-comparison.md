@@ -24,6 +24,31 @@ In the virtual actor implementation, capacity is usually added by scaling Orlean
 
 Both approaches can scale horizontally, but they expose different bottlenecks and operational choices.
 
+```mermaid
+flowchart LR
+    Workload[Workload]
+
+    subgraph Microservices scaling
+        Orders[More Orders.Api instances]
+        Inventory[More Inventory.Api instances]
+        Payments[More Payments.Api instances]
+    end
+
+    subgraph Virtual actors scaling
+        Silos[More Orleans silos]
+        Placement[More placement capacity]
+        Activations[Distributed grain activations]
+    end
+
+    Workload --> Orders
+    Workload --> Inventory
+    Workload --> Payments
+    Workload --> Silos
+    Silos --> Placement
+    Placement --> Activations
+```
+
+
 ## Microservices scaling
 
 Microservices scale by service instance.

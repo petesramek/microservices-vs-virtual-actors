@@ -8,9 +8,28 @@ The microservice-style implementation is split by deployable business capability
 
 Each service owns its own data and exposes HTTP APIs for other services to call. The design makes service boundaries, deployment independence, explicit coordination, and operational surface area visible.
 
-## Service responsibilities
+## Service topology
 
-### Orders.Api
+```mermaid
+flowchart LR
+    Client[Client / Comparison.Gateway]
+    Orders[Orders.Api
+Order workflow owner]
+    Inventory[Inventory.Api
+Inventory state owner]
+    Payments[Payments.Api
+Payment behavior owner]
+
+    Client --> Orders
+    Orders -->|reserve / release inventory| Inventory
+    Orders -->|authorize payment| Payments
+```
+
+The important point is that `Orders.Api` coordinates the workflow, but it does not own inventory or payment state directly. Those responsibilities stay with the services that own the relevant business capability.
+
+### Service responsibilities
+
+#### Orders.Api
 
 `Orders.Api` owns the order workflow.
 
@@ -40,23 +59,38 @@ The payment service is intentionally small, but it represents a common downstrea
 
 A successful order follows this general path:
 
-```text
-Client / Gateway
-  -> Orders.Api
-      -> Inventory.Api reserve
-      -> Payments.Api authorize
-      -> Orders.Api complete order
+```mermaid
+sequenceDiagram
+    participant Client as Client / Gateway
+    participant Orders as Orders.Api
+    participant Inventory as Inventory.Api
+    participant Payments as Payments.Api
+
+    Client->>Orders: Submit order
+    Orders->>Inventory: Reserve inventory
+    Inventory-->>Orders: Reservation accepted
+    Orders->>Payments: Authorize payment
+    Payments-->>Orders: Payment authorized
+    Orders-->>Client: Fulfilled order result
 ```
 
 A failed payment after reservation follows this general path:
 
-```text
-Client / Gateway
-  -> Orders.Api
-      -> Inventory.Api reserve
-      -> Payments.Api authorize fails
-      -> Inventory.Api release reservation
-      -> Orders.Api reject order
+```mermaid
+sequenceDiagram
+    participant Client as Client / Gateway
+    participant Orders as Orders.Api
+    participant Inventory as Inventory.Api
+    participant Payments as Payments.Api
+
+    Client->>Orders: Submit order
+    Orders->>Inventory: Reserve inventory
+    Inventory-->>Orders: Reservation accepted
+    Orders->>Payments: Authorize payment
+    Payments-->>Orders: Payment failed
+    Orders->>Inventory: Release reservation
+    Inventory-->>Orders: Reservation released
+    Orders-->>Client: Rejected order result
 ```
 
 This makes compensation explicit. `Orders.Api` coordinates the decision, but `Inventory.Api` still owns the inventory state transition.

@@ -130,6 +130,26 @@ The grains own stateful identities and coordinate the workflow internally throug
 
 Depending on the local run mode, Orleans may be hosted in-process by `Ordering.Api` or through a standalone `Ordering.Silo` process. The important comparison point is that the workflow is coordinated by actor identities rather than by HTTP calls across multiple business services.
 
+```mermaid
+flowchart LR
+    UI2[Comparison.Ui]
+    Gateway2[Comparison.Gateway]
+    OrderingApi[Ordering.Api]
+    OrderGrain[OrderGrain
+orderId]
+    InventoryGrain[InventoryItemGrain
+productId]
+    PaymentGrain[PaymentAccountGrain
+customerId]
+
+    UI2 --> Gateway2
+    Gateway2 --> OrderingApi
+    OrderingApi --> OrderGrain
+    OrderGrain --> InventoryGrain
+    OrderGrain --> PaymentGrain
+```
+
+
 ## Virtual actors operational characteristics
 
 The virtual actor deployment has fewer explicit business-service processes, but the Orleans runtime becomes part of the operational model.
@@ -213,6 +233,31 @@ docker compose -f deploy/docker-compose.full.yml up --build
 ```
 
 For local development in Visual Studio, the same stack can be run by configuring multiple startup projects. This is a valid development flow and keeps each project visible in the Visual Studio output and debugging experience.
+
+```mermaid
+flowchart TB
+    FullUI[Comparison.Ui]
+    FullGateway[Comparison.Gateway]
+
+    subgraph Microservices backend
+        OrdersApi[Orders.Api]
+        InventoryApi[Inventory.Api]
+        PaymentsApi[Payments.Api]
+    end
+
+    subgraph Virtual actors backend
+        OrderingApi2[Ordering.Api]
+        Grains[Orleans grains / silo]
+    end
+
+    FullUI --> FullGateway
+    FullGateway --> OrdersApi
+    OrdersApi --> InventoryApi
+    OrdersApi --> PaymentsApi
+    FullGateway --> OrderingApi2
+    OrderingApi2 --> Grains
+```
+
 
 ## Comparison summary
 

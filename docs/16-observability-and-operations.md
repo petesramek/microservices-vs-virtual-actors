@@ -1,4 +1,4 @@
-﻿# Observability and operations
+# Observability and operations
 
 This document explains how to operate, diagnose, and reason about the comparison sample at runtime.
 
@@ -87,6 +87,26 @@ For the virtual actor path, inspect:
 - `Comparison.Gateway`
 - `Ordering.Api`
 - grain workflow logs, when enabled
+
+The diagnostic flow can be summarized like this:
+
+```mermaid
+flowchart LR
+    Result[Scenario result in UI]
+    Correlation[Correlation ID]
+    GatewayLogs[Gateway logs]
+    BackendLogs[Backend or actor logs]
+    StateOwner[State owner]
+    ScenarioGuide[Expected result in 12-scenario-guide.md]
+
+    Result --> Correlation
+    Correlation --> GatewayLogs
+    Correlation --> BackendLogs
+    BackendLogs --> StateOwner
+    StateOwner --> ScenarioGuide
+    Result --> ScenarioGuide
+```
+
 
 ## Important diagnostic dimensions
 

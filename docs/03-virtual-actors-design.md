@@ -10,7 +10,32 @@ The main actors are:
 
 The API exposes the same external order and inventory contract as the microservice implementation. Internally, workflow coordination moves from service-to-service HTTP calls to strongly typed grain calls.
 
-## Stateful identity boundaries
+## Actor topology
+
+```mermaid
+flowchart LR
+    Client[Client / Comparison.Gateway]
+    Api[Ordering.Api
+HTTP entry point]
+    Order[OrderGrain
+orderId
+Order workflow owner]
+    Inventory[InventoryItemGrain
+productId
+Inventory state owner]
+    Payment[PaymentAccountGrain
+customerId
+Payment behavior owner]
+
+    Client --> Api
+    Api --> Order
+    Order -->|reserve / release inventory| Inventory
+    Order -->|authorize payment| Payment
+```
+
+The important point is that state ownership is expressed through actor identity. `OrderGrain(orderId)` owns one logical order workflow, while `InventoryItemGrain(productId)` owns inventory for one product identity.
+
+### Stateful identity boundaries
 
 Virtual actors are useful in this comparison because the workflow naturally contains stateful identities.
 
@@ -27,7 +52,7 @@ This makes state ownership explicit at the actor identity boundary.
 
 ### OrderGrain(orderId)
 
-`OrderGrain` owns one logical order workflow.
+`OrderGrain(orderId)` owns one logical order workflow.
 
 It coordinates inventory reservation, payment authorization, compensation, and the final order outcome for one order identity.
 
@@ -35,7 +60,7 @@ If the same logical order is submitted again, the order grain can return the exi
 
 ### InventoryItemGrain(productId)
 
-`InventoryItemGrain` owns inventory state for one product identity.
+`InventoryItemGrain(productId)` owns inventory state for one product identity.
 
 It is responsible for tracking available inventory, accepting valid reservations, rejecting reservations when stock is insufficient, and releasing reservations when compensation is required.
 
@@ -47,7 +72,7 @@ Because calls to a single grain activation are serialized by the actor runtime, 
 
 ### PaymentAccountGrain(customerId)
 
-`PaymentAccountGrain` simulates payment authorization behavior for one customer or account identity.
+`PaymentAccountGrain(customerId)` simulates payment authorization behavior for one customer or account identity.
 
 It models successful authorization, explicit payment failure, timeout-oriented behavior, and idempotent authorization responses for the sample scenarios.
 
@@ -57,25 +82,44 @@ The payment grain is intentionally small. Its purpose is to make payment behavio
 
 A successful order follows this general path:
 
-```text
-Client / Gateway
-  -> Ordering.Api
-      -> OrderGrain(orderId)
-          -> InventoryItemGrain(productId) reserve
-          -> PaymentAccountGrain(customerId) authorize
-          -> OrderGrain(orderId) complete order
+```mermaid
+sequenceDiagram
+    participant Client as Client / Gateway
+    participant Api as Ordering.Api
+    participant Order as OrderGrain(orderId)
+    participant Inventory as InventoryItemGrain(productId)
+    participant Payment as PaymentAccountGrain(customerId)
+
+    Client->>Api: Submit order
+    Api->>Order: Run order workflow
+    Order->>Inventory: Reserve inventory
+    Inventory-->>Order: Reservation accepted
+    Order->>Payment: Authorize payment
+    Payment-->>Order: Payment authorized
+    Order-->>Api: Fulfilled order result
+    Api-->>Client: Fulfilled order result
 ```
 
 A failed payment after reservation follows this general path:
 
-```text
-Client / Gateway
-  -> Ordering.Api
-      -> OrderGrain(orderId)
-          -> InventoryItemGrain(productId) reserve
-          -> PaymentAccountGrain(customerId) authorize fails
-          -> InventoryItemGrain(productId) release reservation
-          -> OrderGrain(orderId) reject order
+```mermaid
+sequenceDiagram
+    participant Client as Client / Gateway
+    participant Api as Ordering.Api
+    participant Order as OrderGrain(orderId)
+    participant Inventory as InventoryItemGrain(productId)
+    participant Payment as PaymentAccountGrain(customerId)
+
+    Client->>Api: Submit order
+    Api->>Order: Run order workflow
+    Order->>Inventory: Reserve inventory
+    Inventory-->>Order: Reservation accepted
+    Order->>Payment: Authorize payment
+    Payment-->>Order: Payment failed
+    Order->>Inventory: Release reservation
+    Inventory-->>Order: Reservation released
+    Order-->>Api: Rejected order result
+    Api-->>Client: Rejected order result
 ```
 
 This keeps the workflow coordination inside the actor model while still preserving clear state ownership boundaries.

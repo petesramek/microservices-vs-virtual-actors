@@ -127,6 +127,26 @@ single actor-backed application / one silo
   -> separated actor-backed services, silos, or clusters when justified
 ```
 
+
+```mermaid
+flowchart LR
+    subgraph Microservices-oriented path
+        MM[Modular monolith]
+        Coarse[Coarse-grained services]
+        Owned[Independently owned services]
+        Ecosystem[Mature service ecosystem]
+        MM --> Coarse --> Owned --> Ecosystem
+    end
+
+    subgraph Virtual-actor-oriented path
+        ActorApp[Single actor-backed app / one silo]
+        Silos[Multiple silos]
+        Families[Clear grain families and bounded contexts]
+        Split[Separate actor-backed services, silos, or clusters]
+        ActorApp --> Silos --> Families --> Split
+    end
+```
+
 The key is to avoid splitting because of fear.
 
 A common fear is:
@@ -222,6 +242,22 @@ IoT platform
 ```
 
 This can combine organizational ownership boundaries with actor-based state management.
+
+```mermaid
+flowchart LR
+    ServiceBoundary[Microservice boundary]
+    Api[Service API]
+    GrainA[Stateful grain identity]
+    GrainB[Stateful grain identity]
+    Storage[Owned persistence]
+
+    ServiceBoundary --> Api
+    Api --> GrainA
+    Api --> GrainB
+    GrainA --> Storage
+    GrainB --> Storage
+```
+
 
 The risk is that hybrid systems can combine the complexity of both styles. A hybrid architecture needs clear rules about:
 

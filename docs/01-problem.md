@@ -9,6 +9,43 @@ The workflow is intentionally small: placing an order, reserving inventory, auth
 
 The interesting part is not ecommerce. The interesting part is how each architecture expresses state ownership, concurrency control, failure handling, compensation, deployment, scaling, observability, and long-term evolution.
 
+## Comparison shape
+
+Both implementations are exercised through the same comparison layer so the externally visible scenario behavior can be compared side by side.
+
+```mermaid
+flowchart LR
+    User[User / scenario runner]
+    UI[Comparison.Ui]
+    Gateway[Comparison.Gateway]
+
+    Orders[Orders.Api]
+    Inventory[Inventory.Api]
+    Payments[Payments.Api]
+
+    OrderingApi[Ordering.Api]
+    OrderGrain[OrderGrain
+orderId]
+    InventoryGrain[InventoryItemGrain
+productId]
+    PaymentGrain[PaymentAccountGrain
+customerId]
+
+    User --> UI
+    UI --> Gateway
+
+    Gateway -->|microservices path| Orders
+    Orders --> Inventory
+    Orders --> Payments
+
+    Gateway -->|virtual actors path| OrderingApi
+    OrderingApi --> OrderGrain
+    OrderGrain --> InventoryGrain
+    OrderGrain --> PaymentGrain
+```
+
+The diagram is intentionally simplified. It shows the comparison boundary and the main ownership paths, not every class, project, or deployment option.
+
 ## Why this problem is useful
 
 Order placement is a compact example of a common distributed-systems problem.

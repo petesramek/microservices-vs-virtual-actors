@@ -1,4 +1,4 @@
-﻿# Correlation ID logging
+# Correlation ID logging
 
 This document explains the simplified correlation mechanism used by the sample.
 
@@ -51,6 +51,23 @@ Backend APIs add the value to structured logging scopes when the header is prese
 The UI displays the correlation ID for the completed scenario run so the same value can be searched in logs.
 
 This gives enough diagnostic value for the local comparison sample without requiring tracing infrastructure, exporters, dashboards, or an observability backend.
+
+```mermaid
+flowchart LR
+    UI[Comparison.Ui]
+    Gateway[Comparison.Gateway]
+    Orders[Orders.Api]
+    Inventory[Inventory.Api]
+    Payments[Payments.Api]
+    Ordering[Ordering.Api]
+
+    UI -->|X-Correlation-ID| Gateway
+    Gateway -->|X-Correlation-ID| Orders
+    Orders -->|X-Correlation-ID| Inventory
+    Orders -->|X-Correlation-ID| Payments
+    Gateway -->|X-Correlation-ID| Ordering
+```
+
 
 ## Where correlation appears
 

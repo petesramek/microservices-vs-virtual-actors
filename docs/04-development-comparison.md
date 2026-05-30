@@ -15,6 +15,35 @@ Virtual actors emphasize identity-based state, grain interfaces, runtime-managed
 
 Both styles can express the same business workflow. The difference is where the developer has to make responsibilities explicit.
 
+```mermaid
+flowchart LR
+    OrderWorkflow[Order workflow]
+    InventoryInvariant[Inventory invariant]
+    PaymentBehavior[Payment behavior]
+    Idempotency[Idempotency]
+
+    OrdersApi[Orders.Api]
+    InventoryApi[Inventory.Api]
+    PaymentsApi[Payments.Api]
+
+    OrderGrain[OrderGrain
+orderId]
+    InventoryGrain[InventoryItemGrain
+productId]
+    PaymentGrain[PaymentAccountGrain
+customerId]
+
+    OrderWorkflow --> OrdersApi
+    OrderWorkflow --> OrderGrain
+    InventoryInvariant --> InventoryApi
+    InventoryInvariant --> InventoryGrain
+    PaymentBehavior --> PaymentsApi
+    PaymentBehavior --> PaymentGrain
+    Idempotency --> OrdersApi
+    Idempotency --> OrderGrain
+```
+
+
 ## Modeling the workflow
 
 ### Microservices

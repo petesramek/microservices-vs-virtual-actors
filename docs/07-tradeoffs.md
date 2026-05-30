@@ -12,6 +12,39 @@ Virtual actors are useful when state is naturally partitioned by identity and th
 
 Both approaches still require clear contracts, deterministic failure handling, idempotency, observability, testing, and operational discipline.
 
+```mermaid
+flowchart LR
+    HardParts[Hard parts]
+
+    subgraph Microservices
+        ServiceBoundaries[Service boundaries]
+        HttpContracts[HTTP contracts]
+        ServiceData[Service-owned data]
+        ExplicitCoordination[Explicit coordination]
+        OpsSurface[Operational surface area]
+    end
+
+    subgraph Virtual actors
+        ActorIdentities[Actor identities]
+        GrainInterfaces[Grain interfaces]
+        GrainState[Grain state]
+        RuntimeBehavior[Runtime behavior]
+        HotIdentities[Hot identities]
+    end
+
+    HardParts --> ServiceBoundaries
+    HardParts --> HttpContracts
+    HardParts --> ServiceData
+    HardParts --> ExplicitCoordination
+    HardParts --> OpsSurface
+    HardParts --> ActorIdentities
+    HardParts --> GrainInterfaces
+    HardParts --> GrainState
+    HardParts --> RuntimeBehavior
+    HardParts --> HotIdentities
+```
+
+
 ## State ownership
 
 State ownership is the main difference behind most of the trade-offs.
