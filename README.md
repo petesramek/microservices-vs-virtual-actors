@@ -250,11 +250,11 @@ The project deliberately keeps correlation metadata out of scenario request and 
 
 Architecture deep-dive documents:
 
-- [Scenario comparison matrix](docs/16-scenario-comparison-matrix.md) explains each scenario across purpose, expected result, state ownership, concurrency or failure lesson, release/versioning note, and operational note.
-- [Release, deployment, and versioning](docs/17-release-deployment-and-versioning.md) compares deployment units, compatibility boundaries, rollback risks, and versioning strategy for both architecture styles.
-- [Maintenance and evolution](docs/18-maintenance-and-evolution.md) compares how both architecture styles evolve when payment behavior, inventory rules, workflow steps, timeout policy, idempotency, and result contracts change.
-- [Observability and operations](docs/19-observability-and-operations.md) explains correlation IDs, runtime diagnostics, important log dimensions, scenario-specific operational notes, and production observability considerations.
-- [Known limitations](docs/20-known-limitations.md) explains what the sample does not prove, how to interpret timings, and which production concerns are intentionally simplified.
+- [Scenario comparison matrix]([12-scenario-guide.md](docs/12-scenario-guide.md)) explains each scenario across purpose, expected result, state ownership, concurrency or failure lesson, release/versioning note, and operational note.
+- [Release, deployment, and versioning]([14-release-versioning-and-rollback.md](docs/14-release-versioning-and-rollback.md)) compares deployment units, compatibility boundaries, rollback risks, and versioning strategy for both architecture styles.
+- [Maintenance and evolution]([15-maintenance-and-evolution.md](docs/15-maintenance-and-evolution.md)) compares how both architecture styles evolve when payment behavior, inventory rules, workflow steps, timeout policy, idempotency, and result contracts change.
+- [Observability and operations]([16-observability-and-operations.md](docs/16-observability-and-operations.md)) explains correlation IDs, runtime diagnostics, important log dimensions, scenario-specific operational notes, and production observability considerations.
+- [Known limitations]([17-known-limitations.md](docs/17-known-limitations.md)) explains what the sample does not prove, how to interpret timings, and which production concerns are intentionally simplified.
 
 Additional scenario and implementation docs may exist under `docs/` for earlier project phases and implementation milestones.
 
@@ -288,7 +288,7 @@ This project intentionally simplifies several production concerns:
 - simplified timeout policy
 - no intentionally unsafe race-condition scenario in the main comparison
 
-See [Known limitations](docs/20-known-limitations.md) for the full interpretation guide.
+See [Known limitations]([17-known-limitations.md](docs/17-known-limitations.md)) for the full interpretation guide.
 
 ## Key takeaway
 

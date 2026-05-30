@@ -1,10 +1,10 @@
-# Correlation ID logging
+﻿# Correlation ID logging
 
 This document explains the simplified correlation mechanism used by the sample.
 
 The purpose of this document is narrow: it describes how `X-Correlation-ID` flows through the local comparison sample and why this lightweight approach was chosen instead of a full observability platform.
 
-Broader runtime diagnostics, metrics, alerting, and operational interpretation are covered in `16-observability-and-operations.md`.
+Broader runtime diagnostics, metrics, alerting, and operational interpretation are covered in `[16-observability-and-operations.md](16-observability-and-operations.md)`.
 
 ## Production direction
 

@@ -1,8 +1,8 @@
-# Observability and operations
+﻿# Observability and operations
 
 This document explains how to operate, diagnose, and reason about the comparison sample at runtime.
 
-Correlation mechanics are covered separately in `13-correlation-id-logging.md`. This document focuses on the broader operational view: what to observe, how to diagnose scenario behavior, which runtime dimensions matter, and how the microservices and virtual actor implementations differ operationally.
+Correlation mechanics are covered separately in `[13-correlation-id-logging.md](13-correlation-id-logging.md)`. This document focuses on the broader operational view: what to observe, how to diagnose scenario behavior, which runtime dimensions matter, and how the microservices and virtual actor implementations differ operationally.
 
 ## Production observability direction
 
@@ -63,7 +63,7 @@ Example value:
 run-9f2f4a0f1c17482a8a0cc0c45c6d9a7e
 ```
 
-For details on why the sample uses this custom header and why production systems should normally use OpenTelemetry, see `13-correlation-id-logging.md`.
+For details on why the sample uses this custom header and why production systems should normally use OpenTelemetry, see `[13-correlation-id-logging.md](13-correlation-id-logging.md)`.
 
 ## How to trace one scenario run
 
@@ -73,7 +73,7 @@ For details on why the sample uses this custom header and why production systems
 4. Identify which architecture path ran.
 5. Search backend logs for the same correlation ID.
 6. Compare the UI timeline with service or actor logs.
-7. Check that final result metrics match the expected scenario behavior in `12-scenario-guide.md`.
+7. Check that final result metrics match the expected scenario behavior in `[12-scenario-guide.md](12-scenario-guide.md)`.
 
 For the microservices path, inspect:
 
@@ -336,7 +336,7 @@ When a scenario result looks wrong:
 5. Verify total request submission count.
 6. Verify unique successful, rejected, and idempotent duplicate response counts.
 7. Verify final inventory.
-8. Compare the result with `12-scenario-guide.md`.
+8. Compare the result with `[12-scenario-guide.md](12-scenario-guide.md)`.
 9. If behavior changed intentionally, update regression tests and docs.
 10. If behavior changed unintentionally, inspect the state owner for the affected invariant.
 
