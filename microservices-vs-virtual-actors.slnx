@@ -1,20 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Solution>
-  <Project Path="src/Shared/ArchitectureComparison.Contracts/ArchitectureComparison.Contracts.csproj" />
-  <Folder Name="/src/" />
-  <Folder Name="/src/Comparison/" />
-  <Folder Name="/src/Shared/" />
-  <Folder Name="/tests/">
-    <Project Path="tests/Comparison.ScenarioRegressionTests/Comparison.ScenarioRegressionTests.csproj" />
+  <Folder Name="/src/Comparison/Comparison.Gateway/">
+    <Project Path="src\Comparison\Comparison.Gateway\Comparison.Gateway.csproj" Type="Classic C#" />
   </Folder>
-  <Project Path="src/Comparison/Comparison.Gateway/Comparison.Gateway.csproj" />
-  <Project Path="src/Comparison/Comparison.Ui/Comparison.Ui.csproj" />
-  <Project Path="src/Microservices/Orders.Api/Orders.Api.csproj" />
-  <Project Path="src/Microservices/Inventory.Api/Inventory.Api.csproj" />
-  <Project Path="src/Microservices/Payments.Api/Payments.Api.csproj" />
-  <Project Path="src/VirtualActors/Ordering.Api/Ordering.Api.csproj" />
-  <Project Path="src/VirtualActors/Ordering.Grains/Ordering.Grains.csproj" />
-  <Project Path="src/VirtualActors/Ordering.Silo/Ordering.Silo.csproj" />
-  <Project Path="tests/AcceptanceTests/ArchitectureComparison.AcceptanceTests.csproj" />
-  <Project Path="tests/Microservices.Tests/Microservices.Tests.csproj" />
-  <Project Path="tests/VirtualActors.Tests/VirtualActors.Tests.csproj" />
+  <Folder Name="/src/Comparison/Comparison.Ui/">
+    <Project Path="src\Comparison\Comparison.Ui\Comparison.Ui.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/src/Microservices/Inventory.Api/">
+    <Project Path="src\Microservices\Inventory.Api\Inventory.Api.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/src/Microservices/Orders.Api/">
+    <Project Path="src\Microservices\Orders.Api\Orders.Api.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/src/Microservices/Payments.Api/">
+    <Project Path="src\Microservices\Payments.Api\Payments.Api.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/src/Shared/ArchitectureComparison.Contracts/">
+    <Project Path="src\Shared\ArchitectureComparison.Contracts\ArchitectureComparison.Contracts.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/src/VirtualActors/Ordering.Api/">
+    <Project Path="src\VirtualActors\Ordering.Api\Ordering.Api.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/src/VirtualActors/Ordering.Grains/">
+    <Project Path="src\VirtualActors\Ordering.Grains\Ordering.Grains.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/src/VirtualActors/Ordering.Silo/">
+    <Project Path="src\VirtualActors\Ordering.Silo\Ordering.Silo.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/tests/AcceptanceTests/">
+    <Project Path="tests\AcceptanceTests\ArchitectureComparison.AcceptanceTests.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/tests/Comparison.ScenarioRegressionTests/">
+    <Project Path="tests\Comparison.ScenarioRegressionTests\Comparison.ScenarioRegressionTests.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/tests/Microservices.Tests/">
+    <Project Path="tests\Microservices.Tests\Microservices.Tests.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/tests/VirtualActors.Tests/">
+    <Project Path="tests\VirtualActors.Tests\VirtualActors.Tests.csproj" Type="Classic C#" />
+  </Folder>
 </Solution>
