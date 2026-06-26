@@ -4,7 +4,7 @@ The Blazor Server dashboard is intentionally small. It is not a product UI, ecom
 
 The dashboard exists to make the architecture comparison visible. It provides one place to run the same scenario against one or both implementations and compare the result shape without reading every source file.
 
-![UI dashboard screenshot](/images/ui-dashboard.png)
+![UI dashboard screenshot](/docs/images/ui-dashboard.png)
 
 ## Dashboard responsibilities
 
