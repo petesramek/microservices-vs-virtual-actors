@@ -78,7 +78,7 @@ public sealed class ComparisonGatewayAcceptanceTests {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
 
-            if (path == "/api/scenarios/reset") {
+            if (string.Equals(path, "/api/scenarios/reset", StringComparison.OrdinalIgnoreCase)) {
                 var reset = request.Content!.ReadFromJsonAsync<ResetInventoryRequest>(cancellationToken).GetAwaiter().GetResult()!;
                 _inventory[reset.ProductId] = reset.Quantity;
                 return Json(new InventoryResponse(reset.ProductId, reset.Quantity));
@@ -89,7 +89,7 @@ public sealed class ComparisonGatewayAcceptanceTests {
                 return Json(new InventoryResponse(productId, _inventory.GetValueOrDefault(productId)));
             }
 
-            if (path == "/api/orders") {
+            if (string.Equals(path, "/api/orders", StringComparison.OrdinalIgnoreCase)) {
                 var order = request.Content!.ReadFromJsonAsync<RunScenarioRequest>(cancellationToken).GetAwaiter().GetResult()!;
                 var available = _inventory.GetValueOrDefault(order.ProductId);
                 if (available < order.Quantity) {
