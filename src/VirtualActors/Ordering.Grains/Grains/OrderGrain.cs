@@ -26,17 +26,17 @@ public sealed class OrderGrain : Grain, IOrderGrain {
         var reservationId = Guid.NewGuid();
         var inventory = GrainFactory.GetGrain<IInventoryItemGrain>(productId);
 
-        var reservation = await inventory.ReserveAsync(reservationId, orderId, quantity).ConfigureAwait(false);
+        var reservation = await inventory.ReserveAsync(reservationId, orderId, quantity).ConfigureAwait(true);
         if (!reservation.Reserved) {
             _result = new GrainOrderResult(orderId, OrderStatus.Rejected.ToString(), reservation.Reason);
             return _result;
         }
 
         var payment = GrainFactory.GetGrain<IPaymentAccountGrain>(customerId);
-        var authorization = await payment.AuthorizeAsync(Guid.NewGuid(), orderId, idempotencyKey, simulatePaymentFailure).ConfigureAwait(false);
+        var authorization = await payment.AuthorizeAsync(Guid.NewGuid(), orderId, idempotencyKey, simulatePaymentFailure).ConfigureAwait(true);
 
         if (!authorization.Authorized) {
-            await inventory.ReleaseAsync(reservationId).ConfigureAwait(false);
+            await inventory.ReleaseAsync(reservationId).ConfigureAwait(true);
             _result = new GrainOrderResult(orderId, OrderStatus.Rejected.ToString(), authorization.Reason);
             return _result;
         }

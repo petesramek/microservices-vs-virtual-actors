@@ -41,7 +41,7 @@ public sealed class VirtualActorOrderWorkflowTests {
         var inventory = await GetInventoryAsync(productId);
 
         result.Status.ShouldBe(OrderStatus.Rejected.ToString());
-        result.Reason.ShouldBe("InsufficientInventory");
+        result.Reason.ShouldBe($"InsufficientInventory");
         inventory.AvailableQuantity.ShouldBe(1);
     }
 
@@ -54,7 +54,7 @@ public sealed class VirtualActorOrderWorkflowTests {
         var inventory = await GetInventoryAsync(productId);
 
         result.Status.ShouldBe(OrderStatus.Rejected.ToString());
-        result.Reason.ShouldBe("PaymentFailed");
+        result.Reason.ShouldBe($"PaymentFailed");
         inventory.AvailableQuantity.ShouldBe(10);
     }
 
@@ -80,11 +80,11 @@ public sealed class VirtualActorOrderWorkflowTests {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
         var orderId = Guid.NewGuid();
-        const string idempotencyKey = "duplicate-grain-call";
+        const string idempotencyKey = $"duplicate-grain-call";
 
         var order = _fixture.Cluster.Client.GetGrain<IOrderGrain>(orderId);
-        var first = await order.PlaceAsync(idempotencyKey, "customer-001", productId, 2, simulatePaymentFailure: false);
-        var second = await order.PlaceAsync(idempotencyKey, "customer-001", productId, 2, simulatePaymentFailure: false);
+        var first = await order.PlaceAsync(idempotencyKey, $"customer-001", productId, 2, simulatePaymentFailure: false);
+        var second = await order.PlaceAsync(idempotencyKey, $"customer-001", productId, 2, simulatePaymentFailure: false);
         var inventory = await GetInventoryAsync(productId);
 
         first.ShouldBe(second);
@@ -108,8 +108,8 @@ public sealed class VirtualActorOrderWorkflowTests {
         string? idempotencyKey = null) {
         var order = _fixture.Cluster.Client.GetGrain<IOrderGrain>(Guid.NewGuid());
         return await order.PlaceAsync(
-            idempotencyKey ?? Guid.NewGuid().ToString("N"),
-            "customer-001",
+            idempotencyKey ?? Guid.NewGuid().ToString($"N"),
+$"customer-001",
             productId,
             quantity,
             simulatePaymentFailure).ConfigureAwait(false);

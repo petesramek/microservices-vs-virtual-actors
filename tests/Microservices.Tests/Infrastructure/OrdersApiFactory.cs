@@ -29,7 +29,7 @@ public sealed class OrdersApiFactory : WebApplicationFactory<Program> {
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         builder.ConfigureAppConfiguration((_, configurationBuilder) => {
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal) {
-                ["ConnectionStrings:Default"] = $"Data Source={_databasePath}",
+                [$"ConnectionStrings:Default"] = $"Data Source={_databasePath}",
             });
         });
 

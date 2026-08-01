@@ -17,7 +17,7 @@ public sealed class PaymentAccountGrain : Grain, IPaymentAccountGrain {
         }
 
         var result = simulateFailure
-            ? new PaymentAuthorizationResult(false, "PaymentFailed")
+            ? new PaymentAuthorizationResult(false, $"PaymentFailed")
             : new PaymentAuthorizationResult(true, null);
 
         _authorizations[idempotencyKey] = result;

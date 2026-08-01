@@ -13,42 +13,42 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 builder.Services.AddDbContext<OrdersDbContext>(options => {
-    var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=orders.db";
+    var connectionString = builder.Configuration.GetConnectionString($"Default") ?? $"Data Source=orders.db";
     options.UseSqlite(connectionString);
 });
 
 builder.Services.AddHttpClient<IInventoryClient, HttpInventoryClient>(client => {
-    var baseUrl = builder.Configuration["Services:InventoryBaseUrl"] ?? "http://localhost:5201";
+    var baseUrl = builder.Configuration[$"Services:InventoryBaseUrl"] ?? $"http://localhost:5201";
     client.BaseAddress = new Uri(baseUrl);
 });
 
 builder.Services.AddHttpClient<IPaymentsClient, HttpPaymentsClient>(client => {
-    var baseUrl = builder.Configuration["Services:PaymentsBaseUrl"] ?? "http://localhost:5202";
+    var baseUrl = builder.Configuration[$"Services:PaymentsBaseUrl"] ?? $"http://localhost:5202";
     client.BaseAddress = new Uri(baseUrl);
 });
 
 var app = builder.Build();
 // correlation-id-logging
 app.Use(async (context, next) => {
-    var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+    var correlationId = context.Request.Headers[$"X-Correlation-ID"].FirstOrDefault();
     if (string.IsNullOrWhiteSpace(correlationId)) {
         await next().ConfigureAwait(false);
         return;
     }
 
-    using var scope = app.Logger.BeginScope(new Dictionary<string, object> {
-        ["CorrelationId"] = correlationId,
+    using var scope = app.Logger.BeginScope(new Dictionary<string, object>(StringComparer.Ordinal) {
+        [$"CorrelationId"] = correlationId,
     });
 
-    app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+    app.Logger.LogInformation($"Handling request with correlation id {correlationId}.");
     await next().ConfigureAwait(false);
 });
 
 // orders-api-idempotency-keyed-gate
-var orderIdempotencyLocks = new ConcurrentDictionary<string, SemaphoreSlim>();
+var orderIdempotencyLocks = new ConcurrentDictionary<string, SemaphoreSlim>(StringComparer.Ordinal);
 
 app.Use(async (context, next) => {
-    if (!HttpMethods.IsPost(context.Request.Method) || !context.Request.Path.Equals("/api/orders")) {
+    if (!HttpMethods.IsPost(context.Request.Method) || !context.Request.Path.Equals($"/api/orders", StringComparison.OrdinalIgnoreCase)) {
         await next().ConfigureAwait(false);
         return;
     }
@@ -87,11 +87,11 @@ app.Use(async (context, next) => {
 
 await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
 
-app.MapGet("/", () => Results.Ok(new { Name = "Orders API", Phase = "Microservices" }));
-app.MapGet("/health/live", () => Results.Ok("Healthy"));
+app.MapGet($"/", () => Results.Ok(new { Name = $"Orders API", Phase = $"Microservices"}));
+app.MapGet($"/health/live", () => Results.Ok($"Healthy"));
 
-app.MapPost("/api/scenarios/reset", async (ResetInventoryRequest request, IInventoryClient inventoryClient, OrdersDbContext db, CancellationToken cancellationToken) => {
-    db.Orders.RemoveRange(await db.Orders.ToListAsync(cancellationToken));
+app.MapPost($"/api/scenarios/reset", async (ResetInventoryRequest request, IInventoryClient inventoryClient, OrdersDbContext db, CancellationToken cancellationToken) => {
+    db.Orders.RemoveRange(await db.Orders.ToListAsync(cancellationToken).ConfigureAwait(false));
     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
     var inventory = await inventoryClient.ResetAsync(request, cancellationToken).ConfigureAwait(false);
@@ -99,16 +99,16 @@ app.MapPost("/api/scenarios/reset", async (ResetInventoryRequest request, IInven
 });
 
 app.MapGet("/api/inventory/{productId}", async (string productId, IInventoryClient inventoryClient, CancellationToken cancellationToken) => {
-    return Results.Ok(await inventoryClient.GetAsync(productId, cancellationToken));
+    return Results.Ok(await inventoryClient.GetAsync(productId, cancellationToken).ConfigureAwait(false));
 });
 
-app.MapPost("/api/orders", async (RunScenarioRequest request, OrdersDbContext db, IInventoryClient inventoryClient, IPaymentsClient paymentsClient, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
+app.MapPost($"/api/orders", async (RunScenarioRequest request, OrdersDbContext db, IInventoryClient inventoryClient, IPaymentsClient paymentsClient, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
     var existing = await db.Orders.AsNoTracking().SingleOrDefaultAsync(order => order.IdempotencyKey == request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
     if (existing is not null) {
         return Results.Ok(ToResponse(existing));
     }
 
-    var logger = loggerFactory.CreateLogger("Orders.PlaceOrder");
+    var logger = loggerFactory.CreateLogger($"Orders.PlaceOrder");
     var reservationId = Guid.NewGuid();
 
     var order = new OrderRecord {
@@ -148,7 +148,7 @@ app.MapPost("/api/orders", async (RunScenarioRequest request, OrdersDbContext db
         order.Status = OrderStatus.Rejected.ToString();
         order.Reason = payment.Reason;
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        logger.LogInformation("Rejected order {OrderId} because payment failed", order.OrderId);
+        logger.LogInformation($"Rejected order {order.OrderId} because payment failed");
         return Results.Ok(ToResponse(order));
     }
 
@@ -156,7 +156,7 @@ app.MapPost("/api/orders", async (RunScenarioRequest request, OrdersDbContext db
     order.Reason = null;
     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-    logger.LogInformation("Completed order {OrderId}", order.OrderId);
+    logger.LogInformation($"Completed order {order.OrderId}");
     return Results.Ok(ToResponse(order));
 });
 

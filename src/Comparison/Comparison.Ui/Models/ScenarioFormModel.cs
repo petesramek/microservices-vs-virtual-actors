@@ -17,25 +17,25 @@ public sealed class ScenarioFormModel : IValidatableObject {
     /// </summary>
     [Required]
     [StringLength(100, MinimumLength = 1)]
-    public string ProductId { get; set; } = "product-001";
+    public string ProductId { get; set; } = $"product-001";
 
     /// <summary>
     /// Gets or sets the customer identifier.
     /// </summary>
     [Required]
     [StringLength(100, MinimumLength = 1)]
-    public string CustomerId { get; set; } = "customer-001";
+    public string CustomerId { get; set; } = $"customer-001";
 
     /// <summary>
     /// Gets or sets the quantity requested by each order.
     /// </summary>
-    [Range(1, 100_000, ErrorMessage = "Quantity must be between 1 and 100000.")]
+    [Range(1, 100_000, ErrorMessage = $"Quantity must be between 1 and 100000.")]
     public int Quantity { get; set; } = 1;
 
     /// <summary>
     /// Gets or sets the initial inventory stock.
     /// </summary>
-    [Range(0, 100_000, ErrorMessage = "Initial stock must be between 0 and 100000.")]
+    [Range(0, 100_000, ErrorMessage = $"Initial stock must be between 0 and 100000.")]
     public int InitialStock { get; set; } = 10;
 
     /// <summary>
@@ -78,7 +78,7 @@ public sealed class ScenarioFormModel : IValidatableObject {
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) {
         if (UsesConcurrentRequests && ConcurrentRequests is < 1 or > 100) {
             yield return new ValidationResult(
-                "Concurrent requests must be between 1 and 100 for local demo safety.",
+$"Concurrent requests must be between 1 and 100 for local demo safety.",
                 [nameof(ConcurrentRequests)]);
         }
     }
@@ -91,8 +91,8 @@ public sealed class ScenarioFormModel : IValidatableObject {
         InitialStock = defaults.InitialStock;
         Quantity = defaults.Quantity;
         ConcurrentRequests = defaults.ConcurrentRequests;
-        ProductId = "product-001";
-        CustomerId = "customer-001";
+        ProductId = $"product-001";
+        CustomerId = $"customer-001";
         IdempotencyKey = $"{Scenario}-{Guid.NewGuid():N}";
     }
 

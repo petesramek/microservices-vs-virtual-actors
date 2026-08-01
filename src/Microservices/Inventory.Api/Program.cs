@@ -9,35 +9,35 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 builder.Services.AddDbContext<InventoryDbContext>(options => {
-    var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=inventory.db";
+    var connectionString = builder.Configuration.GetConnectionString($"Default") ?? $"Data Source=inventory.db";
     options.UseSqlite(connectionString);
 });
 
 var app = builder.Build();
 // correlation-id-logging
 app.Use(async (context, next) => {
-    var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault();
+    var correlationId = context.Request.Headers[$"X-Correlation-ID"].FirstOrDefault();
     if (string.IsNullOrWhiteSpace(correlationId)) {
         await next().ConfigureAwait(false);
         return;
     }
 
-    using var scope = app.Logger.BeginScope(new Dictionary<string, object> {
-        ["CorrelationId"] = correlationId,
+    using var scope = app.Logger.BeginScope(new Dictionary<string, object>(StringComparer.Ordinal) {
+        [$"CorrelationId"] = correlationId,
     });
 
     if (app.Logger.IsEnabled(LogLevel.Information)) {
-        app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+        app.Logger.LogInformation($"Handling request with correlation id {correlationId}.");
     }
     await next().ConfigureAwait(false);
 });
 
 await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
 
-app.MapGet("/", () => Results.Ok(new { Name = "Inventory API", Phase = "Microservices" }));
-app.MapGet("/health/live", () => Results.Ok("Healthy"));
+app.MapGet($"/", () => Results.Ok(new { Name = $"Inventory API", Phase = $"Microservices"}));
+app.MapGet($"/health/live", () => Results.Ok($"Healthy"));
 
-app.MapPost("/api/inventory/reset", async (ResetInventoryRequest request, InventoryDbContext db, CancellationToken cancellationToken) => {
+app.MapPost($"/api/inventory/reset", async (ResetInventoryRequest request, InventoryDbContext db, CancellationToken cancellationToken) => {
     var item = await db.Items.SingleOrDefaultAsync(x => x.ProductId == request.ProductId, cancellationToken).ConfigureAwait(false);
     if (item is null) {
         item = new InventoryItem { ProductId = request.ProductId };
@@ -53,15 +53,15 @@ app.MapPost("/api/inventory/reset", async (ResetInventoryRequest request, Invent
     return Results.Ok(new InventoryResponse(item.ProductId, item.AvailableQuantity));
 });
 
-app.MapGet("/api/inventory/{productId}", async (string productId, InventoryDbContext db, CancellationToken cancellationToken) => {
+app.MapGet($"/api/inventory/{productId}", async (string productId, InventoryDbContext db, CancellationToken cancellationToken) => {
     var item = await db.Items.AsNoTracking().SingleOrDefaultAsync(x => x.ProductId == productId, cancellationToken).ConfigureAwait(false);
     return item is null
         ? Results.Ok(new InventoryResponse(productId, 0))
         : Results.Ok(new InventoryResponse(item.ProductId, item.AvailableQuantity));
 });
 
-app.MapPost("/api/inventory/{productId}/reserve", async (string productId, ReserveInventoryRequest request, InventoryDbContext db, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
-    var logger = loggerFactory.CreateLogger("Inventory.Reserve");
+app.MapPost($"/api/inventory/{productId}/reserve", async (string productId, ReserveInventoryRequest request, InventoryDbContext db, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
+    var logger = loggerFactory.CreateLogger($"Inventory.Reserve");
 
     var existingReservation = await db.Reservations.AsNoTracking().SingleOrDefaultAsync(x => x.ReservationId == request.ReservationId, cancellationToken).ConfigureAwait(false);
     if (existingReservation is not null) {
@@ -75,7 +75,7 @@ app.MapPost("/api/inventory/{productId}/reserve", async (string productId, Reser
 
     if (item is null || item.AvailableQuantity < request.Quantity) {
         var availableQuantity = item?.AvailableQuantity ?? 0;
-        return Results.Ok(new ReserveInventoryResponse(false, "InsufficientInventory", availableQuantity));
+        return Results.Ok(new ReserveInventoryResponse(false, $"InsufficientInventory", availableQuantity));
     }
 
     item.AvailableQuantity -= request.Quantity;
@@ -90,14 +90,14 @@ app.MapPost("/api/inventory/{productId}/reserve", async (string productId, Reser
     await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
     if (logger.IsEnabled(LogLevel.Information)) {
-        logger.LogInformation("Reserved {Quantity} item(s) of product {ProductId} for order {OrderId}", request.Quantity, productId, request.OrderId);
+        logger.LogInformation($"Reserved {Quantity} item(s) of product {ProductId} for order {OrderId}", request.Quantity, productId, request.OrderId);
     }
     return Results.Ok(new ReserveInventoryResponse(true, null, item.AvailableQuantity));
     }
 });
 
-app.MapPost("/api/inventory/{productId}/release", async (string productId, ReleaseInventoryRequest request, InventoryDbContext db, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
-    var logger = loggerFactory.CreateLogger("Inventory.Release");
+app.MapPost($"/api/inventory/{productId}/release", async (string productId, ReleaseInventoryRequest request, InventoryDbContext db, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
+    var logger = loggerFactory.CreateLogger($"Inventory.Release");
     var reservation = await db.Reservations.SingleOrDefaultAsync(x => x.ReservationId == request.ReservationId && x.ProductId == productId, cancellationToken).ConfigureAwait(false);
 
     if (reservation is null) {
@@ -111,7 +111,7 @@ app.MapPost("/api/inventory/{productId}/release", async (string productId, Relea
     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
     if (logger.IsEnabled(LogLevel.Information)) {
-        logger.LogInformation("Released reservation {ReservationId} for product {ProductId}", request.ReservationId, productId);
+        logger.LogInformation($"Released reservation {ReservationId} for product {ProductId}", request.ReservationId, productId);
     }
     return Results.Ok(new InventoryResponse(productId, item.AvailableQuantity));
 });

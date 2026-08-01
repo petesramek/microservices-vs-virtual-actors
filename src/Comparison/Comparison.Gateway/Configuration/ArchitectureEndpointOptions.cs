@@ -9,7 +9,7 @@ public sealed class ArchitectureEndpointOptions {
     /// <summary>
     /// The configuration section name.
     /// </summary>
-    public const string SectionName = "ArchitectureEndpoints";
+    public const string SectionName = $"ArchitectureEndpoints";
 
     /// <summary>
     /// Gets the base URL of the microservice-style Orders API.

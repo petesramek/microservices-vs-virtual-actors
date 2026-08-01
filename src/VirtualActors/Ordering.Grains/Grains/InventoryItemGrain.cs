@@ -30,7 +30,7 @@ public sealed class InventoryItemGrain : Grain, IInventoryItemGrain {
         }
 
         if (_availableQuantity < quantity) {
-            return Task.FromResult(new InventoryReservationResult(false, "InsufficientInventory", _availableQuantity));
+            return Task.FromResult(new InventoryReservationResult(false, $"InsufficientInventory", _availableQuantity));
         }
 
         _availableQuantity -= quantity;

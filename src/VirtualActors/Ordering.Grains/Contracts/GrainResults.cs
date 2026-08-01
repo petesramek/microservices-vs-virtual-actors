@@ -6,7 +6,7 @@ using Orleans;
 /// Result returned by an inventory grain reservation attempt.
 /// </summary>
 [GenerateSerializer]
-[Alias("Ordering.Grains.Contracts.InventoryReservationResult")]
+[Alias($"Ordering.Grains.Contracts.InventoryReservationResult")]
 public sealed record InventoryReservationResult(
     [property: Id(0)] bool Reserved,
     [property: Id(1)] string? Reason,
@@ -16,7 +16,7 @@ public sealed record InventoryReservationResult(
 /// Inventory state returned by an inventory grain.
 /// </summary>
 [GenerateSerializer]
-[Alias("Ordering.Grains.Contracts.InventorySnapshot")]
+[Alias($"Ordering.Grains.Contracts.InventorySnapshot")]
 public sealed record InventorySnapshot(
     [property: Id(0)] string ProductId,
     [property: Id(1)] int AvailableQuantity);
@@ -25,7 +25,7 @@ public sealed record InventorySnapshot(
 /// Payment authorization result returned by a payment account grain.
 /// </summary>
 [GenerateSerializer]
-[Alias("Ordering.Grains.Contracts.PaymentAuthorizationResult")]
+[Alias($"Ordering.Grains.Contracts.PaymentAuthorizationResult")]
 public sealed record PaymentAuthorizationResult(
     [property: Id(0)] bool Authorized,
     [property: Id(1)] string? Reason);
@@ -34,7 +34,7 @@ public sealed record PaymentAuthorizationResult(
 /// Order result returned by an order grain.
 /// </summary>
 [GenerateSerializer]
-[Alias("Ordering.Grains.Contracts.GrainOrderResult")]
+[Alias($"Ordering.Grains.Contracts.GrainOrderResult")]
 public sealed record GrainOrderResult(
     [property: Id(0)] Guid OrderId,
     [property: Id(1)] string Status,

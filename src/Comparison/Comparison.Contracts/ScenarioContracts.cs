@@ -17,14 +17,14 @@ public sealed record RunScenarioRequest {
     /// </summary>
     [Required]
     [MaxLength(100)]
-    public string ProductId { get; set; } = "product-001";
+    public string ProductId { get; set; } = $"product-001";
 
     /// <summary>
     /// Gets or sets the customer identifier.
     /// </summary>
     [Required]
     [MaxLength(100)]
-    public string CustomerId { get; set; } = "customer-001";
+    public string CustomerId { get; set; } = $"customer-001";
 
     /// <summary>
     /// Gets or sets the order identifier.
@@ -36,7 +36,7 @@ public sealed record RunScenarioRequest {
     /// </summary>
     [Required]
     [MaxLength(200)]
-    public string IdempotencyKey { get; set; } = Guid.NewGuid().ToString("N");
+    public string IdempotencyKey { get; set; } = Guid.NewGuid().ToString($"N");
 
     /// <summary>
     /// Gets or sets the requested order quantity.

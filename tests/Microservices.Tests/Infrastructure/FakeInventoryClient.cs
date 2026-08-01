@@ -33,7 +33,7 @@ public sealed class FakeInventoryClient : IInventoryClient {
 
             var available = _available.GetValueOrDefault(productId);
             if (available < request.Quantity) {
-                return Task.FromResult(new ReserveInventoryResponse(false, "InsufficientInventory", available));
+                return Task.FromResult(new ReserveInventoryResponse(false, $"InsufficientInventory", available));
             }
 
             _available[productId] = available - request.Quantity;

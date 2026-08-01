@@ -14,21 +14,21 @@ using Xunit;
 /// </summary>
 public sealed class ComparisonGatewayAcceptanceTests {
     [Theory]
-    [InlineData("microservices")]
-    [InlineData("virtual-actors")]
-    [InlineData("both")]
+    [InlineData($"microservices")]
+    [InlineData($"virtual-actors")]
+    [InlineData($"both")]
     public async Task GatewayRunSelectedArchitecture(string architecture) {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/run") {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/scenarios/run") {
             Content = JsonContent.Create(new RunScenarioRequest {
                 Scenario = ScenarioKind.SuccessfulOrder,
-                ProductId = "product-001",
+                ProductId = $"product-001",
                 InitialStock = 10,
                 Quantity = 2,
             }),
         };
-        request.Headers.Add("X-Architecture", architecture);
+        request.Headers.Add($"X-Architecture", architecture);
 
         var response = await client.SendAsync(request);
 
@@ -36,11 +36,11 @@ public sealed class ComparisonGatewayAcceptanceTests {
         var result = await response.Content.ReadFromJsonAsync<RunScenarioResponse>();
         result.ShouldNotBeNull();
 
-        if (architecture is "microservices" or "both") {
+        if (architecture is $"microservices"or $"both") {
             result!.Microservices.ShouldNotBeNull();
         }
 
-        if (architecture is "virtual-actors" or "both") {
+        if (architecture is $"virtual-actors"or $"both") {
             result!.VirtualActors.ShouldNotBeNull();
         }
     }
@@ -49,10 +49,10 @@ public sealed class ComparisonGatewayAcceptanceTests {
     public async Task GatewayRejectUnknownArchitectureHeader() {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/run") {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/scenarios/run") {
             Content = JsonContent.Create(new RunScenarioRequest()),
         };
-        request.Headers.Add("X-Architecture", "unknown");
+        request.Headers.Add($"X-Architecture", $"unknown");
 
         var response = await client.SendAsync(request);
 
@@ -78,26 +78,26 @@ public sealed class ComparisonGatewayAcceptanceTests {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
 
-            if (string.Equals(path, "/api/scenarios/reset", StringComparison.OrdinalIgnoreCase)) {
+            if (string.Equals(path, $"/api/scenarios/reset", StringComparison.OrdinalIgnoreCase)) {
                 var reset = request.Content!.ReadFromJsonAsync<ResetInventoryRequest>(cancellationToken).GetAwaiter().GetResult()!;
                 _inventory[reset.ProductId] = reset.Quantity;
                 return Json(new InventoryResponse(reset.ProductId, reset.Quantity));
             }
 
-            if (path.StartsWith("/api/inventory/", StringComparison.OrdinalIgnoreCase)) {
+            if (path.StartsWith($"/api/inventory/", StringComparison.OrdinalIgnoreCase)) {
                 var productId = path.Split('/').Last();
                 return Json(new InventoryResponse(productId, _inventory.GetValueOrDefault(productId)));
             }
 
-            if (string.Equals(path, "/api/orders", StringComparison.OrdinalIgnoreCase)) {
+            if (string.Equals(path, $"/api/orders", StringComparison.OrdinalIgnoreCase)) {
                 var order = request.Content!.ReadFromJsonAsync<RunScenarioRequest>(cancellationToken).GetAwaiter().GetResult()!;
                 var available = _inventory.GetValueOrDefault(order.ProductId);
                 if (available < order.Quantity) {
-                    return Json(new OrderResponse(order.OrderId, OrderStatus.Rejected, "InsufficientInventory"));
+                    return Json(new OrderResponse(order.OrderId, OrderStatus.Rejected, $"InsufficientInventory"));
                 }
 
                 if (order.SimulatePaymentFailure) {
-                    return Json(new OrderResponse(order.OrderId, OrderStatus.Rejected, "PaymentFailed"));
+                    return Json(new OrderResponse(order.OrderId, OrderStatus.Rejected, $"PaymentFailed"));
                 }
 
                 _inventory[order.ProductId] = available - order.Quantity;

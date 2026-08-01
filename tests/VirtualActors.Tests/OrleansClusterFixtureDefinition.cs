@@ -10,5 +10,5 @@ public sealed class OrleansClusterFixtureDefinition : ICollectionFixture<Orleans
     /// <summary>
     /// The collection name.
     /// </summary>
-    public const string Name = "OrleansCluster";
+    public const string Name = $"OrleansCluster";
 }

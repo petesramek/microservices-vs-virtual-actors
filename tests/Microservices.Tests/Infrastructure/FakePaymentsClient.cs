@@ -17,7 +17,7 @@ public sealed class FakePaymentsClient : IPaymentsClient {
             }
 
             var response = request.SimulateFailure
-                ? new AuthorizePaymentResponse(false, "PaymentFailed")
+                ? new AuthorizePaymentResponse(false, $"PaymentFailed")
                 : new AuthorizePaymentResponse(true, null);
 
             _responses[request.IdempotencyKey] = response;

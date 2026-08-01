@@ -10,7 +10,7 @@ using System.Net.Http.Json;
 /// <param name="httpClient">The HTTP client.</param>
 public sealed class HttpInventoryClient(HttpClient httpClient) : IInventoryClient {
     public async Task<InventoryResponse> ResetAsync(ResetInventoryRequest request, CancellationToken cancellationToken) {
-        var response = await httpClient.PostAsJsonAsync("/api/inventory/reset", request, cancellationToken).ConfigureAwait(false);
+        var response = await httpClient.PostAsJsonAsync($"/api/inventory/reset", request, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<InventoryResponse>(cancellationToken).ConfigureAwait(false))!;
     }
