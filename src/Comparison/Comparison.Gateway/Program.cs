@@ -90,12 +90,12 @@ app.MapGet("/api/status", async (
     var gateway = new ServiceStatus("Gateway", "local", IsOnline: true, "Online", Error: null);
 
     // Start both independent health checks before awaiting either result.
-    Task<ServiceStatus> microservicesTask = statusChecker.CheckAsync(
+    Task<ServiceStatus> microservicesTask = statusChecker.GetAsync(
         "Microservices",
         options.Value.MicroservicesBaseUrl,
         cancellationToken);
 
-    Task<ServiceStatus> virtualActorsTask = statusChecker.CheckAsync(
+    Task<ServiceStatus> virtualActorsTask = statusChecker.GetAsync(
         "Virtual Actors",
         options.Value.VirtualActorsBaseUrl,
         cancellationToken);
