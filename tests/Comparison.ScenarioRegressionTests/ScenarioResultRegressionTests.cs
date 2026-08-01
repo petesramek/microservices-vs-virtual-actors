@@ -177,15 +177,15 @@ public sealed class ScenarioResultRegressionTests {
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
 
             if (request.Method == HttpMethod.Post && path.Equals("/api/scenarios/reset", StringComparison.OrdinalIgnoreCase)) {
-                var reset = await ReadJsonAsync<ResetInventoryRequest>(request, cancellationToken);
+                var reset = await ReadJsonAsync<ResetInventoryRequest>(request, cancellationToken).ConfigureAwait(false);
                 inventoryByProductId[reset.ProductId] = reset.Quantity;
                 ordersByIdempotencyKey.Clear();
                 return Json(new { ok = true });
             }
 
             if (request.Method == HttpMethod.Post && path.Equals("/api/orders", StringComparison.OrdinalIgnoreCase)) {
-                var orderRequest = await ReadJsonAsync<RunScenarioRequest>(request, cancellationToken);
-                return await PlaceOrderAsync(orderRequest, cancellationToken);
+                var orderRequest = await ReadJsonAsync<RunScenarioRequest>(request, cancellationToken).ConfigureAwait(false);
+                return await PlaceOrderAsync(orderRequest, cancellationToken).ConfigureAwait(false);
             }
 
             if (request.Method == HttpMethod.Get && path.StartsWith("/api/inventory/", StringComparison.OrdinalIgnoreCase)) {
@@ -200,7 +200,7 @@ public sealed class ScenarioResultRegressionTests {
         }
 
         private async Task<HttpResponseMessage> PlaceOrderAsync(RunScenarioRequest request, CancellationToken cancellationToken) {
-            await gate.WaitAsync(cancellationToken);
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try {
                 if (ordersByIdempotencyKey.TryGetValue(request.IdempotencyKey, out var existing)) {
                     return Json(ToOrderResponse(existing));
@@ -235,8 +235,10 @@ public sealed class ScenarioResultRegressionTests {
         }
 
         private static async Task<T> ReadJsonAsync<T>(HttpRequestMessage request, CancellationToken cancellationToken) {
-            await using var stream = await request.Content!.ReadAsStreamAsync(cancellationToken);
-            return (await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions, cancellationToken))!;
+            var stream = await request.Content!.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            await using (stream.ConfigureAwait(false)) {
+                return (await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions, cancellationToken).ConfigureAwait(false))!;
+            }
         }
 
         private static HttpResponseMessage Json<T>(T payload) {

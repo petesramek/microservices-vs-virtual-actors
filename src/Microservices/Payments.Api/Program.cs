@@ -18,7 +18,7 @@ var app = builder.Build();
 app.Use(async (context, next) => {
     var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault();
     if (string.IsNullOrWhiteSpace(correlationId)) {
-        await next();
+        await next().ConfigureAwait(false);
         return;
     }
 
@@ -29,16 +29,16 @@ app.Use(async (context, next) => {
     if (app.Logger.IsEnabled(LogLevel.Information)) {
         app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
     }
-    await next();
+    await next().ConfigureAwait(false);
 });
 
-await EnsureDatabaseAsync(app.Services);
+await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
 
 app.MapGet("/", () => Results.Ok(new { Name = "Payments API", Phase = "Microservices" }));
 app.MapGet("/health/live", () => Results.Ok("Healthy"));
 
 app.MapPost("/api/payments/authorize", async (AuthorizePaymentRequest request, PaymentsDbContext db, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
-    var existing = await db.PaymentAttempts.AsNoTracking().SingleOrDefaultAsync(x => x.IdempotencyKey == request.IdempotencyKey, cancellationToken);
+    var existing = await db.PaymentAttempts.AsNoTracking().SingleOrDefaultAsync(x => x.IdempotencyKey == request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
     if (existing is not null) {
         return Results.Ok(new AuthorizePaymentResponse(existing.Authorized, existing.Reason));
     }
@@ -55,7 +55,7 @@ app.MapPost("/api/payments/authorize", async (AuthorizePaymentRequest request, P
         Reason = reason,
     });
 
-    await db.SaveChangesAsync(cancellationToken);
+    await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
     var logger = loggerFactory.CreateLogger("Payments.Authorize");
     if (logger.IsEnabled(LogLevel.Information)) {
@@ -70,7 +70,7 @@ app.Run();
 static async Task EnsureDatabaseAsync(IServiceProvider services) {
     using var scope = services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<PaymentsDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
 }
 
 public partial class Program;

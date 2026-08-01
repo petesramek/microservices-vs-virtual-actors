@@ -13,10 +13,10 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
     /// <inheritdoc />
     public async Task<ArchitectureRunResult> RunAsync(RunScenarioRequest request, CancellationToken cancellationToken) {
         return request.Scenario switch {
-            ScenarioKind.ConcurrentOrders => await RunConcurrentOrdersAsync(request, cancellationToken),
-            ScenarioKind.HotProductContention => await RunConcurrentOrdersAsync(request, cancellationToken),
-            ScenarioKind.DuplicateRequest => await RunDuplicateRequestAsync(request, cancellationToken),
-            _ => await RunSingleOrderAsync(request, cancellationToken),
+            ScenarioKind.ConcurrentOrders => await RunConcurrentOrdersAsync(request, cancellationToken).ConfigureAwait(false),
+            ScenarioKind.HotProductContention => await RunConcurrentOrdersAsync(request, cancellationToken).ConfigureAwait(false),
+            ScenarioKind.DuplicateRequest => await RunDuplicateRequestAsync(request, cancellationToken).ConfigureAwait(false),
+            _ => await RunSingleOrderAsync(request, cancellationToken).ConfigureAwait(false),
         };
     }
 
@@ -38,9 +38,9 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         var prepared = PrepareScenarioRequest(request);
         var stopwatch = Stopwatch.StartNew();
 
-        await ResetInventoryAsync(prepared.ProductId, prepared.InitialStock, cancellationToken);
-        var order = await PlaceOrderAsync(prepared, cancellationToken);
-        var inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken);
+        await ResetInventoryAsync(prepared.ProductId, prepared.InitialStock, cancellationToken).ConfigureAwait(false);
+        var order = await PlaceOrderAsync(prepared, cancellationToken).ConfigureAwait(false);
+        var inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken).ConfigureAwait(false);
 
         stopwatch.Stop();
 
@@ -72,7 +72,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         });
 
         var stopwatch = Stopwatch.StartNew();
-        await ResetInventoryAsync(prepared.ProductId, prepared.InitialStock, cancellationToken);
+        await ResetInventoryAsync(prepared.ProductId, prepared.InitialStock, cancellationToken).ConfigureAwait(false);
 
         var tasks = Enumerable.Range(1, prepared.ConcurrentRequests)
             .Select(index => PlaceOrderAsync(prepared with {
@@ -81,8 +81,8 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
             }, cancellationToken))
             .ToArray();
 
-        var orders = await Task.WhenAll(tasks);
-        var inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken);
+        var orders = await Task.WhenAll(tasks).ConfigureAwait(false);
+        var inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken).ConfigureAwait(false);
         stopwatch.Stop();
 
         var completed = orders.Count(order => order.Status == OrderStatus.Completed);
@@ -112,14 +112,14 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         });
 
         var stopwatch = Stopwatch.StartNew();
-        await ResetInventoryAsync(prepared.ProductId, prepared.InitialStock, cancellationToken);
+        await ResetInventoryAsync(prepared.ProductId, prepared.InitialStock, cancellationToken).ConfigureAwait(false);
 
         var tasks = Enumerable.Range(1, prepared.ConcurrentRequests)
             .Select(_ => PlaceOrderAsync(prepared, cancellationToken))
             .ToArray();
 
-        var responses = await Task.WhenAll(tasks);
-        var inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken);
+        var responses = await Task.WhenAll(tasks).ConfigureAwait(false);
+        var inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken).ConfigureAwait(false);
         stopwatch.Stop();
 
         var representative = responses.FirstOrDefault(response => response.Status == OrderStatus.Completed) ?? responses[0];
@@ -259,7 +259,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         };
         AddCorrelationHeader(message);
 
-        var response = await httpClient.SendAsync(message, cancellationToken);
+        var response = await httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
     }
 
@@ -269,18 +269,18 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         };
         AddCorrelationHeader(message);
 
-        var response = await httpClient.SendAsync(message, cancellationToken);
+        var response = await httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<OrderResponse>(cancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<OrderResponse>(cancellationToken).ConfigureAwait(false))!;
     }
 
     private async Task<InventoryResponse> GetInventoryAsync(string productId, CancellationToken cancellationToken) {
         using var message = new HttpRequestMessage(HttpMethod.Get, $"/api/inventory/{productId}");
         AddCorrelationHeader(message);
 
-        var response = await httpClient.SendAsync(message, cancellationToken);
+        var response = await httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<InventoryResponse>(cancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<InventoryResponse>(cancellationToken).ConfigureAwait(false))!;
     }
 
     private static void AddCorrelationHeader(HttpRequestMessage message) {

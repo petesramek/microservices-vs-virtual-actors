@@ -45,7 +45,7 @@ app.Use(async (context, next) => {
     app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
 
     try {
-        await next();
+        await next().ConfigureAwait(false);
     } finally {
         CorrelationContext.CurrentCorrelationId = null;
     }
@@ -68,12 +68,12 @@ app.MapGet("/api/status", async (
             httpClient,
             "Microservices",
             options.Value.MicroservicesBaseUrl,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         var virtualActors = await CheckBackendAsync(
             httpClient,
             "Virtual Actors",
             options.Value.VirtualActorsBaseUrl,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         return Results.Ok(new BackendStatusResponse(gateway, microservices, virtualActors));
     });
@@ -90,7 +90,7 @@ static async Task<ServiceStatus> CheckBackendAsync(
     var healthUrl = new Uri(new Uri(baseUrl.TrimEnd('/') + "/"), "health/live");
 
     try {
-        using var response = await httpClient.GetAsync(healthUrl, cancellationToken);
+        using var response = await httpClient.GetAsync(healthUrl, cancellationToken).ConfigureAwait(false);
         return new ServiceStatus(
             name,
             healthUrl.ToString(),
@@ -125,11 +125,11 @@ static async Task<IResult> RunScenario(
     ArchitectureRunResult? virtualActors = null;
 
     if (architecture.Equals("microservices", StringComparison.OrdinalIgnoreCase) || architecture.Equals("both", StringComparison.OrdinalIgnoreCase)) {
-        microservices = await microservicesClient.RunAsync(request, cancellationToken);
+        microservices = await microservicesClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     if (architecture.Equals("virtual-actors", StringComparison.OrdinalIgnoreCase) || architecture.Equals("both", StringComparison.OrdinalIgnoreCase)) {
-        virtualActors = await virtualActorsClient.RunAsync(request, cancellationToken);
+        virtualActors = await virtualActorsClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     if (microservices is null && virtualActors is null) {

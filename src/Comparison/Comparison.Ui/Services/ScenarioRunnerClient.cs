@@ -13,7 +13,7 @@ public sealed class ScenarioRunnerClient(HttpClient httpClient) {
     /// </summary>
     /// <returns>The backend status response.</returns>
     public async Task<BackendStatusResponse?> GetStatusAsync() {
-        return await httpClient.GetFromJsonAsync<BackendStatusResponse>("/api/status");
+        return await httpClient.GetFromJsonAsync<BackendStatusResponse>("/api/status").ConfigureAwait(false);
     }
 
     /// <summary>
@@ -29,9 +29,9 @@ public sealed class ScenarioRunnerClient(HttpClient httpClient) {
 
         httpRequest.Headers.Add("X-Architecture", architecture);
 
-        var response = await httpClient.SendAsync(httpRequest);
+        var response = await httpClient.SendAsync(httpRequest).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<RunScenarioResponse>();
+        return await response.Content.ReadFromJsonAsync<RunScenarioResponse>().ConfigureAwait(false);
     }
 }
