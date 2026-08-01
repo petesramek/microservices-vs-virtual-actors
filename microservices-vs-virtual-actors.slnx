@@ -32,10 +32,8 @@
     <Project Path="src\VirtualActors\Ordering.Silo\Ordering.Silo.csproj" />
   </Folder>
   <Folder Name="/tests/" />
-  <Folder Name="/tests/AcceptanceTests/">
+  <Folder Name="/tests/Comparison.Tests/">
     <Project Path="tests/Comparison.AcceptanceTests/Comparison.AcceptanceTests.csproj" />
-  </Folder>
-  <Folder Name="/tests/Comparison.ScenarioRegressionTests/">
     <Project Path="tests\Comparison.ScenarioRegressionTests\Comparison.ScenarioRegressionTests.csproj" />
   </Folder>
   <Folder Name="/tests/Microservices.Tests/">

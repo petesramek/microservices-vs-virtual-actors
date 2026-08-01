@@ -1,6 +1,6 @@
 namespace Comparison.Gateway.Extensions;
 
-using Comparison.Gateway.Clients;
+using Comparison.Gateway.Correlation;
 using Comparison.Gateway.Logging;
 
 /// <summary>
@@ -24,7 +24,7 @@ internal static class CorrelationIdApplicationBuilderExtensions {
             }
 
             context.Response.Headers[CorrelationIdHeader] = correlationId;
-            CorrelationContext.CurrentCorrelationId = correlationId;
+            CorrelationIdContext.CurrentId = correlationId;
 
             ILogger logger = context.RequestServices
                 .GetRequiredService<ILoggerFactory>()
@@ -40,7 +40,7 @@ internal static class CorrelationIdApplicationBuilderExtensions {
                 await next(context).ConfigureAwait(false);
             }
             finally {
-                CorrelationContext.CurrentCorrelationId = null;
+                CorrelationIdContext.CurrentId = null;
             }
         });
 

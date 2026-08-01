@@ -3,6 +3,7 @@ namespace Comparison.Gateway.Endpoints;
 using Comparison.Contracts;
 using Comparison.Gateway.Clients;
 using Comparison.Gateway.Logging;
+using Comparison.Gateway.Scenarios;
 using Microsoft.Extensions.Primitives;
 
 /// <summary>
@@ -32,16 +33,18 @@ internal static class ScenarioEndpoints {
     /// </summary>
     /// <param name="request">The scenario request.</param>
     /// <param name="httpRequest">The current HTTP request containing the architecture selection.</param>
-    /// <param name="microservicesClient">The Microservices architecture client.</param>
-    /// <param name="virtualActorsClient">The Virtual Actors architecture client.</param>
+    /// <param name="scenarioRunner">The scenario runner.</param>
+    /// <param name="microservicesClient">The Microservices service client.</param>
+    /// <param name="virtualActorsClient">The Virtual Actors service client.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <param name="cancellationToken">The token used to cancel scenario execution.</param>
     /// <returns>The scenario result or an error response.</returns>
     private static async Task<IResult> RunScenarioAsync(
         RunScenarioRequest request,
         HttpRequest httpRequest,
-        MicroservicesArchitectureClient microservicesClient,
-        VirtualActorsArchitectureClient virtualActorsClient,
+        ScenarioRunner scenarioRunner,
+        MicroservicesServiceClient microservicesClient,
+        VirtualActorsServiceClient virtualActorsClient,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken) {
         string architecture = httpRequest.Headers.TryGetValue(ArchitectureHeader, out StringValues values)
@@ -70,10 +73,12 @@ internal static class ScenarioEndpoints {
             ArchitectureRunResult? virtualActors = null;
 
             if (runMicroservices && runVirtualActors) {
-                Task<ArchitectureRunResult> microservicesTask = microservicesClient.RunAsync(
+                Task<ArchitectureRunResult> microservicesTask = scenarioRunner.RunAsync(
+                    microservicesClient,
                     request,
                     cancellationToken);
-                Task<ArchitectureRunResult> virtualActorsTask = virtualActorsClient.RunAsync(
+                Task<ArchitectureRunResult> virtualActorsTask = scenarioRunner.RunAsync(
+                    virtualActorsClient,
                     request,
                     cancellationToken);
 
@@ -85,13 +90,13 @@ internal static class ScenarioEndpoints {
                 virtualActors = await virtualActorsTask.ConfigureAwait(false);
             }
             else if (runMicroservices) {
-                microservices = await microservicesClient
-                    .RunAsync(request, cancellationToken)
+                microservices = await scenarioRunner
+                    .RunAsync(microservicesClient, request, cancellationToken)
                     .ConfigureAwait(false);
             }
             else {
-                virtualActors = await virtualActorsClient
-                    .RunAsync(request, cancellationToken)
+                virtualActors = await scenarioRunner
+                    .RunAsync(virtualActorsClient, request, cancellationToken)
                     .ConfigureAwait(false);
             }
 

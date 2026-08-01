@@ -2,6 +2,7 @@ namespace Comparison.ScenarioRegressionTests;
 
 using Comparison.Contracts;
 using Comparison.Gateway.Clients;
+using Comparison.Gateway.Scenarios;
 using Shouldly;
 using System.Collections.Concurrent;
 using System.Net;
@@ -18,10 +19,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task SuccessfulOrderReportsOneUniqueSuccessfulOrder() {
-        IArchitectureClient client = CreateClient();
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.SuccessfulOrder, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
-        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(1);
@@ -36,10 +37,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task InsufficientInventoryRejectsOneSubmissionAndLeavesInventoryUnchanged() {
-        IArchitectureClient client = CreateClient();
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.InsufficientInventory, initialStock: 1, quantity: 2, concurrentRequests: 10);
 
-        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(0);
@@ -47,7 +48,7 @@ public sealed class ScenarioResultRegressionTests {
         result.IdempotentResponses.ShouldBe(0);
         result.RemainingInventory.ShouldBe(1);
         result.Status.ShouldBe(OrderStatus.Rejected);
-        result.Reason.ShouldBe($"InsufficientInventory");
+        result.Reason.ShouldBe("InsufficientInventory");
     }
 
     /// <summary>
@@ -55,10 +56,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task PaymentFailureCompensationReleasesInventoryAndRejectsSubmission() {
-        IArchitectureClient client = CreateClient();
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.PaymentFailureCompensation, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
-        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(0);
@@ -66,7 +67,7 @@ public sealed class ScenarioResultRegressionTests {
         result.IdempotentResponses.ShouldBe(0);
         result.RemainingInventory.ShouldBe(10);
         result.Status.ShouldBe(OrderStatus.Rejected);
-        result.Reason.ShouldBe($"PaymentFailed");
+        result.Reason.ShouldBe("PaymentFailed");
     }
 
     /// <summary>
@@ -74,10 +75,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task PaymentTimeoutAfterReservationReportsTimeoutAndReleasesInventory() {
-        IArchitectureClient client = CreateClient();
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.PaymentTimeoutAfterReservation, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
-        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(0);
@@ -85,8 +86,8 @@ public sealed class ScenarioResultRegressionTests {
         result.IdempotentResponses.ShouldBe(0);
         result.RemainingInventory.ShouldBe(10);
         result.Status.ShouldBe(OrderStatus.Rejected);
-        result.Reason.ShouldBe($"PaymentTimeout");
-        result.Events.ShouldContain(scenarioEvent => scenarioEvent.Message.Contains($"timed out", StringComparison.OrdinalIgnoreCase));
+        result.Reason.ShouldBe("PaymentTimeout");
+        result.Events.ShouldContain(scenarioEvent => scenarioEvent.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -94,17 +95,17 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task HotProductContentionDoesNotOverReserveInventory() {
-        IArchitectureClient client = CreateClient();
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.HotProductContention, initialStock: 25, quantity: 1, concurrentRequests: 50);
 
-        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(50);
         result.CompletedOrders.ShouldBe(25);
         result.RejectedOrders.ShouldBe(25);
         result.IdempotentResponses.ShouldBe(0);
         result.RemainingInventory.ShouldBe(0);
-        result.Reason.ShouldBe($"SomeOrdersRejected");
+        result.Reason.ShouldBe("SomeOrdersRejected");
     }
 
     /// <summary>
@@ -112,10 +113,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task DuplicateRequestUsesConcurrentRequestsAsDuplicateSubmissionCount() {
-        IArchitectureClient client = CreateClient();
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.DuplicateRequest, initialStock: 10, quantity: 2, concurrentRequests: 20);
 
-        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(20);
         result.CompletedOrders.ShouldBe(1);
@@ -123,16 +124,16 @@ public sealed class ScenarioResultRegressionTests {
         result.IdempotentResponses.ShouldBe(19);
         result.RemainingInventory.ShouldBe(8);
         result.Status.ShouldBe(OrderStatus.Completed);
-        result.Reason.ShouldBe($"IdempotentResultReturned");
+        result.Reason.ShouldBe("IdempotentResultReturned");
     }
 
-    private static IArchitectureClient CreateClient() {
+    private static (ScenarioRunner Runner, IServiceClient Client) CreateRunner() {
         var handler = new ScenarioRegressionHttpMessageHandler();
         var httpClient = new HttpClient(handler) {
-            BaseAddress = new Uri($"http://scenario-regression.test"),
+            BaseAddress = new Uri("http://scenario-regression.test"),
         };
 
-        return new RegressionArchitectureClient(httpClient, $"Microservices");
+        return (new ScenarioRunner(), new RegressionServiceClient(httpClient));
     }
 
     private static RunScenarioRequest CreateRequest(
@@ -142,8 +143,8 @@ public sealed class ScenarioResultRegressionTests {
         int concurrentRequests) {
         return new RunScenarioRequest {
             Scenario = scenario,
-            ProductId = $"product-001",
-            CustomerId = $"customer-001",
+            ProductId = "product-001",
+            CustomerId = "customer-001",
             InitialStock = initialStock,
             Quantity = quantity,
             ConcurrentRequests = concurrentRequests,
@@ -152,17 +153,17 @@ public sealed class ScenarioResultRegressionTests {
         };
     }
 
-    private sealed class RegressionArchitectureClient(HttpClient httpClient, string architectureName)
-        : HttpArchitectureClient(httpClient, architectureName) {
+    private sealed class RegressionServiceClient(HttpClient httpClient)
+        : HttpServiceClient(httpClient, "Microservices") {
         /// <inheritdoc />
-        protected override IReadOnlyList<ScenarioEvent> CreateTimeline(
+        public override IReadOnlyList<ScenarioEvent> CreateTimeline(
             RunScenarioRequest request,
             OrderResponse order,
             InventoryResponse inventory) {
             return
             [
-                new ScenarioEvent($"Scenario", $"Processed {request.Scenario} with status {order.Status}."),
-                new ScenarioEvent($"Inventory", $"Remaining inventory is {inventory.AvailableQuantity}."),
+                new ScenarioEvent("Scenario", $"Processed {request.Scenario} with status {order.Status}."),
+                new ScenarioEvent("Inventory", $"Remaining inventory is {inventory.AvailableQuantity}."),
             ];
         }
     }
@@ -176,19 +177,19 @@ public sealed class ScenarioResultRegressionTests {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
 
-            if (request.Method == HttpMethod.Post && path.Equals($"/api/scenarios/reset", StringComparison.OrdinalIgnoreCase)) {
+            if (request.Method == HttpMethod.Post && path.Equals("/api/scenarios/reset", StringComparison.OrdinalIgnoreCase)) {
                 ResetInventoryRequest reset = await ReadJsonAsync<ResetInventoryRequest>(request, cancellationToken).ConfigureAwait(false);
                 inventoryByProductId[reset.ProductId] = reset.Quantity;
                 ordersByIdempotencyKey.Clear();
                 return Json(new { ok = true });
             }
 
-            if (request.Method == HttpMethod.Post && path.Equals($"/api/orders", StringComparison.OrdinalIgnoreCase)) {
+            if (request.Method == HttpMethod.Post && path.Equals("/api/orders", StringComparison.OrdinalIgnoreCase)) {
                 RunScenarioRequest orderRequest = await ReadJsonAsync<RunScenarioRequest>(request, cancellationToken).ConfigureAwait(false);
                 return await PlaceOrderAsync(orderRequest, cancellationToken).ConfigureAwait(false);
             }
 
-            if (request.Method == HttpMethod.Get && path.StartsWith($"/api/inventory/", StringComparison.OrdinalIgnoreCase)) {
+            if (request.Method == HttpMethod.Get && path.StartsWith("/api/inventory/", StringComparison.OrdinalIgnoreCase)) {
                 var productId = Uri.UnescapeDataString(path.Split('/').Last());
                 var quantity = inventoryByProductId.GetValueOrDefault(productId);
                 return Json(new InventoryResponse(productId, quantity));
@@ -208,7 +209,7 @@ public sealed class ScenarioResultRegressionTests {
 
                 var currentInventory = inventoryByProductId.GetValueOrDefault(request.ProductId);
                 if (currentInventory < request.Quantity) {
-                    var rejected = new StoredOrder(request.OrderId, OrderStatus.Rejected, $"InsufficientInventory");
+                    var rejected = new StoredOrder(request.OrderId, OrderStatus.Rejected, "InsufficientInventory");
                     ordersByIdempotencyKey.TryAdd(request.IdempotencyKey, rejected);
                     return Json(ToOrderResponse(rejected));
                 }
@@ -217,7 +218,7 @@ public sealed class ScenarioResultRegressionTests {
 
                 if (request.SimulatePaymentFailure) {
                     inventoryByProductId[request.ProductId] += request.Quantity;
-                    var paymentRejected = new StoredOrder(request.OrderId, OrderStatus.Rejected, $"PaymentFailed");
+                    var paymentRejected = new StoredOrder(request.OrderId, OrderStatus.Rejected, "PaymentFailed");
                     ordersByIdempotencyKey.TryAdd(request.IdempotencyKey, paymentRejected);
                     return Json(ToOrderResponse(paymentRejected));
                 }
@@ -243,7 +244,7 @@ public sealed class ScenarioResultRegressionTests {
 
         private static HttpResponseMessage Json<T>(T payload) {
             return new HttpResponseMessage(HttpStatusCode.OK) {
-                Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, $"application/json"),
+                Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json"),
             };
         }
 

@@ -31,7 +31,7 @@ internal static class StatusEndpoints {
     /// <returns>The gateway and architecture service statuses.</returns>
     private static async Task<IResult> GetStatusAsync(
         ServiceStatusClient statusClient,
-        IOptions<ArchitectureEndpointOptions> options,
+        IOptions<ServiceEndpointOptions> options,
         CancellationToken cancellationToken) {
         var gateway = new ServiceStatus("Gateway", "local", IsOnline: true, "Online", Error: null);
 

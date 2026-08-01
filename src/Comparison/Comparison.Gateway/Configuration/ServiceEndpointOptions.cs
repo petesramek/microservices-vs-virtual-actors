@@ -5,11 +5,11 @@ using System.ComponentModel.DataAnnotations;
 /// <summary>
 /// Represents backend endpoint configuration for architecture implementations.
 /// </summary>
-public sealed class ArchitectureEndpointOptions {
+public sealed class ServiceEndpointOptions {
     /// <summary>
     /// The configuration section name.
     /// </summary>
-    public const string SectionName = $"ArchitectureEndpoints";
+    public const string SectionName = $"ServiceEndpoints";
 
     /// <summary>
     /// Gets the base URL of the microservice-style Orders API.
