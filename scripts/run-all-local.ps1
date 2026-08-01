@@ -1,5 +1,14 @@
-﻿Set-StrictMode -Version Latest
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
+
+Write-Host "Building the solution..."
+dotnet build $repositoryRoot
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Solution build failed."
+}
 
 Write-Host "Starting all local services for the comparison dashboard."
 Write-Host "Inventory.Api        -> http://localhost:5201"
@@ -9,9 +18,27 @@ Write-Host "Ordering.Api         -> http://localhost:5300"
 Write-Host "Comparison.Gateway   -> http://localhost:5100"
 Write-Host "Comparison.Ui        -> http://localhost:5000"
 
-Start-Process pwsh -ArgumentList "-NoExit", "-Command", "dotnet run --project src/Microservices/Inventory.Api"
-Start-Process pwsh -ArgumentList "-NoExit", "-Command", "dotnet run --project src/Microservices/Payments.Api"
-Start-Process pwsh -ArgumentList "-NoExit", "-Command", "dotnet run --project src/Microservices/Orders.Api"
-Start-Process pwsh -ArgumentList "-NoExit", "-Command", "dotnet run --project src/VirtualActors/Ordering.Api"
-Start-Process pwsh -ArgumentList "-NoExit", "-Command", "dotnet run --project src/Comparison/Comparison.Gateway"
-Start-Process pwsh -ArgumentList "-NoExit", "-Command", "dotnet run --project src/Comparison/Comparison.Ui"
+$projects = @(
+    "src/Microservices/Inventory.Api/Inventory.Api.csproj"
+    "src/Microservices/Payments.Api/Payments.Api.csproj"
+    "src/Microservices/Orders.Api/Orders.Api.csproj"
+    "src/VirtualActors/Ordering.Api/Ordering.Api.csproj"
+    "src/Comparison/Comparison.Gateway/Comparison.Gateway.csproj"
+    "src/Comparison/Comparison.Ui/Comparison.Ui.csproj"
+)
+
+foreach ($project in $projects) {
+    $projectPath = Join-Path $repositoryRoot $project
+
+    if (-not (Test-Path $projectPath -PathType Leaf)) {
+        throw "Project file was not found: $projectPath"
+    }
+
+    Start-Process powershell.exe `
+        -WorkingDirectory $repositoryRoot `
+        -ArgumentList @(
+            "-NoExit"
+            "-Command"
+            "dotnet run --no-build --project `"$projectPath`""
+        )
+}
