@@ -2,7 +2,7 @@ namespace Comparison.ScenarioRegressionTests;
 
 using Comparison.Contracts;
 using Comparison.Gateway.Clients;
-using FluentAssertions;
+using Shouldly;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
@@ -17,113 +17,113 @@ public sealed class ScenarioResultRegressionTests {
     /// Verifies that a successful order reports one request submission and one unique successful order.
     /// </summary>
     [Fact]
-    public async Task SuccessfulOrder_Should_ReportOneUniqueSuccessfulOrder() {
+    public async Task SuccessfulOrderReportsOneUniqueSuccessfulOrder() {
         var client = CreateClient();
         var request = CreateRequest(ScenarioKind.SuccessfulOrder, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
         var result = await client.RunAsync(request, CancellationToken.None);
 
-        result.TotalRequestSubmissions.Should().Be(1);
-        result.CompletedOrders.Should().Be(1);
-        result.RejectedOrders.Should().Be(0);
-        result.IdempotentResponses.Should().Be(0);
-        result.RemainingInventory.Should().Be(8);
-        result.Status.Should().Be(OrderStatus.Completed);
+        result.TotalRequestSubmissions.ShouldBe(1);
+        result.CompletedOrders.ShouldBe(1);
+        result.RejectedOrders.ShouldBe(0);
+        result.IdempotentResponses.ShouldBe(0);
+        result.RemainingInventory.ShouldBe(8);
+        result.Status.ShouldBe(OrderStatus.Completed);
     }
 
     /// <summary>
     /// Verifies that insufficient inventory reports one rejected submission without reducing inventory.
     /// </summary>
     [Fact]
-    public async Task InsufficientInventory_Should_RejectOneSubmissionAndLeaveInventoryUnchanged() {
+    public async Task InsufficientInventoryRejectsOneSubmissionAndLeavesInventoryUnchanged() {
         var client = CreateClient();
         var request = CreateRequest(ScenarioKind.InsufficientInventory, initialStock: 1, quantity: 2, concurrentRequests: 10);
 
         var result = await client.RunAsync(request, CancellationToken.None);
 
-        result.TotalRequestSubmissions.Should().Be(1);
-        result.CompletedOrders.Should().Be(0);
-        result.RejectedOrders.Should().Be(1);
-        result.IdempotentResponses.Should().Be(0);
-        result.RemainingInventory.Should().Be(1);
-        result.Status.Should().Be(OrderStatus.Rejected);
-        result.Reason.Should().Be("InsufficientInventory");
+        result.TotalRequestSubmissions.ShouldBe(1);
+        result.CompletedOrders.ShouldBe(0);
+        result.RejectedOrders.ShouldBe(1);
+        result.IdempotentResponses.ShouldBe(0);
+        result.RemainingInventory.ShouldBe(1);
+        result.Status.ShouldBe(OrderStatus.Rejected);
+        result.Reason.ShouldBe("InsufficientInventory");
     }
 
     /// <summary>
     /// Verifies that payment failure compensation releases the reserved inventory.
     /// </summary>
     [Fact]
-    public async Task PaymentFailureCompensation_Should_ReleaseInventoryAndRejectSubmission() {
+    public async Task PaymentFailureCompensationReleasesInventoryAndRejectsSubmission() {
         var client = CreateClient();
         var request = CreateRequest(ScenarioKind.PaymentFailureCompensation, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
         var result = await client.RunAsync(request, CancellationToken.None);
 
-        result.TotalRequestSubmissions.Should().Be(1);
-        result.CompletedOrders.Should().Be(0);
-        result.RejectedOrders.Should().Be(1);
-        result.IdempotentResponses.Should().Be(0);
-        result.RemainingInventory.Should().Be(10);
-        result.Status.Should().Be(OrderStatus.Rejected);
-        result.Reason.Should().Be("PaymentFailed");
+        result.TotalRequestSubmissions.ShouldBe(1);
+        result.CompletedOrders.ShouldBe(0);
+        result.RejectedOrders.ShouldBe(1);
+        result.IdempotentResponses.ShouldBe(0);
+        result.RemainingInventory.ShouldBe(10);
+        result.Status.ShouldBe(OrderStatus.Rejected);
+        result.Reason.ShouldBe("PaymentFailed");
     }
 
     /// <summary>
     /// Verifies that payment timeout after reservation is reported as a timeout and releases inventory.
     /// </summary>
     [Fact]
-    public async Task PaymentTimeoutAfterReservation_Should_ReportTimeoutAndReleaseInventory() {
+    public async Task PaymentTimeoutAfterReservationReportsTimeoutAndReleasesInventory() {
         var client = CreateClient();
         var request = CreateRequest(ScenarioKind.PaymentTimeoutAfterReservation, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
         var result = await client.RunAsync(request, CancellationToken.None);
 
-        result.TotalRequestSubmissions.Should().Be(1);
-        result.CompletedOrders.Should().Be(0);
-        result.RejectedOrders.Should().Be(1);
-        result.IdempotentResponses.Should().Be(0);
-        result.RemainingInventory.Should().Be(10);
-        result.Status.Should().Be(OrderStatus.Rejected);
-        result.Reason.Should().Be("PaymentTimeout");
-        result.Events.Should().Contain(scenarioEvent => scenarioEvent.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase));
+        result.TotalRequestSubmissions.ShouldBe(1);
+        result.CompletedOrders.ShouldBe(0);
+        result.RejectedOrders.ShouldBe(1);
+        result.IdempotentResponses.ShouldBe(0);
+        result.RemainingInventory.ShouldBe(10);
+        result.Status.ShouldBe(OrderStatus.Rejected);
+        result.Reason.ShouldBe("PaymentTimeout");
+        result.Events.ShouldContain(scenarioEvent => scenarioEvent.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
     /// Verifies that hot product contention does not over-reserve inventory.
     /// </summary>
     [Fact]
-    public async Task HotProductContention_Should_NotOverReserveInventory() {
+    public async Task HotProductContentionDoesNotOverReserveInventory() {
         var client = CreateClient();
         var request = CreateRequest(ScenarioKind.HotProductContention, initialStock: 25, quantity: 1, concurrentRequests: 50);
 
         var result = await client.RunAsync(request, CancellationToken.None);
 
-        result.TotalRequestSubmissions.Should().Be(50);
-        result.CompletedOrders.Should().Be(25);
-        result.RejectedOrders.Should().Be(25);
-        result.IdempotentResponses.Should().Be(0);
-        result.RemainingInventory.Should().Be(0);
-        result.Reason.Should().Be("SomeOrdersRejected");
+        result.TotalRequestSubmissions.ShouldBe(50);
+        result.CompletedOrders.ShouldBe(25);
+        result.RejectedOrders.ShouldBe(25);
+        result.IdempotentResponses.ShouldBe(0);
+        result.RemainingInventory.ShouldBe(0);
+        result.Reason.ShouldBe("SomeOrdersRejected");
     }
 
     /// <summary>
     /// Verifies that duplicate request uses concurrent requests as the duplicate submission count.
     /// </summary>
     [Fact]
-    public async Task DuplicateRequest_Should_UseConcurrentRequestsAsDuplicateSubmissionCount() {
+    public async Task DuplicateRequestUsesConcurrentRequestsAsDuplicateSubmissionCount() {
         var client = CreateClient();
         var request = CreateRequest(ScenarioKind.DuplicateRequest, initialStock: 10, quantity: 2, concurrentRequests: 20);
 
         var result = await client.RunAsync(request, CancellationToken.None);
 
-        result.TotalRequestSubmissions.Should().Be(20);
-        result.CompletedOrders.Should().Be(1);
-        result.RejectedOrders.Should().Be(0);
-        result.IdempotentResponses.Should().Be(19);
-        result.RemainingInventory.Should().Be(8);
-        result.Status.Should().Be(OrderStatus.Completed);
-        result.Reason.Should().Be("IdempotentResultReturned");
+        result.TotalRequestSubmissions.ShouldBe(20);
+        result.CompletedOrders.ShouldBe(1);
+        result.RejectedOrders.ShouldBe(0);
+        result.IdempotentResponses.ShouldBe(19);
+        result.RemainingInventory.ShouldBe(8);
+        result.Status.ShouldBe(OrderStatus.Completed);
+        result.Reason.ShouldBe("IdempotentResultReturned");
     }
 
     private static IArchitectureClient CreateClient() {

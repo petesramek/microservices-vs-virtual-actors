@@ -1,10 +1,10 @@
 namespace Comparison.AcceptanceTests;
 
 using Comparison.Contracts;
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Shouldly;
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;
@@ -17,7 +17,7 @@ public sealed class ComparisonGatewayAcceptanceTests {
     [InlineData("microservices")]
     [InlineData("virtual-actors")]
     [InlineData("both")]
-    public async Task Gateway_Should_RunSelectedArchitecture(string architecture) {
+    public async Task GatewayRunSelectedArchitecture(string architecture) {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/run") {
@@ -32,21 +32,21 @@ public sealed class ComparisonGatewayAcceptanceTests {
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<RunScenarioResponse>();
-        result.Should().NotBeNull();
+        result.ShouldNotBeNull();
 
         if (architecture is "microservices" or "both") {
-            result!.Microservices.Should().NotBeNull();
+            result!.Microservices.ShouldNotBeNull();
         }
 
         if (architecture is "virtual-actors" or "both") {
-            result!.VirtualActors.Should().NotBeNull();
+            result!.VirtualActors.ShouldNotBeNull();
         }
     }
 
     [Fact]
-    public async Task Gateway_Should_RejectUnknownArchitectureHeader() {
+    public async Task GatewayRejectUnknownArchitectureHeader() {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/run") {
@@ -56,7 +56,7 @@ public sealed class ComparisonGatewayAcceptanceTests {
 
         var response = await client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
     private static WebApplicationFactory<Program> CreateFactory() {

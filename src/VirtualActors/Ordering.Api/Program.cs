@@ -24,7 +24,9 @@ app.Use(async (context, next) => {
         ["CorrelationId"] = correlationId
     });
 
-    app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+    if (app.Logger.IsEnabled(LogLevel.Information)) {
+        app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+    }
     await next();
 });
 
@@ -54,7 +56,9 @@ app.MapPost("/api/orders", async (RunScenarioRequest request, IClusterClient cli
         request.Quantity,
         request.SimulatePaymentFailure);
 
-    logger.LogInformation("Virtual actor order {OrderId} completed with status {Status}", result.OrderId, result.Status);
+    if (logger.IsEnabled(LogLevel.Information)) {
+        logger.LogInformation("Virtual actor order {OrderId} completed with status {Status}", result.OrderId, result.Status);
+    }
     return Results.Ok(ToResponse(result));
 });
 

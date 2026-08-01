@@ -1,14 +1,14 @@
 namespace VirtualActors.Tests;
 
 using Comparison.Contracts;
-using FluentAssertions;
 using Ordering.Grains.Interfaces;
+using Shouldly;
 using Xunit;
 
 /// <summary>
 /// Tests for the virtual actor-style order workflow.
 /// </summary>
-[Collection(OrleansClusterCollection.Name)]
+[Collection(OrleansClusterFixtureDefinition.Name)]
 public sealed class VirtualActorOrderWorkflowTests {
     private readonly OrleansClusterFixture _fixture;
 
@@ -21,45 +21,45 @@ public sealed class VirtualActorOrderWorkflowTests {
     }
 
     [Fact]
-    public async Task OrdersApi_Should_CompleteSuccessfulOrder() {
+    public async Task OrdersApiCompletesSuccessfulOrder() {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
 
         var result = await PlaceOrderAsync(productId, quantity: 2, simulatePaymentFailure: false);
         var inventory = await GetInventoryAsync(productId);
 
-        result.Status.Should().Be(OrderStatus.Completed.ToString());
-        inventory.AvailableQuantity.Should().Be(8);
+        result.Status.ShouldBe(OrderStatus.Completed.ToString());
+        inventory.AvailableQuantity.ShouldBe(8);
     }
 
     [Fact]
-    public async Task OrdersApi_Should_RejectOrderWhenInventoryIsInsufficient() {
+    public async Task OrdersApiRejectsOrderWhenInventoryIsInsufficient() {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 1);
 
         var result = await PlaceOrderAsync(productId, quantity: 2, simulatePaymentFailure: false);
         var inventory = await GetInventoryAsync(productId);
 
-        result.Status.Should().Be(OrderStatus.Rejected.ToString());
-        result.Reason.Should().Be("InsufficientInventory");
-        inventory.AvailableQuantity.Should().Be(1);
+        result.Status.ShouldBe(OrderStatus.Rejected.ToString());
+        result.Reason.ShouldBe("InsufficientInventory");
+        inventory.AvailableQuantity.ShouldBe(1);
     }
 
     [Fact]
-    public async Task OrdersApi_Should_ReleaseInventoryWhenPaymentFails() {
+    public async Task OrdersApiReleasesInventoryWhenPaymentFails() {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
 
         var result = await PlaceOrderAsync(productId, quantity: 2, simulatePaymentFailure: true);
         var inventory = await GetInventoryAsync(productId);
 
-        result.Status.Should().Be(OrderStatus.Rejected.ToString());
-        result.Reason.Should().Be("PaymentFailed");
-        inventory.AvailableQuantity.Should().Be(10);
+        result.Status.ShouldBe(OrderStatus.Rejected.ToString());
+        result.Reason.ShouldBe("PaymentFailed");
+        inventory.AvailableQuantity.ShouldBe(10);
     }
 
     [Fact]
-    public async Task OrdersApi_Should_NotOverReserveInventoryForConcurrentOrders() {
+    public async Task OrdersApiDoesNotOverReserveInventoryForConcurrentOrders() {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 3);
 
@@ -70,13 +70,13 @@ public sealed class VirtualActorOrderWorkflowTests {
         var results = await Task.WhenAll(tasks);
         var inventory = await GetInventoryAsync(productId);
 
-        results.Count(result => result.Status == OrderStatus.Completed.ToString()).Should().Be(3);
-        results.Count(result => result.Status == OrderStatus.Rejected.ToString()).Should().Be(7);
-        inventory.AvailableQuantity.Should().Be(0);
+        results.Count(result => result.Status == OrderStatus.Completed.ToString()).ShouldBe(3);
+        results.Count(result => result.Status == OrderStatus.Rejected.ToString()).ShouldBe(7);
+        inventory.AvailableQuantity.ShouldBe(0);
     }
 
     [Fact]
-    public async Task OrderGrain_Should_ReturnExistingResultForDuplicateOrder() {
+    public async Task OrderGrainReturnsExistingResultForDuplicateOrder() {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
         var orderId = Guid.NewGuid();
@@ -87,8 +87,8 @@ public sealed class VirtualActorOrderWorkflowTests {
         var second = await order.PlaceAsync(idempotencyKey, "customer-001", productId, 2, simulatePaymentFailure: false);
         var inventory = await GetInventoryAsync(productId);
 
-        first.Should().Be(second);
-        inventory.AvailableQuantity.Should().Be(8);
+        first.ShouldBe(second);
+        inventory.AvailableQuantity.ShouldBe(8);
     }
 
     private async Task ResetInventoryAsync(string productId, int quantity) {

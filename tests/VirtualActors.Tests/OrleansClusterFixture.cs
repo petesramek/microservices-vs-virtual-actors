@@ -29,7 +29,7 @@ public sealed class OrleansClusterFixture : IAsyncLifetime {
 /// Collection fixture definition for Orleans cluster tests.
 /// </summary>
 [CollectionDefinition(Name)]
-public sealed class OrleansClusterCollection : ICollectionFixture<OrleansClusterFixture> {
+public sealed class OrleansClusterFixtureDefinition : ICollectionFixture<OrleansClusterFixture> {
     /// <summary>
     /// The collection name.
     /// </summary>

@@ -26,7 +26,9 @@ app.Use(async (context, next) => {
         ["CorrelationId"] = correlationId
     });
 
-    app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+    if (app.Logger.IsEnabled(LogLevel.Information)) {
+        app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+    }
     await next();
 });
 
@@ -56,7 +58,9 @@ app.MapPost("/api/payments/authorize", async (AuthorizePaymentRequest request, P
     await db.SaveChangesAsync(cancellationToken);
 
     var logger = loggerFactory.CreateLogger("Payments.Authorize");
-    logger.LogInformation("Payment authorization for order {OrderId} completed with authorized={Authorized}", request.OrderId, authorized);
+    if (logger.IsEnabled(LogLevel.Information)) {
+        logger.LogInformation("Payment authorization for order {OrderId} completed with authorized={Authorized}", request.OrderId, authorized);
+    }
 
     return Results.Ok(new AuthorizePaymentResponse(authorized, reason));
 });

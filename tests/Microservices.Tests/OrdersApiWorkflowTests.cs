@@ -1,8 +1,8 @@
 namespace Microservices.Tests;
 
 using Comparison.Contracts;
-using FluentAssertions;
 using Microservices.Tests.Infrastructure;
+using Shouldly;
 using System.Net.Http.Json;
 using Xunit;
 
@@ -11,7 +11,7 @@ using Xunit;
 /// </summary>
 public sealed class OrdersApiWorkflowTests {
     [Fact]
-    public async Task OrdersApi_Should_CompleteSuccessfulOrder() {
+    public async Task OrdersApiCompletesSuccessfulOrder() {
         using var factory = new OrdersApiFactory();
         using var client = factory.CreateClient();
         await factory.InventoryClient.ResetAsync(new ResetInventoryRequest("product-001", 10), CancellationToken.None);
@@ -19,12 +19,12 @@ public sealed class OrdersApiWorkflowTests {
         var response = await PlaceOrderAsync(client, new RunScenarioRequest { ProductId = "product-001", Quantity = 2 });
         var inventory = await factory.InventoryClient.GetAsync("product-001", CancellationToken.None);
 
-        response.Status.Should().Be(OrderStatus.Completed);
-        inventory.AvailableQuantity.Should().Be(8);
+        response.Status.ShouldBe(OrderStatus.Completed);
+        inventory.AvailableQuantity.ShouldBe(8);
     }
 
     [Fact]
-    public async Task OrdersApi_Should_RejectOrderWhenInventoryIsInsufficient() {
+    public async Task OrdersApiRejectsOrderWhenInventoryIsInsufficient() {
         using var factory = new OrdersApiFactory();
         using var client = factory.CreateClient();
         await factory.InventoryClient.ResetAsync(new ResetInventoryRequest("product-001", 1), CancellationToken.None);
@@ -32,13 +32,13 @@ public sealed class OrdersApiWorkflowTests {
         var response = await PlaceOrderAsync(client, new RunScenarioRequest { ProductId = "product-001", Quantity = 2 });
         var inventory = await factory.InventoryClient.GetAsync("product-001", CancellationToken.None);
 
-        response.Status.Should().Be(OrderStatus.Rejected);
-        response.Reason.Should().Be("InsufficientInventory");
-        inventory.AvailableQuantity.Should().Be(1);
+        response.Status.ShouldBe(OrderStatus.Rejected);
+        response.Reason.ShouldBe("InsufficientInventory");
+        inventory.AvailableQuantity.ShouldBe(1);
     }
 
     [Fact]
-    public async Task OrdersApi_Should_ReleaseInventoryWhenPaymentFails() {
+    public async Task OrdersApiReleasesInventoryWhenPaymentFails() {
         using var factory = new OrdersApiFactory();
         using var client = factory.CreateClient();
         await factory.InventoryClient.ResetAsync(new ResetInventoryRequest("product-001", 10), CancellationToken.None);
@@ -50,13 +50,13 @@ public sealed class OrdersApiWorkflowTests {
         });
         var inventory = await factory.InventoryClient.GetAsync("product-001", CancellationToken.None);
 
-        response.Status.Should().Be(OrderStatus.Rejected);
-        response.Reason.Should().Be("PaymentFailed");
-        inventory.AvailableQuantity.Should().Be(10);
+        response.Status.ShouldBe(OrderStatus.Rejected);
+        response.Reason.ShouldBe("PaymentFailed");
+        inventory.AvailableQuantity.ShouldBe(10);
     }
 
     [Fact]
-    public async Task OrdersApi_Should_NotOverReserveInventoryForConcurrentOrders() {
+    public async Task OrdersApiDoesNotOverReserveInventoryForConcurrentOrders() {
         using var factory = new OrdersApiFactory();
         using var client = factory.CreateClient();
         await factory.InventoryClient.ResetAsync(new ResetInventoryRequest("product-001", 3), CancellationToken.None);
@@ -73,13 +73,13 @@ public sealed class OrdersApiWorkflowTests {
         var results = await Task.WhenAll(tasks);
         var inventory = await factory.InventoryClient.GetAsync("product-001", CancellationToken.None);
 
-        results.Count(result => result.Status == OrderStatus.Completed).Should().Be(3);
-        results.Count(result => result.Status == OrderStatus.Rejected).Should().Be(7);
-        inventory.AvailableQuantity.Should().Be(0);
+        results.Count(result => result.Status == OrderStatus.Completed).ShouldBe(3);
+        results.Count(result => result.Status == OrderStatus.Rejected).ShouldBe(7);
+        inventory.AvailableQuantity.ShouldBe(0);
     }
 
     [Fact]
-    public async Task OrdersApi_Should_ReturnExistingOrderForDuplicateIdempotencyKey() {
+    public async Task OrdersApiReturnsExistingOrderForDuplicateIdempotencyKey() {
         using var factory = new OrdersApiFactory();
         using var client = factory.CreateClient();
         await factory.InventoryClient.ResetAsync(new ResetInventoryRequest("product-001", 10), CancellationToken.None);
@@ -96,8 +96,8 @@ public sealed class OrdersApiWorkflowTests {
         var second = await PlaceOrderAsync(client, request);
         var inventory = await factory.InventoryClient.GetAsync("product-001", CancellationToken.None);
 
-        first.Should().Be(second);
-        inventory.AvailableQuantity.Should().Be(8);
+        first.ShouldBe(second);
+        inventory.AvailableQuantity.ShouldBe(8);
     }
 
     private static async Task<OrderResponse> PlaceOrderAsync(HttpClient client, RunScenarioRequest request) {

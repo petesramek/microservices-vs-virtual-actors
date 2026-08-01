@@ -26,7 +26,9 @@ app.Use(async (context, next) => {
         ["CorrelationId"] = correlationId
     });
 
-    app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+    if (app.Logger.IsEnabled(LogLevel.Information)) {
+        app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
+    }
     await next();
 });
 
@@ -86,7 +88,9 @@ app.MapPost("/api/inventory/{productId}/reserve", async (string productId, Reser
     await db.SaveChangesAsync(cancellationToken);
     await transaction.CommitAsync(cancellationToken);
 
-    logger.LogInformation("Reserved {Quantity} item(s) of product {ProductId} for order {OrderId}", request.Quantity, productId, request.OrderId);
+    if (logger.IsEnabled(LogLevel.Information)) {
+        logger.LogInformation("Reserved {Quantity} item(s) of product {ProductId} for order {OrderId}", request.Quantity, productId, request.OrderId);
+    }
     return Results.Ok(new ReserveInventoryResponse(true, null, item.AvailableQuantity));
 });
 
@@ -104,7 +108,9 @@ app.MapPost("/api/inventory/{productId}/release", async (string productId, Relea
     db.Reservations.Remove(reservation);
     await db.SaveChangesAsync(cancellationToken);
 
-    logger.LogInformation("Released reservation {ReservationId} for product {ProductId}", request.ReservationId, productId);
+    if (logger.IsEnabled(LogLevel.Information)) {
+        logger.LogInformation("Released reservation {ReservationId} for product {ProductId}", request.ReservationId, productId);
+    }
     return Results.Ok(new InventoryResponse(productId, item.AvailableQuantity));
 });
 
