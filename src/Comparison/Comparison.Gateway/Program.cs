@@ -1,6 +1,7 @@
 using Comparison.Contracts;
 using Comparison.Gateway.Clients;
 using Comparison.Gateway.Configuration;
+using Comparison.Gateway.Extensions;
 using Comparison.Gateway.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
@@ -45,33 +46,7 @@ builder.Services.AddHttpClient<VirtualActorsArchitectureClient>((services, clien
 WebApplication app = builder.Build();
 
 // Establish one correlation identifier for the gateway request and all downstream calls.
-app.Use(async (context, next) => {
-    const string CorrelationIdHeader = "X-Correlation-ID";
-
-    // Preserve a caller-supplied identifier or create one at the gateway boundary.
-    var correlationId = context.Request.Headers[CorrelationIdHeader].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(correlationId)) {
-        correlationId = $"run-{Guid.NewGuid():N}";
-    }
-
-    // Return the identifier to the caller and expose it to the downstream architecture clients.
-    context.Response.Headers[CorrelationIdHeader] = correlationId;
-    CorrelationContext.CurrentCorrelationId = correlationId;
-
-    // Enrich every gateway log written during this request with the same identifier.
-    using IDisposable? scope = app.Logger.BeginScope(new Dictionary<string, object>(StringComparer.Ordinal) {
-        ["CorrelationId"] = correlationId,
-    });
-
-    app.Logger.HandlingRequestWithCorrelationId(correlationId);
-
-    try {
-        await next().ConfigureAwait(false);
-    } finally {
-        // Prevent the ambient correlation identifier from leaking into a later request.
-        CorrelationContext.CurrentCorrelationId = null;
-    }
-});
+app.UseCorrelationId();
 
 // Convert unhandled failures outside the explicitly handled scenario flow into problem-details responses.
 app.UseExceptionHandler();
