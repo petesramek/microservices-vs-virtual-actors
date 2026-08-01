@@ -127,32 +127,42 @@ static async Task<IResult> RunScenario(
     ILogger logger = loggerFactory.CreateLogger($"Comparison.Gateway");
     logger.RunningScenario(request.Scenario, architecture);
 
-    ArchitectureRunResult? microservices = null;
-    ArchitectureRunResult? virtualActors = null;
+    try {
+        ArchitectureRunResult? microservices = null;
+        ArchitectureRunResult? virtualActors = null;
 
-    if (architecture.Equals($"microservices", StringComparison.OrdinalIgnoreCase)
-        || architecture.Equals($"both", StringComparison.OrdinalIgnoreCase)) {
-        microservices = await microservicesClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
+        if (architecture.Equals($"microservices", StringComparison.OrdinalIgnoreCase)
+            || architecture.Equals($"both", StringComparison.OrdinalIgnoreCase)) {
+            microservices = await microservicesClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (architecture.Equals($"virtual-actors", StringComparison.OrdinalIgnoreCase)
+            || architecture.Equals($"both", StringComparison.OrdinalIgnoreCase)) {
+            virtualActors = await virtualActorsClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (microservices is null && virtualActors is null) {
+            return Results.BadRequest(new {
+                Error = $"Unsupported X-Architecture value. Use microservices, virtual-actors, or both.",
+            });
+        }
+
+        logger.ScenarioCompleted(
+            request.Scenario,
+            architecture,
+            microservices is not null,
+            virtualActors is not null);
+
+        return Results.Ok(new RunScenarioResponse(request.Scenario, microservices, virtualActors));
     }
-
-    if (architecture.Equals($"virtual-actors", StringComparison.OrdinalIgnoreCase)
-        || architecture.Equals($"both", StringComparison.OrdinalIgnoreCase)) {
-        virtualActors = await virtualActorsClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
+    catch (OperationCanceledException) {
+        throw;
     }
+    catch (Exception exception) {
+        logger.ScenarioExecutionFailed(exception, request.Scenario, architecture);
 
-    if (microservices is null && virtualActors is null) {
-        return Results.BadRequest(new {
-            Error = $"Unsupported X-Architecture value. Use microservices, virtual-actors, or both.",
-        });
+        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
     }
-
-    logger.ScenarioCompleted(
-        request.Scenario,
-        architecture,
-        microservices is not null,
-        virtualActors is not null);
-
-    return Results.Ok(new RunScenarioResponse(request.Scenario, microservices, virtualActors));
 }
 
 public partial class Program;
