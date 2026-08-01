@@ -47,27 +47,37 @@ app.MapPost($"/api/inventory/reset", async (
 
     logger.ResettingInventory(request.ProductId, request.Quantity);
 
-    InventoryItem? item = await db.Items.SingleOrDefaultAsync(
-        item => item.ProductId == request.ProductId,
-        cancellationToken).ConfigureAwait(false);
+    try {
+        InventoryItem? item = await db.Items.SingleOrDefaultAsync(
+            item => item.ProductId == request.ProductId,
+            cancellationToken).ConfigureAwait(false);
 
-    if (item is null) {
-        item = new InventoryItem { ProductId = request.ProductId };
-        db.Items.Add(item);
+        if (item is null) {
+            item = new InventoryItem { ProductId = request.ProductId };
+            db.Items.Add(item);
+        }
+
+        item.AvailableQuantity = request.Quantity;
+
+        List<InventoryReservation> reservations = await db.Reservations
+            .Where(reservation => reservation.ProductId == request.ProductId)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        db.Reservations.RemoveRange(reservations);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.InventoryReset(item.ProductId, item.AvailableQuantity);
+
+        return Results.Ok(new InventoryResponse(item.ProductId, item.AvailableQuantity));
     }
+    catch (OperationCanceledException) {
+        throw;
+    }
+    catch (Exception exception) {
+        logger.InventoryResetFailed(exception, request.ProductId, request.Quantity);
 
-    item.AvailableQuantity = request.Quantity;
-
-    List<InventoryReservation> reservations = await db.Reservations
-        .Where(reservation => reservation.ProductId == request.ProductId)
-        .ToListAsync(cancellationToken).ConfigureAwait(false);
-
-    db.Reservations.RemoveRange(reservations);
-    await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-    logger.InventoryReset(item.ProductId, item.AvailableQuantity);
-
-    return Results.Ok(new InventoryResponse(item.ProductId, item.AvailableQuantity));
+        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+    }
 });
 
 app.MapGet("/api/inventory/{productId}", async (
@@ -76,17 +86,28 @@ app.MapGet("/api/inventory/{productId}", async (
     ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) => {
     ILogger logger = loggerFactory.CreateLogger("Inventory.Get");
-    InventoryItem? item = await db.Items.AsNoTracking().SingleOrDefaultAsync(
-        item => item.ProductId == productId,
-        cancellationToken).ConfigureAwait(false);
 
-    var response = item is null
-        ? new InventoryResponse(productId, 0)
-        : new InventoryResponse(item.ProductId, item.AvailableQuantity);
+    try {
+        InventoryItem? item = await db.Items.AsNoTracking().SingleOrDefaultAsync(
+            item => item.ProductId == productId,
+            cancellationToken).ConfigureAwait(false);
 
-    logger.InventoryRetrieved(response.ProductId, response.AvailableQuantity);
+        var response = item is null
+            ? new InventoryResponse(productId, 0)
+            : new InventoryResponse(item.ProductId, item.AvailableQuantity);
 
-    return Results.Ok(response);
+        logger.InventoryRetrieved(response.ProductId, response.AvailableQuantity);
+
+        return Results.Ok(response);
+    }
+    catch (OperationCanceledException) {
+        throw;
+    }
+    catch (Exception exception) {
+        logger.InventoryRetrievalFailed(exception, productId);
+
+        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+    }
 });
 
 app.MapPost("/api/inventory/{productId}/reserve", async (
@@ -103,72 +124,87 @@ app.MapPost("/api/inventory/{productId}/reserve", async (
         request.ReservationId,
         request.Quantity);
 
-    InventoryReservation? existingReservation = await db.Reservations.AsNoTracking().SingleOrDefaultAsync(
-        reservation => reservation.ReservationId == request.ReservationId,
-        cancellationToken).ConfigureAwait(false);
-
-    if (existingReservation is not null) {
-        InventoryItem current = await db.Items.AsNoTracking().SingleAsync(
-            item => item.ProductId == productId,
+    try {
+        InventoryReservation? existingReservation = await db.Reservations.AsNoTracking().SingleOrDefaultAsync(
+            reservation => reservation.ReservationId == request.ReservationId,
             cancellationToken).ConfigureAwait(false);
 
-        logger.InventoryReservationCompleted(
-            productId,
-            request.OrderId,
-            request.ReservationId,
-            reserved: true,
-            current.AvailableQuantity);
-
-        return Results.Ok(new ReserveInventoryResponse(
-            Reserved: true,
-            Reason: null,
-            current.AvailableQuantity));
-    }
-
-    IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-    await using (transaction.ConfigureAwait(false)) {
-        InventoryItem? item = await db.Items.SingleOrDefaultAsync(
-            item => item.ProductId == productId,
-            cancellationToken).ConfigureAwait(false);
-
-        if (item is null || item.AvailableQuantity < request.Quantity) {
-            var availableQuantity = item?.AvailableQuantity ?? 0;
+        if (existingReservation is not null) {
+            InventoryItem current = await db.Items.AsNoTracking().SingleAsync(
+                item => item.ProductId == productId,
+                cancellationToken).ConfigureAwait(false);
 
             logger.InventoryReservationCompleted(
                 productId,
                 request.OrderId,
                 request.ReservationId,
-                reserved: false,
-                availableQuantity);
+                reserved: true,
+                current.AvailableQuantity);
 
             return Results.Ok(new ReserveInventoryResponse(
-                Reserved: false,
-                $"InsufficientInventory",
-                availableQuantity));
+                Reserved: true,
+                Reason: null,
+                current.AvailableQuantity));
         }
 
-        item.AvailableQuantity -= request.Quantity;
-        db.Reservations.Add(new InventoryReservation {
-            ReservationId = request.ReservationId,
-            OrderId = request.OrderId,
-            ProductId = productId,
-            Quantity = request.Quantity,
-        });
+        IDbContextTransaction transaction = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        await using (transaction.ConfigureAwait(false)) {
+            InventoryItem? item = await db.Items.SingleOrDefaultAsync(
+                item => item.ProductId == productId,
+                cancellationToken).ConfigureAwait(false);
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            if (item is null || item.AvailableQuantity < request.Quantity) {
+                var availableQuantity = item?.AvailableQuantity ?? 0;
 
-        logger.InventoryReservationCompleted(
+                logger.InventoryReservationCompleted(
+                    productId,
+                    request.OrderId,
+                    request.ReservationId,
+                    reserved: false,
+                    availableQuantity);
+
+                return Results.Ok(new ReserveInventoryResponse(
+                    Reserved: false,
+                    $"InsufficientInventory",
+                    availableQuantity));
+            }
+
+            item.AvailableQuantity -= request.Quantity;
+            db.Reservations.Add(new InventoryReservation {
+                ReservationId = request.ReservationId,
+                OrderId = request.OrderId,
+                ProductId = productId,
+                Quantity = request.Quantity,
+            });
+
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+            logger.InventoryReservationCompleted(
+                productId,
+                request.OrderId,
+                request.ReservationId,
+                reserved: true,
+                item.AvailableQuantity);
+
+            return Results.Ok(new ReserveInventoryResponse(
+                Reserved: true,
+                Reason: null,
+                item.AvailableQuantity));
+        }
+    }
+    catch (OperationCanceledException) {
+        throw;
+    }
+    catch (Exception exception) {
+        logger.InventoryReservationFailed(
+            exception,
             productId,
             request.OrderId,
             request.ReservationId,
-            reserved: true,
-            item.AvailableQuantity);
+            request.Quantity);
 
-        return Results.Ok(new ReserveInventoryResponse(
-            Reserved: true,
-            Reason: null,
-            item.AvailableQuantity));
+        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
     }
 });
 
@@ -182,32 +218,42 @@ app.MapPost("/api/inventory/{productId}/release", async (
 
     logger.ReleasingInventory(productId, request.ReservationId);
 
-    InventoryReservation? reservation = await db.Reservations.SingleOrDefaultAsync(
-        reservation => reservation.ReservationId == request.ReservationId && reservation.ProductId == productId,
-        cancellationToken).ConfigureAwait(false);
+    try {
+        InventoryReservation? reservation = await db.Reservations.SingleOrDefaultAsync(
+            reservation => reservation.ReservationId == request.ReservationId && reservation.ProductId == productId,
+            cancellationToken).ConfigureAwait(false);
 
-    if (reservation is null) {
-        InventoryItem? current = await db.Items.AsNoTracking().SingleOrDefaultAsync(
+        if (reservation is null) {
+            InventoryItem? current = await db.Items.AsNoTracking().SingleOrDefaultAsync(
+                item => item.ProductId == productId,
+                cancellationToken).ConfigureAwait(false);
+            var availableQuantity = current?.AvailableQuantity ?? 0;
+
+            logger.InventoryReleased(productId, request.ReservationId, availableQuantity);
+
+            return Results.Ok(new InventoryResponse(productId, availableQuantity));
+        }
+
+        InventoryItem item = await db.Items.SingleAsync(
             item => item.ProductId == productId,
             cancellationToken).ConfigureAwait(false);
-        var availableQuantity = current?.AvailableQuantity ?? 0;
 
-        logger.InventoryReleased(productId, request.ReservationId, availableQuantity);
+        item.AvailableQuantity += reservation.Quantity;
+        db.Reservations.Remove(reservation);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(new InventoryResponse(productId, availableQuantity));
+        logger.InventoryReleased(productId, request.ReservationId, item.AvailableQuantity);
+
+        return Results.Ok(new InventoryResponse(productId, item.AvailableQuantity));
     }
+    catch (OperationCanceledException) {
+        throw;
+    }
+    catch (Exception exception) {
+        logger.InventoryReleaseFailed(exception, productId, request.ReservationId);
 
-    InventoryItem item = await db.Items.SingleAsync(
-        item => item.ProductId == productId,
-        cancellationToken).ConfigureAwait(false);
-
-    item.AvailableQuantity += reservation.Quantity;
-    db.Reservations.Remove(reservation);
-    await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-    logger.InventoryReleased(productId, request.ReservationId, item.AvailableQuantity);
-
-    return Results.Ok(new InventoryResponse(productId, item.AvailableQuantity));
+        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+    }
 });
 
 await app.RunAsync().ConfigureAwait(false);
