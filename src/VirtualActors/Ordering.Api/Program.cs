@@ -39,6 +39,9 @@ app.MapPost("/api/scenarios/reset", async (
     ILoggerFactory loggerFactory) => {
     ILogger logger = loggerFactory.CreateLogger("Ordering.ResetInventory");
     IInventoryItemGrain inventory = client.GetGrain<IInventoryItemGrain>(request.ProductId);
+
+    logger.ResettingInventory(request.ProductId, request.Quantity);
+
     InventorySnapshot snapshot = await inventory.ResetAsync(request.Quantity).ConfigureAwait(false);
 
     logger.InventoryReset(snapshot.ProductId, snapshot.AvailableQuantity);

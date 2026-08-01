@@ -16,7 +16,7 @@ internal static partial class LogInformation {
     public static partial void HandlingRequestWithCorrelationId(this ILogger logger, string? correlationId);
 
     /// <summary>
-    /// Logs that a virtual actor order completed with a status.
+    /// Logs that an order completed with a status.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="orderId">The order identifier.</param>
@@ -90,4 +90,19 @@ internal static partial class LogInformation {
         this ILogger logger,
         Guid orderId,
         string status);
+
+    /// <summary>
+    /// Logs that inventory for a product is being reset.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="productId">The product identifier.</param>
+    /// <param name="quantity">The requested quantity.</param>
+    [LoggerMessage(
+        EventId = EventIdBase + 7,
+        Level = Level,
+        Message = "Resetting inventory for product {ProductId} to {Quantity}.")]
+    public static partial void ResettingInventory(
+        this ILogger logger,
+        string productId,
+        int quantity);
 }
