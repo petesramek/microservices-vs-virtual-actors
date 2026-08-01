@@ -14,6 +14,9 @@ builder.Logging.AddConsole();
 // Produce standardized problem-details responses for unhandled gateway failures.
 builder.Services.AddProblemDetails();
 
+// Encapsulate backend health checks and their status mapping.
+builder.Services.AddSingleton<ServiceStatusClient>();
+
 // Bind and validate the downstream architecture endpoints during application startup.
 builder.Services
     .AddOptions<ArchitectureEndpointOptions>()
@@ -81,81 +84,36 @@ app.MapGet("/", () => Results.Ok(new {
 
 // Report the current reachability of the gateway and both architecture backends.
 app.MapGet("/api/status", async (
-    IHttpClientFactory httpClientFactory,
+    ServiceStatusClient statusChecker,
     IOptions<ArchitectureEndpointOptions> options,
     CancellationToken cancellationToken) => {
-    HttpClient httpClient = httpClientFactory.CreateClient();
     var gateway = new ServiceStatus("Gateway", "local", IsOnline: true, "Online", Error: null);
 
     // Start both independent health checks before awaiting either result.
-    Task<ServiceStatus> microservicesTask = CheckBackendAsync(
-        httpClient,
+    Task<ServiceStatus> microservicesTask = statusChecker.CheckAsync(
         "Microservices",
         options.Value.MicroservicesBaseUrl,
         cancellationToken);
 
-    Task<ServiceStatus> virtualActorsTask = CheckBackendAsync(
-        httpClient,
+    Task<ServiceStatus> virtualActorsTask = statusChecker.CheckAsync(
         "Virtual Actors",
         options.Value.VirtualActorsBaseUrl,
         cancellationToken);
 
-    ServiceStatus[] backendStatuses = await Task.WhenAll(
+    await Task.WhenAll(
         microservicesTask,
         virtualActorsTask).ConfigureAwait(false);
 
     return Results.Ok(new BackendStatusResponse(
         gateway,
-        backendStatuses[0],
-        backendStatuses[1]));
+        await microservicesTask.ConfigureAwait(false),
+        await virtualActorsTask.ConfigureAwait(false)));
 });
 
 // Run the selected comparison scenario against one or both architectures.
 app.MapPost("/api/scenarios/run", RunScenario);
 
 await app.RunAsync().ConfigureAwait(false);
-
-/// <summary>
-/// Checks whether an architecture backend responds successfully to its health endpoint.
-/// </summary>
-/// <param name="httpClient">The HTTP client used to call the backend.</param>
-/// <param name="name">The display name of the backend.</param>
-/// <param name="baseUrl">The backend base URL.</param>
-/// <param name="cancellationToken">The token used to cancel the request.</param>
-/// <returns>The current backend service status.</returns>
-static async Task<ServiceStatus> CheckBackendAsync(
-    HttpClient httpClient,
-    string name,
-    string baseUrl,
-    CancellationToken cancellationToken) {
-    var healthUrl = new Uri(new Uri(baseUrl.TrimEnd('/') + "/"), "health/live");
-
-    // Health-check failures are returned as backend status rather than failing the gateway status endpoint.
-    try {
-        using HttpResponseMessage response = await httpClient.GetAsync(healthUrl, cancellationToken).ConfigureAwait(false);
-
-        return new ServiceStatus(
-            name,
-            healthUrl.ToString(),
-            response.IsSuccessStatusCode,
-            $"{(int)response.StatusCode} {response.StatusCode}",
-            response.IsSuccessStatusCode
-                ? null
-                : "Health endpoint returned a non-success status code.");
-    }
-    catch (OperationCanceledException) {
-        // Preserve request cancellation instead of reporting the backend as unavailable.
-        throw;
-    }
-    catch (Exception exception) {
-        return new ServiceStatus(
-            name,
-            healthUrl.ToString(),
-            IsOnline: false,
-            "Unavailable",
-            exception.Message);
-    }
-}
 
 /// <summary>
 /// Runs a comparison scenario against the architecture selected by the request header.
