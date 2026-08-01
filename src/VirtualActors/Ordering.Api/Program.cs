@@ -42,11 +42,21 @@ app.MapPost("/api/scenarios/reset", async (
 
     logger.ResettingInventory(request.ProductId, request.Quantity);
 
-    InventorySnapshot snapshot = await inventory.ResetAsync(request.Quantity).ConfigureAwait(false);
+    try {
+        InventorySnapshot snapshot = await inventory.ResetAsync(request.Quantity).ConfigureAwait(false);
 
-    logger.InventoryReset(snapshot.ProductId, snapshot.AvailableQuantity);
+        logger.InventoryReset(snapshot.ProductId, snapshot.AvailableQuantity);
 
-    return Results.Ok(new InventoryResponse(snapshot.ProductId, snapshot.AvailableQuantity));
+        return Results.Ok(new InventoryResponse(snapshot.ProductId, snapshot.AvailableQuantity));
+    }
+    catch (OperationCanceledException) {
+        throw;
+    }
+    catch (Exception exception) {
+        logger.InventoryResetFailed(exception, request.ProductId, request.Quantity);
+
+        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+    }
 });
 
 app.MapGet("/api/inventory/{productId}", async (
