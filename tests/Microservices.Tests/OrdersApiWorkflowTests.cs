@@ -12,12 +12,12 @@ using Xunit;
 public sealed class OrdersApiWorkflowTests {
     [Fact]
     public async Task OrdersApiCompletesSuccessfulOrder() {
-        using var factory = new OrdersApiFactory();
-        using var client = factory.CreateClient();
+        await using var factory = new OrdersApiFactory();
+        using HttpClient client = factory.CreateClient();
         await factory.InventoryClient.ResetAsync(new ResetInventoryRequest($"product-001", 10), CancellationToken.None);
 
-        var response = await PlaceOrderAsync(client, new RunScenarioRequest { ProductId = $"product-001", Quantity = 2 });
-        var inventory = await factory.InventoryClient.GetAsync($"product-001", CancellationToken.None);
+        OrderResponse response = await PlaceOrderAsync(client, new RunScenarioRequest { ProductId = $"product-001", Quantity = 2 });
+        InventoryResponse inventory = await factory.InventoryClient.GetAsync($"product-001", CancellationToken.None);
 
         response.Status.ShouldBe(OrderStatus.Completed);
         inventory.AvailableQuantity.ShouldBe(8);
@@ -25,12 +25,12 @@ public sealed class OrdersApiWorkflowTests {
 
     [Fact]
     public async Task OrdersApiRejectsOrderWhenInventoryIsInsufficient() {
-        using var factory = new OrdersApiFactory();
-        using var client = factory.CreateClient();
+        await using var factory = new OrdersApiFactory();
+        using HttpClient client = factory.CreateClient();
         await factory.InventoryClient.ResetAsync(new ResetInventoryRequest($"product-001", 1), CancellationToken.None);
 
-        var response = await PlaceOrderAsync(client, new RunScenarioRequest { ProductId = $"product-001", Quantity = 2 });
-        var inventory = await factory.InventoryClient.GetAsync($"product-001", CancellationToken.None);
+        OrderResponse response = await PlaceOrderAsync(client, new RunScenarioRequest { ProductId = $"product-001", Quantity = 2 });
+        InventoryResponse inventory = await factory.InventoryClient.GetAsync($"product-001", CancellationToken.None);
 
         response.Status.ShouldBe(OrderStatus.Rejected);
         response.Reason.ShouldBe($"InsufficientInventory");
@@ -39,16 +39,16 @@ public sealed class OrdersApiWorkflowTests {
 
     [Fact]
     public async Task OrdersApiReleasesInventoryWhenPaymentFails() {
-        using var factory = new OrdersApiFactory();
-        using var client = factory.CreateClient();
+        await using var factory = new OrdersApiFactory();
+        using HttpClient client = factory.CreateClient();
         await factory.InventoryClient.ResetAsync(new ResetInventoryRequest($"product-001", 10), CancellationToken.None);
 
-        var response = await PlaceOrderAsync(client, new RunScenarioRequest {
+        OrderResponse response = await PlaceOrderAsync(client, new RunScenarioRequest {
             ProductId = $"product-001",
             Quantity = 2,
             SimulatePaymentFailure = true,
         });
-        var inventory = await factory.InventoryClient.GetAsync($"product-001", CancellationToken.None);
+        InventoryResponse inventory = await factory.InventoryClient.GetAsync($"product-001", CancellationToken.None);
 
         response.Status.ShouldBe(OrderStatus.Rejected);
         response.Reason.ShouldBe($"PaymentFailed");
@@ -57,11 +57,11 @@ public sealed class OrdersApiWorkflowTests {
 
     [Fact]
     public async Task OrdersApiDoesNotOverReserveInventoryForConcurrentOrders() {
-        using var factory = new OrdersApiFactory();
-        using var client = factory.CreateClient();
+        await using var factory = new OrdersApiFactory();
+        using HttpClient client = factory.CreateClient();
         await factory.InventoryClient.ResetAsync(new ResetInventoryRequest($"product-001", 3), CancellationToken.None);
 
-        var tasks = Enumerable.Range(1, 10)
+        Task<OrderResponse>[] tasks = Enumerable.Range(1, 10)
             .Select(index => PlaceOrderAsync(client, new RunScenarioRequest {
                 OrderId = Guid.NewGuid(),
                 ProductId = $"product-001",
@@ -70,8 +70,8 @@ public sealed class OrdersApiWorkflowTests {
             }))
             .ToArray();
 
-        var results = await Task.WhenAll(tasks);
-        var inventory = await factory.InventoryClient.GetAsync($"product-001", CancellationToken.None);
+        OrderResponse[] results = await Task.WhenAll(tasks);
+        InventoryResponse inventory = await factory.InventoryClient.GetAsync($"product-001", CancellationToken.None);
 
         results.Count(result => result.Status == OrderStatus.Completed).ShouldBe(3);
         results.Count(result => result.Status == OrderStatus.Rejected).ShouldBe(7);
@@ -80,8 +80,8 @@ public sealed class OrdersApiWorkflowTests {
 
     [Fact]
     public async Task OrdersApiReturnsExistingOrderForDuplicateIdempotencyKey() {
-        using var factory = new OrdersApiFactory();
-        using var client = factory.CreateClient();
+        await using var factory = new OrdersApiFactory();
+        using HttpClient client = factory.CreateClient();
         await factory.InventoryClient.ResetAsync(new ResetInventoryRequest($"product-001", 10), CancellationToken.None);
 
         var orderId = Guid.NewGuid();
@@ -92,16 +92,16 @@ public sealed class OrdersApiWorkflowTests {
             IdempotencyKey = $"duplicate-request",
         };
 
-        var first = await PlaceOrderAsync(client, request);
-        var second = await PlaceOrderAsync(client, request);
-        var inventory = await factory.InventoryClient.GetAsync($"product-001", CancellationToken.None);
+        OrderResponse first = await PlaceOrderAsync(client, request);
+        OrderResponse second = await PlaceOrderAsync(client, request);
+        InventoryResponse inventory = await factory.InventoryClient.GetAsync($"product-001", CancellationToken.None);
 
         first.ShouldBe(second);
         inventory.AvailableQuantity.ShouldBe(8);
     }
 
     private static async Task<OrderResponse> PlaceOrderAsync(HttpClient client, RunScenarioRequest request) {
-        var response = await client.PostAsJsonAsync($"/api/orders", request).ConfigureAwait(false);
+        HttpResponseMessage response = await client.PostAsJsonAsync($"/api/orders", request).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<OrderResponse>().ConfigureAwait(false))!;
     }

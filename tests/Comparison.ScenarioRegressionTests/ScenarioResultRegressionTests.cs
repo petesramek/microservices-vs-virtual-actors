@@ -18,10 +18,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task SuccessfulOrderReportsOneUniqueSuccessfulOrder() {
-        var client = CreateClient();
-        var request = CreateRequest(ScenarioKind.SuccessfulOrder, initialStock: 10, quantity: 2, concurrentRequests: 10);
+        IArchitectureClient client = CreateClient();
+        RunScenarioRequest request = CreateRequest(ScenarioKind.SuccessfulOrder, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
-        var result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(1);
@@ -36,10 +36,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task InsufficientInventoryRejectsOneSubmissionAndLeavesInventoryUnchanged() {
-        var client = CreateClient();
-        var request = CreateRequest(ScenarioKind.InsufficientInventory, initialStock: 1, quantity: 2, concurrentRequests: 10);
+        IArchitectureClient client = CreateClient();
+        RunScenarioRequest request = CreateRequest(ScenarioKind.InsufficientInventory, initialStock: 1, quantity: 2, concurrentRequests: 10);
 
-        var result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(0);
@@ -55,10 +55,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task PaymentFailureCompensationReleasesInventoryAndRejectsSubmission() {
-        var client = CreateClient();
-        var request = CreateRequest(ScenarioKind.PaymentFailureCompensation, initialStock: 10, quantity: 2, concurrentRequests: 10);
+        IArchitectureClient client = CreateClient();
+        RunScenarioRequest request = CreateRequest(ScenarioKind.PaymentFailureCompensation, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
-        var result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(0);
@@ -74,10 +74,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task PaymentTimeoutAfterReservationReportsTimeoutAndReleasesInventory() {
-        var client = CreateClient();
-        var request = CreateRequest(ScenarioKind.PaymentTimeoutAfterReservation, initialStock: 10, quantity: 2, concurrentRequests: 10);
+        IArchitectureClient client = CreateClient();
+        RunScenarioRequest request = CreateRequest(ScenarioKind.PaymentTimeoutAfterReservation, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
-        var result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(0);
@@ -94,10 +94,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task HotProductContentionDoesNotOverReserveInventory() {
-        var client = CreateClient();
-        var request = CreateRequest(ScenarioKind.HotProductContention, initialStock: 25, quantity: 1, concurrentRequests: 50);
+        IArchitectureClient client = CreateClient();
+        RunScenarioRequest request = CreateRequest(ScenarioKind.HotProductContention, initialStock: 25, quantity: 1, concurrentRequests: 50);
 
-        var result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(50);
         result.CompletedOrders.ShouldBe(25);
@@ -112,10 +112,10 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task DuplicateRequestUsesConcurrentRequestsAsDuplicateSubmissionCount() {
-        var client = CreateClient();
-        var request = CreateRequest(ScenarioKind.DuplicateRequest, initialStock: 10, quantity: 2, concurrentRequests: 20);
+        IArchitectureClient client = CreateClient();
+        RunScenarioRequest request = CreateRequest(ScenarioKind.DuplicateRequest, initialStock: 10, quantity: 2, concurrentRequests: 20);
 
-        var result = await client.RunAsync(request, CancellationToken.None);
+        ArchitectureRunResult result = await client.RunAsync(request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(20);
         result.CompletedOrders.ShouldBe(1);
@@ -177,14 +177,14 @@ public sealed class ScenarioResultRegressionTests {
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
 
             if (request.Method == HttpMethod.Post && path.Equals($"/api/scenarios/reset", StringComparison.OrdinalIgnoreCase)) {
-                var reset = await ReadJsonAsync<ResetInventoryRequest>(request, cancellationToken).ConfigureAwait(false);
+                ResetInventoryRequest reset = await ReadJsonAsync<ResetInventoryRequest>(request, cancellationToken).ConfigureAwait(false);
                 inventoryByProductId[reset.ProductId] = reset.Quantity;
                 ordersByIdempotencyKey.Clear();
                 return Json(new { ok = true });
             }
 
             if (request.Method == HttpMethod.Post && path.Equals($"/api/orders", StringComparison.OrdinalIgnoreCase)) {
-                var orderRequest = await ReadJsonAsync<RunScenarioRequest>(request, cancellationToken).ConfigureAwait(false);
+                RunScenarioRequest orderRequest = await ReadJsonAsync<RunScenarioRequest>(request, cancellationToken).ConfigureAwait(false);
                 return await PlaceOrderAsync(orderRequest, cancellationToken).ConfigureAwait(false);
             }
 
@@ -202,7 +202,7 @@ public sealed class ScenarioResultRegressionTests {
         private async Task<HttpResponseMessage> PlaceOrderAsync(RunScenarioRequest request, CancellationToken cancellationToken) {
             await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try {
-                if (ordersByIdempotencyKey.TryGetValue(request.IdempotencyKey, out var existing)) {
+                if (ordersByIdempotencyKey.TryGetValue(request.IdempotencyKey, out StoredOrder? existing)) {
                     return Json(ToOrderResponse(existing));
                 }
 
@@ -222,7 +222,7 @@ public sealed class ScenarioResultRegressionTests {
                     return Json(ToOrderResponse(paymentRejected));
                 }
 
-                var completed = new StoredOrder(request.OrderId, OrderStatus.Completed, null);
+                var completed = new StoredOrder(request.OrderId, OrderStatus.Completed, Reason: null);
                 ordersByIdempotencyKey.TryAdd(request.IdempotencyKey, completed);
                 return Json(ToOrderResponse(completed));
             } finally {
@@ -235,7 +235,7 @@ public sealed class ScenarioResultRegressionTests {
         }
 
         private static async Task<T> ReadJsonAsync<T>(HttpRequestMessage request, CancellationToken cancellationToken) {
-            var stream = await request.Content!.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            Stream stream = await request.Content!.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             await using (stream.ConfigureAwait(false)) {
                 return (await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions, cancellationToken).ConfigureAwait(false))!;
             }

@@ -29,7 +29,7 @@ public sealed class ScenarioRunnerClient(HttpClient httpClient) {
 
         httpRequest.Headers.Add($"X-Architecture", architecture);
 
-        var response = await httpClient.SendAsync(httpRequest).ConfigureAwait(false);
+        HttpResponseMessage response = await httpClient.SendAsync(httpRequest).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<RunScenarioResponse>().ConfigureAwait(false);

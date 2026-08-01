@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Payments.Api.Data;
 using Payments.Api.Models;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -13,7 +13,7 @@ builder.Services.AddDbContext<PaymentsDbContext>(options => {
     options.UseSqlite(connectionString);
 });
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 // correlation-id-logging
 app.Use(async (context, next) => {
     var correlationId = context.Request.Headers[$"X-Correlation-ID"].FirstOrDefault();
@@ -22,7 +22,7 @@ app.Use(async (context, next) => {
         return;
     }
 
-    using var scope = app.Logger.BeginScope(new Dictionary<string, object>(StringComparer.Ordinal) {
+    using IDisposable? scope = app.Logger.BeginScope(new Dictionary<string, object>(StringComparer.Ordinal) {
         [$"CorrelationId"] = correlationId,
     });
 
@@ -34,11 +34,11 @@ app.Use(async (context, next) => {
 
 await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
 
-app.MapGet($"/", () => Results.Ok(new { Name = $"Payments API", Phase = $"Microservices"}));
+app.MapGet($"/", () => Results.Ok(new { Name = $"Payments API", Phase = $"Microservices" }));
 app.MapGet($"/health/live", () => Results.Ok($"Healthy"));
 
 app.MapPost($"/api/payments/authorize", async (AuthorizePaymentRequest request, PaymentsDbContext db, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
-    var existing = await db.PaymentAttempts.AsNoTracking().SingleOrDefaultAsync(x => x.IdempotencyKey == request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+    PaymentAttempt? existing = await db.PaymentAttempts.AsNoTracking().SingleOrDefaultAsync(x => x.IdempotencyKey == request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
     if (existing is not null) {
         return Results.Ok(new AuthorizePaymentResponse(existing.Authorized, existing.Reason));
     }
@@ -57,19 +57,18 @@ app.MapPost($"/api/payments/authorize", async (AuthorizePaymentRequest request, 
 
     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-    var logger = loggerFactory.CreateLogger($"Payments.Authorize");
+    ILogger logger = loggerFactory.CreateLogger($"Payments.Authorize");
     if (logger.IsEnabled(LogLevel.Information)) {
         logger.LogInformation($"Payment authorization for order {request.OrderId} completed with authorized={authorized}");
     }
 
     return Results.Ok(new AuthorizePaymentResponse(authorized, reason));
 });
-
-app.Run();
+await app.RunAsync().ConfigureAwait(false);
 
 static async Task EnsureDatabaseAsync(IServiceProvider services) {
-    using var scope = services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<PaymentsDbContext>();
+    using IServiceScope scope = services.CreateScope();
+    PaymentsDbContext db = scope.ServiceProvider.GetRequiredService<PaymentsDbContext>();
     await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
 }
 

@@ -1,6 +1,7 @@
 namespace VirtualActors.Tests;
 
 using Comparison.Contracts;
+using Ordering.Grains.Contracts;
 using Ordering.Grains.Interfaces;
 using Shouldly;
 using Xunit;
@@ -25,8 +26,8 @@ public sealed class VirtualActorOrderWorkflowTests {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
 
-        var result = await PlaceOrderAsync(productId, quantity: 2, simulatePaymentFailure: false);
-        var inventory = await GetInventoryAsync(productId);
+        GrainOrderResult result = await PlaceOrderAsync(productId, quantity: 2, simulatePaymentFailure: false);
+        InventorySnapshot inventory = await GetInventoryAsync(productId);
 
         result.Status.ShouldBe(OrderStatus.Completed.ToString());
         inventory.AvailableQuantity.ShouldBe(8);
@@ -37,8 +38,8 @@ public sealed class VirtualActorOrderWorkflowTests {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 1);
 
-        var result = await PlaceOrderAsync(productId, quantity: 2, simulatePaymentFailure: false);
-        var inventory = await GetInventoryAsync(productId);
+        GrainOrderResult result = await PlaceOrderAsync(productId, quantity: 2, simulatePaymentFailure: false);
+        InventorySnapshot inventory = await GetInventoryAsync(productId);
 
         result.Status.ShouldBe(OrderStatus.Rejected.ToString());
         result.Reason.ShouldBe($"InsufficientInventory");
@@ -50,8 +51,8 @@ public sealed class VirtualActorOrderWorkflowTests {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
 
-        var result = await PlaceOrderAsync(productId, quantity: 2, simulatePaymentFailure: true);
-        var inventory = await GetInventoryAsync(productId);
+        GrainOrderResult result = await PlaceOrderAsync(productId, quantity: 2, simulatePaymentFailure: true);
+        InventorySnapshot inventory = await GetInventoryAsync(productId);
 
         result.Status.ShouldBe(OrderStatus.Rejected.ToString());
         result.Reason.ShouldBe($"PaymentFailed");
@@ -63,12 +64,12 @@ public sealed class VirtualActorOrderWorkflowTests {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 3);
 
-        var tasks = Enumerable.Range(1, 10)
+        Task<GrainOrderResult>[] tasks = Enumerable.Range(1, 10)
             .Select(index => PlaceOrderAsync(productId, quantity: 1, simulatePaymentFailure: false, idempotencyKey: $"concurrent-{Guid.NewGuid():N}-{index}"))
             .ToArray();
 
-        var results = await Task.WhenAll(tasks);
-        var inventory = await GetInventoryAsync(productId);
+        GrainOrderResult[] results = await Task.WhenAll(tasks);
+        InventorySnapshot inventory = await GetInventoryAsync(productId);
 
         results.Count(result => string.Equals(result.Status, OrderStatus.Completed.ToString(), StringComparison.Ordinal)).ShouldBe(3);
         results.Count(result => string.Equals(result.Status, OrderStatus.Rejected.ToString(), StringComparison.Ordinal)).ShouldBe(7);
@@ -82,22 +83,22 @@ public sealed class VirtualActorOrderWorkflowTests {
         var orderId = Guid.NewGuid();
         const string idempotencyKey = $"duplicate-grain-call";
 
-        var order = _fixture.Cluster.Client.GetGrain<IOrderGrain>(orderId);
-        var first = await order.PlaceAsync(idempotencyKey, $"customer-001", productId, 2, simulatePaymentFailure: false);
-        var second = await order.PlaceAsync(idempotencyKey, $"customer-001", productId, 2, simulatePaymentFailure: false);
-        var inventory = await GetInventoryAsync(productId);
+        IOrderGrain order = _fixture.Cluster.Client.GetGrain<IOrderGrain>(orderId);
+        GrainOrderResult first = await order.PlaceAsync(idempotencyKey, $"customer-001", productId, 2, simulatePaymentFailure: false);
+        GrainOrderResult second = await order.PlaceAsync(idempotencyKey, $"customer-001", productId, 2, simulatePaymentFailure: false);
+        InventorySnapshot inventory = await GetInventoryAsync(productId);
 
         first.ShouldBe(second);
         inventory.AvailableQuantity.ShouldBe(8);
     }
 
     private async Task ResetInventoryAsync(string productId, int quantity) {
-        var inventory = _fixture.Cluster.Client.GetGrain<IInventoryItemGrain>(productId);
+        IInventoryItemGrain inventory = _fixture.Cluster.Client.GetGrain<IInventoryItemGrain>(productId);
         await inventory.ResetAsync(quantity).ConfigureAwait(false);
     }
 
     private async Task<Ordering.Grains.Contracts.InventorySnapshot> GetInventoryAsync(string productId) {
-        var inventory = _fixture.Cluster.Client.GetGrain<IInventoryItemGrain>(productId);
+        IInventoryItemGrain inventory = _fixture.Cluster.Client.GetGrain<IInventoryItemGrain>(productId);
         return await inventory.GetAsync().ConfigureAwait(false);
     }
 
@@ -106,7 +107,7 @@ public sealed class VirtualActorOrderWorkflowTests {
         int quantity,
         bool simulatePaymentFailure,
         string? idempotencyKey = null) {
-        var order = _fixture.Cluster.Client.GetGrain<IOrderGrain>(Guid.NewGuid());
+        IOrderGrain order = _fixture.Cluster.Client.GetGrain<IOrderGrain>(Guid.NewGuid());
         return await order.PlaceAsync(
             idempotencyKey ?? Guid.NewGuid().ToString($"N"),
 $"customer-001",

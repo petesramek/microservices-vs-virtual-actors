@@ -28,23 +28,23 @@ public sealed class FakeInventoryClient : IInventoryClient {
     public Task<ReserveInventoryResponse> ReserveAsync(string productId, ReserveInventoryRequest request, CancellationToken cancellationToken) {
         lock (_syncRoot) {
             if (_reservations.ContainsKey(request.ReservationId)) {
-                return Task.FromResult(new ReserveInventoryResponse(true, null, _available.GetValueOrDefault(productId)));
+                return Task.FromResult(new ReserveInventoryResponse(Reserved: true, Reason: null, _available.GetValueOrDefault(productId)));
             }
 
             var available = _available.GetValueOrDefault(productId);
             if (available < request.Quantity) {
-                return Task.FromResult(new ReserveInventoryResponse(false, $"InsufficientInventory", available));
+                return Task.FromResult(new ReserveInventoryResponse(Reserved: false, $"InsufficientInventory", available));
             }
 
             _available[productId] = available - request.Quantity;
             _reservations[request.ReservationId] = (productId, request.Quantity);
-            return Task.FromResult(new ReserveInventoryResponse(true, null, _available[productId]));
+            return Task.FromResult(new ReserveInventoryResponse(Reserved: true, Reason: null, _available[productId]));
         }
     }
 
     public Task<InventoryResponse> ReleaseAsync(string productId, ReleaseInventoryRequest request, CancellationToken cancellationToken) {
         lock (_syncRoot) {
-            if (_reservations.Remove(request.ReservationId, out var reservation)) {
+            if (_reservations.Remove(request.ReservationId, out (string ProductId, int Quantity) reservation)) {
                 _available[reservation.ProductId] = _available.GetValueOrDefault(reservation.ProductId) + reservation.Quantity;
             }
 

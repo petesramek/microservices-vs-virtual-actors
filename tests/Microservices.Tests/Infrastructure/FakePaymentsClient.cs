@@ -12,13 +12,13 @@ public sealed class FakePaymentsClient : IPaymentsClient {
 
     public Task<AuthorizePaymentResponse> AuthorizeAsync(AuthorizePaymentRequest request, CancellationToken cancellationToken) {
         lock (_syncRoot) {
-            if (_responses.TryGetValue(request.IdempotencyKey, out var existing)) {
+            if (_responses.TryGetValue(request.IdempotencyKey, out AuthorizePaymentResponse? existing)) {
                 return Task.FromResult(existing);
             }
 
-            var response = request.SimulateFailure
-                ? new AuthorizePaymentResponse(false, $"PaymentFailed")
-                : new AuthorizePaymentResponse(true, null);
+            AuthorizePaymentResponse response = request.SimulateFailure
+                ? new AuthorizePaymentResponse(Authorized: false, $"PaymentFailed")
+                : new AuthorizePaymentResponse(Authorized: true, Reason: null);
 
             _responses[request.IdempotencyKey] = response;
             return Task.FromResult(response);

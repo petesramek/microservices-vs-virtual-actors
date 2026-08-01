@@ -26,17 +26,17 @@ public sealed class InventoryItemGrain : Grain, IInventoryItemGrain {
     /// <inheritdoc />
     public Task<InventoryReservationResult> ReserveAsync(Guid reservationId, Guid orderId, int quantity) {
         if (_reservations.ContainsKey(reservationId)) {
-            return Task.FromResult(new InventoryReservationResult(true, null, _availableQuantity));
+            return Task.FromResult(new InventoryReservationResult(Reserved: true, Reason: null, _availableQuantity));
         }
 
         if (_availableQuantity < quantity) {
-            return Task.FromResult(new InventoryReservationResult(false, $"InsufficientInventory", _availableQuantity));
+            return Task.FromResult(new InventoryReservationResult(Reserved: false, $"InsufficientInventory", _availableQuantity));
         }
 
         _availableQuantity -= quantity;
         _reservations[reservationId] = quantity;
 
-        return Task.FromResult(new InventoryReservationResult(true, null, _availableQuantity));
+        return Task.FromResult(new InventoryReservationResult(Reserved: true, Reason: null, _availableQuantity));
     }
 
     /// <inheritdoc />

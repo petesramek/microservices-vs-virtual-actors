@@ -35,19 +35,19 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
     private async Task<ArchitectureRunResult> RunSingleOrderAsync(
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
-        var prepared = PrepareScenarioRequest(request);
+        RunScenarioRequest prepared = PrepareScenarioRequest(request);
         var stopwatch = Stopwatch.StartNew();
 
         await ResetInventoryAsync(prepared.ProductId, prepared.InitialStock, cancellationToken).ConfigureAwait(false);
-        var order = await PlaceOrderAsync(prepared, cancellationToken).ConfigureAwait(false);
-        var inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken).ConfigureAwait(false);
+        OrderResponse order = await PlaceOrderAsync(prepared, cancellationToken).ConfigureAwait(false);
+        InventoryResponse inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken).ConfigureAwait(false);
 
         stopwatch.Stop();
 
         if (prepared.Scenario == ScenarioKind.PaymentTimeoutAfterReservation) {
             return ToResult(
                 prepared,
-                order with { Reason = $"PaymentTimeout"},
+                order with { Reason = $"PaymentTimeout" },
                 inventory,
                 stopwatch.ElapsedMilliseconds,
                 CreatePaymentTimeoutTimeline(prepared, inventory),
@@ -65,7 +65,7 @@ $"PaymentTimeout");
     private async Task<ArchitectureRunResult> RunConcurrentOrdersAsync(
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
-        var prepared = PrepareScenarioRequest(request with {
+        RunScenarioRequest prepared = PrepareScenarioRequest(request with {
             Quantity = Math.Max(1, request.Quantity),
             InitialStock = request.InitialStock,
             SimulatePaymentFailure = false,
@@ -74,25 +74,25 @@ $"PaymentTimeout");
         var stopwatch = Stopwatch.StartNew();
         await ResetInventoryAsync(prepared.ProductId, prepared.InitialStock, cancellationToken).ConfigureAwait(false);
 
-        var tasks = Enumerable.Range(1, prepared.ConcurrentRequests)
+        Task<OrderResponse>[] tasks = Enumerable.Range(1, prepared.ConcurrentRequests)
             .Select(index => PlaceOrderAsync(prepared with {
                 OrderId = Guid.NewGuid(),
                 IdempotencyKey = $"{prepared.IdempotencyKey}-{index}",
             }, cancellationToken))
             .ToArray();
 
-        var orders = await Task.WhenAll(tasks).ConfigureAwait(false);
-        var inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken).ConfigureAwait(false);
+        OrderResponse[] orders = await Task.WhenAll(tasks).ConfigureAwait(false);
+        InventoryResponse inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken).ConfigureAwait(false);
         stopwatch.Stop();
 
         var completed = orders.Count(order => order.Status == OrderStatus.Completed);
         var rejected = orders.Count(order => order.Status == OrderStatus.Rejected);
-        var representative = orders.FirstOrDefault(order => order.Status == OrderStatus.Completed) ?? orders[0];
+        OrderResponse representative = orders.FirstOrDefault(order => order.Status == OrderStatus.Completed) ?? orders[0];
 
         return new ArchitectureRunResult(
             architectureName,
             representative.Status,
-            rejected > 0 ? $"SomeOrdersRejected": representative.Reason,
+            rejected > 0 ? $"SomeOrdersRejected" : representative.Reason,
             completed,
             rejected,
             inventory.AvailableQuantity,
@@ -105,7 +105,7 @@ $"PaymentTimeout");
     private async Task<ArchitectureRunResult> RunDuplicateRequestAsync(
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
-        var prepared = PrepareScenarioRequest(request with {
+        RunScenarioRequest prepared = PrepareScenarioRequest(request with {
             ConcurrentRequests = Math.Max(2, request.ConcurrentRequests),
             InitialStock = Math.Max(request.InitialStock, request.Quantity),
             SimulatePaymentFailure = false,
@@ -114,15 +114,15 @@ $"PaymentTimeout");
         var stopwatch = Stopwatch.StartNew();
         await ResetInventoryAsync(prepared.ProductId, prepared.InitialStock, cancellationToken).ConfigureAwait(false);
 
-        var tasks = Enumerable.Range(1, prepared.ConcurrentRequests)
+        Task<OrderResponse>[] tasks = Enumerable.Range(1, prepared.ConcurrentRequests)
             .Select(_ => PlaceOrderAsync(prepared, cancellationToken))
             .ToArray();
 
-        var responses = await Task.WhenAll(tasks).ConfigureAwait(false);
-        var inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken).ConfigureAwait(false);
+        OrderResponse[] responses = await Task.WhenAll(tasks).ConfigureAwait(false);
+        InventoryResponse inventory = await GetInventoryAsync(prepared.ProductId, cancellationToken).ConfigureAwait(false);
         stopwatch.Stop();
 
-        var representative = responses.FirstOrDefault(response => response.Status == OrderStatus.Completed) ?? responses[0];
+        OrderResponse representative = responses.FirstOrDefault(response => response.Status == OrderStatus.Completed) ?? responses[0];
         var uniqueCompletedOrders = responses
             .Where(response => response.Status == OrderStatus.Completed)
             .Select(response => response.OrderId)
@@ -137,7 +137,7 @@ $"PaymentTimeout");
         return new ArchitectureRunResult(
             architectureName,
             representative.Status,
-            idempotentResponses > 0 ? $"IdempotentResultReturned": representative.Reason,
+            idempotentResponses > 0 ? $"IdempotentResultReturned" : representative.Reason,
             uniqueCompletedOrders,
             uniqueRejectedOrders,
             inventory.AvailableQuantity,
@@ -227,7 +227,7 @@ $"PaymentTimeout");
     }
 
     private static RunScenarioRequest PrepareScenarioRequest(RunScenarioRequest request) {
-        var isolatedRequest = request with {
+        RunScenarioRequest isolatedRequest = request with {
             OrderId = Guid.NewGuid(),
             IdempotencyKey = $"{request.Scenario}-{Guid.NewGuid():N}",
         };
@@ -259,7 +259,7 @@ $"PaymentTimeout");
         };
         AddCorrelationHeader(message);
 
-        var response = await httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
+        HttpResponseMessage response = await httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
     }
 
@@ -269,7 +269,7 @@ $"PaymentTimeout");
         };
         AddCorrelationHeader(message);
 
-        var response = await httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
+        HttpResponseMessage response = await httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<OrderResponse>(cancellationToken).ConfigureAwait(false))!;
     }
@@ -278,7 +278,7 @@ $"PaymentTimeout");
         using var message = new HttpRequestMessage(HttpMethod.Get, $"/api/inventory/{productId}");
         AddCorrelationHeader(message);
 
-        var response = await httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
+        HttpResponseMessage response = await httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<InventoryResponse>(cancellationToken).ConfigureAwait(false))!;
     }

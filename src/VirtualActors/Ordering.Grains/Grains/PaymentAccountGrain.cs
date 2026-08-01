@@ -12,13 +12,13 @@ public sealed class PaymentAccountGrain : Grain, IPaymentAccountGrain {
 
     /// <inheritdoc />
     public Task<PaymentAuthorizationResult> AuthorizeAsync(Guid paymentId, Guid orderId, string idempotencyKey, bool simulateFailure) {
-        if (_authorizations.TryGetValue(idempotencyKey, out var existing)) {
+        if (_authorizations.TryGetValue(idempotencyKey, out PaymentAuthorizationResult? existing)) {
             return Task.FromResult(existing);
         }
 
-        var result = simulateFailure
-            ? new PaymentAuthorizationResult(false, $"PaymentFailed")
-            : new PaymentAuthorizationResult(true, null);
+        PaymentAuthorizationResult result = simulateFailure
+            ? new PaymentAuthorizationResult(Authorized: false, $"PaymentFailed")
+            : new PaymentAuthorizationResult(Authorized: true, Reason: null);
 
         _authorizations[idempotencyKey] = result;
         return Task.FromResult(result);

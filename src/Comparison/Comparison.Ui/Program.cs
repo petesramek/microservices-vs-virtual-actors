@@ -1,7 +1,7 @@
 using Comparison.Ui.Components;
 using Comparison.Ui.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -11,7 +11,7 @@ builder.Services.AddHttpClient<ScenarioRunnerClient>(client => {
     client.BaseAddress = new Uri(baseUrl);
 });
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 if (!app.Environment.IsDevelopment()) {
     app.UseExceptionHandler($"/Error");
@@ -22,5 +22,4 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-app.Run();
+await app.RunAsync().ConfigureAwait(false);

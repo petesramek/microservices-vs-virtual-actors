@@ -18,8 +18,8 @@ public sealed class ComparisonGatewayAcceptanceTests {
     [InlineData($"virtual-actors")]
     [InlineData($"both")]
     public async Task GatewayRunSelectedArchitecture(string architecture) {
-        using var factory = CreateFactory();
-        using var client = factory.CreateClient();
+        await using WebApplicationFactory<Program> factory = CreateFactory();
+        using HttpClient client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/scenarios/run") {
             Content = JsonContent.Create(new RunScenarioRequest {
                 Scenario = ScenarioKind.SuccessfulOrder,
@@ -30,31 +30,31 @@ public sealed class ComparisonGatewayAcceptanceTests {
         };
         request.Headers.Add($"X-Architecture", architecture);
 
-        var response = await client.SendAsync(request);
+        HttpResponseMessage response = await client.SendAsync(request);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<RunScenarioResponse>();
+        RunScenarioResponse? result = await response.Content.ReadFromJsonAsync<RunScenarioResponse>();
         result.ShouldNotBeNull();
 
-        if (architecture is $"microservices"or $"both") {
+        if (architecture is $"microservices" or $"both") {
             result!.Microservices.ShouldNotBeNull();
         }
 
-        if (architecture is $"virtual-actors"or $"both") {
+        if (architecture is $"virtual-actors" or $"both") {
             result!.VirtualActors.ShouldNotBeNull();
         }
     }
 
     [Fact]
     public async Task GatewayRejectUnknownArchitectureHeader() {
-        using var factory = CreateFactory();
-        using var client = factory.CreateClient();
+        await using WebApplicationFactory<Program> factory = CreateFactory();
+        using HttpClient client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/scenarios/run") {
             Content = JsonContent.Create(new RunScenarioRequest()),
         };
         request.Headers.Add($"X-Architecture", $"unknown");
 
-        var response = await client.SendAsync(request);
+        HttpResponseMessage response = await client.SendAsync(request);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
@@ -79,7 +79,7 @@ public sealed class ComparisonGatewayAcceptanceTests {
             var path = request.RequestUri?.AbsolutePath ?? string.Empty;
 
             if (string.Equals(path, $"/api/scenarios/reset", StringComparison.OrdinalIgnoreCase)) {
-                var reset = request.Content!.ReadFromJsonAsync<ResetInventoryRequest>(cancellationToken).GetAwaiter().GetResult()!;
+                ResetInventoryRequest reset = request.Content!.ReadFromJsonAsync<ResetInventoryRequest>(cancellationToken).GetAwaiter().GetResult()!;
                 _inventory[reset.ProductId] = reset.Quantity;
                 return Json(new InventoryResponse(reset.ProductId, reset.Quantity));
             }
@@ -90,7 +90,7 @@ public sealed class ComparisonGatewayAcceptanceTests {
             }
 
             if (string.Equals(path, $"/api/orders", StringComparison.OrdinalIgnoreCase)) {
-                var order = request.Content!.ReadFromJsonAsync<RunScenarioRequest>(cancellationToken).GetAwaiter().GetResult()!;
+                RunScenarioRequest order = request.Content!.ReadFromJsonAsync<RunScenarioRequest>(cancellationToken).GetAwaiter().GetResult()!;
                 var available = _inventory.GetValueOrDefault(order.ProductId);
                 if (available < order.Quantity) {
                     return Json(new OrderResponse(order.OrderId, OrderStatus.Rejected, $"InsufficientInventory"));
@@ -101,7 +101,7 @@ public sealed class ComparisonGatewayAcceptanceTests {
                 }
 
                 _inventory[order.ProductId] = available - order.Quantity;
-                return Json(new OrderResponse(order.OrderId, OrderStatus.Completed, null));
+                return Json(new OrderResponse(order.OrderId, OrderStatus.Completed, Reason: null));
             }
 
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
