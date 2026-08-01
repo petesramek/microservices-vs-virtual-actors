@@ -1,6 +1,6 @@
 namespace Ordering.Grains.Grains;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using Ordering.Grains.Contracts;
 using Ordering.Grains.Interfaces;
 using Orleans;

@@ -1,6 +1,6 @@
 namespace Microservices.Tests;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using FluentAssertions;
 using Microservices.Tests.Infrastructure;
 using System.Net.Http.Json;

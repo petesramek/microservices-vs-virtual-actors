@@ -1,4 +1,4 @@
-namespace ArchitectureComparison.Contracts;
+namespace Comparison.Contracts;
 
 /// <summary>
 /// Request used to reset inventory for deterministic scenarios.

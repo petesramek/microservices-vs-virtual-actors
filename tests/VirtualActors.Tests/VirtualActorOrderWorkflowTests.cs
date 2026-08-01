@@ -1,6 +1,6 @@
 namespace VirtualActors.Tests;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using FluentAssertions;
 using Ordering.Grains.Interfaces;
 using Xunit;

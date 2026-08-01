@@ -1,4 +1,4 @@
-namespace ArchitectureComparison.Contracts;
+namespace Comparison.Contracts;
 
 using System.ComponentModel.DataAnnotations;
 

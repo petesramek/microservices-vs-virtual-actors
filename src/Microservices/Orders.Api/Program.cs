@@ -1,4 +1,4 @@
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Orders.Api.Clients;
 using Orders.Api.Clients.Abstraction;

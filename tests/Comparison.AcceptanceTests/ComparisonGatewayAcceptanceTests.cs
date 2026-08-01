@@ -1,6 +1,6 @@
-namespace ArchitectureComparison.AcceptanceTests;
+namespace Comparison.AcceptanceTests;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;

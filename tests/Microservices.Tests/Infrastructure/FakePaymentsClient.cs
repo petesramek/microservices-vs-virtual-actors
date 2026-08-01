@@ -1,6 +1,6 @@
 namespace Microservices.Tests.Infrastructure;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using Orders.Api.Clients.Abstraction;
 
 /// <summary>

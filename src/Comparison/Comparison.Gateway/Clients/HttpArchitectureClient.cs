@@ -1,6 +1,6 @@
 namespace Comparison.Gateway.Clients;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using System.Diagnostics;
 using System.Net.Http.Json;
 

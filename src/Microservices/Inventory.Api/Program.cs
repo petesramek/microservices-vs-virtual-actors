@@ -1,4 +1,4 @@
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using Inventory.Api.Data;
 using Inventory.Api.Models;
 using Microsoft.EntityFrameworkCore;

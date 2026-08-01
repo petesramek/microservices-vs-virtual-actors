@@ -1,4 +1,4 @@
-namespace ArchitectureComparison.Contracts;
+namespace Comparison.Contracts;
 
 /// <summary>
 /// Defines externally visible order states used by both implementations.

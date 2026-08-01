@@ -1,4 +1,4 @@
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Payments.Api.Data;
 using Payments.Api.Models;

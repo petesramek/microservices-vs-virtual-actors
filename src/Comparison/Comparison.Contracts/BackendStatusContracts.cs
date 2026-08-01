@@ -1,4 +1,4 @@
-namespace ArchitectureComparison.Contracts;
+namespace Comparison.Contracts;
 
 /// <summary>
 /// Represents the backend status returned by the comparison gateway.

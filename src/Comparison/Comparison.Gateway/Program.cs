@@ -1,4 +1,4 @@
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using Comparison.Gateway.Clients;
 using Comparison.Gateway.Configuration;
 using Microsoft.Extensions.Options;

@@ -1,6 +1,6 @@
 namespace Comparison.ScenarioRegressionTests;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using Comparison.Gateway.Clients;
 using FluentAssertions;
 using System.Collections.Concurrent;

@@ -1,6 +1,6 @@
 namespace Orders.Api.Clients;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using Orders.Api.Clients.Abstraction;
 using System.Net.Http.Json;
 

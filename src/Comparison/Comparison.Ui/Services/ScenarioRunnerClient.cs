@@ -1,6 +1,6 @@
 namespace Comparison.Ui.Services;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using System.Net.Http.Json;
 
 /// <summary>

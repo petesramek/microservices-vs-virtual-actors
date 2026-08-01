@@ -1,6 +1,6 @@
 namespace Comparison.Ui.Models;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 using System.ComponentModel.DataAnnotations;
 
 /// <summary>

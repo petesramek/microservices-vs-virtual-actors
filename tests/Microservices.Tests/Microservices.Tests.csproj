@@ -12,7 +12,7 @@
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/Shared/ArchitectureComparison.Contracts/ArchitectureComparison.Contracts.csproj" />
+    <ProjectReference Include="../../src/Comparison/Comparison.Contracts/Comparison.Contracts.csproj" />
     <ProjectReference Include="../../src/Microservices/Orders.Api/Orders.Api.csproj" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,6 @@
 namespace Orders.Api.Clients.Abstraction;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 
 /// <summary>
 /// Inventory service client abstraction.

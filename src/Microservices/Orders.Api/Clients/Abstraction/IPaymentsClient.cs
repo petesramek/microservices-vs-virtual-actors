@@ -1,6 +1,6 @@
 namespace Orders.Api.Clients.Abstraction;
 
-using ArchitectureComparison.Contracts;
+using Comparison.Contracts;
 
 /// <summary>
 /// Payments service client abstraction.
