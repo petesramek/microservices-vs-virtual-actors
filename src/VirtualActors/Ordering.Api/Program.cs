@@ -65,11 +65,22 @@ app.MapGet("/api/inventory/{productId}", async (
     ILoggerFactory loggerFactory) => {
     ILogger logger = loggerFactory.CreateLogger("Ordering.GetInventory");
     IInventoryItemGrain inventory = client.GetGrain<IInventoryItemGrain>(productId);
-    InventorySnapshot snapshot = await inventory.GetAsync().ConfigureAwait(false);
 
-    logger.InventoryRetrieved(snapshot.ProductId, snapshot.AvailableQuantity);
+    try {
+        InventorySnapshot snapshot = await inventory.GetAsync().ConfigureAwait(false);
 
-    return Results.Ok(new InventoryResponse(snapshot.ProductId, snapshot.AvailableQuantity));
+        logger.InventoryRetrieved(snapshot.ProductId, snapshot.AvailableQuantity);
+
+        return Results.Ok(new InventoryResponse(snapshot.ProductId, snapshot.AvailableQuantity));
+    }
+    catch (OperationCanceledException) {
+        throw;
+    }
+    catch (Exception exception) {
+        logger.InventoryRetrievalFailed(exception, productId);
+
+        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+    }
 });
 
 app.MapPost("/api/orders", async (
@@ -85,16 +96,30 @@ app.MapPost("/api/orders", async (
         request.ProductId,
         request.Quantity);
 
-    GrainOrderResult result = await order.PlaceAsync(
-        request.IdempotencyKey,
-        request.CustomerId,
-        request.ProductId,
-        request.Quantity,
-        request.SimulatePaymentFailure).ConfigureAwait(false);
+    try {
+        GrainOrderResult result = await order.PlaceAsync(
+            request.IdempotencyKey,
+            request.CustomerId,
+            request.ProductId,
+            request.Quantity,
+            request.SimulatePaymentFailure).ConfigureAwait(false);
 
-    logger.OrderCompletedWithStatus(result.OrderId, result.Status);
+        logger.OrderCompletedWithStatus(result.OrderId, result.Status);
 
-    return Results.Ok(ToResponse(result));
+        return Results.Ok(ToResponse(result));
+    }
+    catch (OperationCanceledException) {
+        throw;
+    }
+    catch (Exception exception) {
+        logger.OrderPlacementFailed(
+            exception,
+            request.OrderId,
+            request.ProductId,
+            request.Quantity);
+
+        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+    }
 });
 
 app.MapGet("/api/orders/{orderId:guid}", async (
@@ -103,15 +128,26 @@ app.MapGet("/api/orders/{orderId:guid}", async (
     ILoggerFactory loggerFactory) => {
     ILogger logger = loggerFactory.CreateLogger("Ordering.GetOrder");
     IOrderGrain order = client.GetGrain<IOrderGrain>(orderId);
-    GrainOrderResult? result = await order.GetAsync().ConfigureAwait(false);
 
-    if (result is null) {
-        return Results.NotFound();
+    try {
+        GrainOrderResult? result = await order.GetAsync().ConfigureAwait(false);
+
+        if (result is null) {
+            return Results.NotFound();
+        }
+
+        logger.OrderRetrievedWithStatus(result.OrderId, result.Status);
+
+        return Results.Ok(ToResponse(result));
     }
+    catch (OperationCanceledException) {
+        throw;
+    }
+    catch (Exception exception) {
+        logger.OrderRetrievalFailed(exception, orderId);
 
-    logger.OrderRetrievedWithStatus(result.OrderId, result.Status);
-
-    return Results.Ok(ToResponse(result));
+        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+    }
 });
 
 await app.RunAsync().ConfigureAwait(false);
