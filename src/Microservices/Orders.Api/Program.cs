@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Orders.Api.Clients;
 using Orders.Api.Clients.Abstraction;
 using Orders.Api.Data;
+using Orders.Api.Logging;
 using Orders.Api.Models;
 using System.Collections.Concurrent;
 using System.Text.Json;
@@ -40,13 +41,13 @@ app.Use(async (context, next) => {
         [$"CorrelationId"] = correlationId,
     });
 
-    app.Logger.LogInformation($"Handling request with correlation id {correlationId}.");
+    app.Logger.HandlingRequestWithCorrelationId(correlationId);
+
     await next().ConfigureAwait(false);
 });
 
 // orders-api-idempotency-keyed-gate
 var orderIdempotencyLocks = new ConcurrentDictionary<string, SemaphoreSlim>(StringComparer.Ordinal);
-
 app.Use(async (context, next) => {
     if (!HttpMethods.IsPost(context.Request.Method) || !context.Request.Path.Equals($"/api/orders", StringComparison.OrdinalIgnoreCase)) {
         await next().ConfigureAwait(false);
@@ -54,7 +55,6 @@ app.Use(async (context, next) => {
     }
 
     context.Request.EnableBuffering();
-
     RunScenarioRequest? request = null;
     try {
         request = await JsonSerializer.DeserializeAsync<RunScenarioRequest>(
@@ -72,45 +72,79 @@ app.Use(async (context, next) => {
 
     SemaphoreSlim requestLock = orderIdempotencyLocks.GetOrAdd(request.IdempotencyKey, _ => new SemaphoreSlim(1, 1));
     await requestLock.WaitAsync(context.RequestAborted).ConfigureAwait(false);
-
     try {
         await next().ConfigureAwait(false);
     } finally {
         requestLock.Release();
-
         if (requestLock.CurrentCount == 1) {
             orderIdempotencyLocks.TryRemove(request.IdempotencyKey, out _);
         }
     }
 });
 
-
 await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
 
 app.MapGet($"/", () => Results.Ok(new { Name = $"Orders API", Phase = $"Microservices" }));
 app.MapGet($"/health/live", () => Results.Ok($"Healthy"));
 
-app.MapPost($"/api/scenarios/reset", async (ResetInventoryRequest request, IInventoryClient inventoryClient, OrdersDbContext db, CancellationToken cancellationToken) => {
+app.MapPost($"/api/scenarios/reset", async (
+    ResetInventoryRequest request,
+    IInventoryClient inventoryClient,
+    OrdersDbContext db,
+    ILoggerFactory loggerFactory,
+    CancellationToken cancellationToken) => {
+    ILogger logger = loggerFactory.CreateLogger("Orders.ResetInventory");
+
+    logger.ResettingInventory(request.ProductId, request.Quantity);
+
     db.Orders.RemoveRange(await db.Orders.ToListAsync(cancellationToken).ConfigureAwait(false));
     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
     InventoryResponse inventory = await inventoryClient.ResetAsync(request, cancellationToken).ConfigureAwait(false);
+
+    logger.InventoryReset(inventory.ProductId, inventory.AvailableQuantity);
+
     return Results.Ok(inventory);
 });
 
-app.MapGet("/api/inventory/{productId}", async (string productId, IInventoryClient inventoryClient, CancellationToken cancellationToken) => {
-    return Results.Ok(await inventoryClient.GetAsync(productId, cancellationToken).ConfigureAwait(false));
+app.MapGet("/api/inventory/{productId}", async (
+    string productId,
+    IInventoryClient inventoryClient,
+    ILoggerFactory loggerFactory,
+    CancellationToken cancellationToken) => {
+    ILogger logger = loggerFactory.CreateLogger("Orders.GetInventory");
+    InventoryResponse inventory = await inventoryClient.GetAsync(productId, cancellationToken).ConfigureAwait(false);
+
+    logger.InventoryRetrieved(inventory.ProductId, inventory.AvailableQuantity);
+
+    return Results.Ok(inventory);
 });
 
-app.MapPost($"/api/orders", async (RunScenarioRequest request, OrdersDbContext db, IInventoryClient inventoryClient, IPaymentsClient paymentsClient, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
-    OrderRecord? existing = await db.Orders.AsNoTracking().SingleOrDefaultAsync(order => order.IdempotencyKey == request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+app.MapPost($"/api/orders", async (
+    RunScenarioRequest request,
+    OrdersDbContext db,
+    IInventoryClient inventoryClient,
+    IPaymentsClient paymentsClient,
+    ILoggerFactory loggerFactory,
+    CancellationToken cancellationToken) => {
+    ILogger logger = loggerFactory.CreateLogger("Orders.PlaceOrder");
+
+    logger.PlacingOrder(
+        request.OrderId,
+        request.CustomerId,
+        request.ProductId,
+        request.Quantity);
+
+    OrderRecord? existing = await db.Orders.AsNoTracking().SingleOrDefaultAsync(
+        order => order.IdempotencyKey == request.IdempotencyKey,
+        cancellationToken).ConfigureAwait(false);
     if (existing is not null) {
+        logger.OrderCompletedWithStatus(existing.OrderId, existing.Status);
+
         return Results.Ok(ToResponse(existing));
     }
 
-    ILogger logger = loggerFactory.CreateLogger($"Orders.PlaceOrder");
     var reservationId = Guid.NewGuid();
-
     var order = new OrderRecord {
         OrderId = request.OrderId,
         IdempotencyKey = request.IdempotencyKey,
@@ -133,6 +167,9 @@ app.MapPost($"/api/orders", async (RunScenarioRequest request, OrdersDbContext d
         order.Status = OrderStatus.Rejected.ToString();
         order.Reason = reservation.Reason;
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.OrderCompletedWithStatus(order.OrderId, order.Status);
+
         return Results.Ok(ToResponse(order));
     }
 
@@ -140,15 +177,26 @@ app.MapPost($"/api/orders", async (RunScenarioRequest request, OrdersDbContext d
     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
     AuthorizePaymentResponse payment = await paymentsClient.AuthorizeAsync(
-        new AuthorizePaymentRequest(Guid.NewGuid(), request.OrderId, request.CustomerId, request.IdempotencyKey, request.SimulatePaymentFailure),
+        new AuthorizePaymentRequest(
+            Guid.NewGuid(),
+            request.OrderId,
+            request.CustomerId,
+            request.IdempotencyKey,
+            request.SimulatePaymentFailure),
         cancellationToken).ConfigureAwait(false);
 
     if (!payment.Authorized) {
-        await inventoryClient.ReleaseAsync(request.ProductId, new ReleaseInventoryRequest(reservationId), cancellationToken).ConfigureAwait(false);
+        await inventoryClient.ReleaseAsync(
+            request.ProductId,
+            new ReleaseInventoryRequest(reservationId),
+            cancellationToken).ConfigureAwait(false);
+
         order.Status = OrderStatus.Rejected.ToString();
         order.Reason = payment.Reason;
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        logger.LogInformation($"Rejected order {order.OrderId} because payment failed");
+
+        logger.OrderCompletedWithStatus(order.OrderId, order.Status);
+
         return Results.Ok(ToResponse(order));
     }
 
@@ -156,14 +204,32 @@ app.MapPost($"/api/orders", async (RunScenarioRequest request, OrdersDbContext d
     order.Reason = null;
     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-    logger.LogInformation($"Completed order {order.OrderId}");
+    logger.OrderCompletedWithStatus(order.OrderId, order.Status);
+
     return Results.Ok(ToResponse(order));
 });
 
-app.MapGet("/api/orders/{orderId:guid}", async (Guid orderId, OrdersDbContext db, CancellationToken cancellationToken) => {
-    OrderRecord? order = await db.Orders.AsNoTracking().SingleOrDefaultAsync(x => x.OrderId == orderId, cancellationToken).ConfigureAwait(false);
-    return order is null ? Results.NotFound() : Results.Ok(ToResponse(order));
+app.MapGet("/api/orders/{orderId:guid}", async (
+    Guid orderId,
+    OrdersDbContext db,
+    ILoggerFactory loggerFactory,
+    CancellationToken cancellationToken) => {
+    ILogger logger = loggerFactory.CreateLogger("Orders.GetOrder");
+    OrderRecord? order = await db.Orders.AsNoTracking().SingleOrDefaultAsync(
+        order => order.OrderId == orderId,
+        cancellationToken).ConfigureAwait(false);
+
+    if (order is null) {
+        logger.OrderNotFound(orderId);
+
+        return Results.NotFound();
+    }
+
+    logger.OrderRetrievedWithStatus(order.OrderId, order.Status);
+
+    return Results.Ok(ToResponse(order));
 });
+
 await app.RunAsync().ConfigureAwait(false);
 
 static OrderResponse ToResponse(OrderRecord order) {
@@ -180,5 +246,3 @@ static async Task EnsureDatabaseAsync(IServiceProvider services) {
 }
 
 public partial class Program;
-
-
