@@ -7,17 +7,21 @@ using Microsoft.Extensions.Primitives;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// Keep console logging as the single provider so local runs and a future Aspire dashboard receive the same events.
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
+// Produce standardized problem-details responses for unhandled gateway failures.
 builder.Services.AddProblemDetails();
 
+// Bind and validate the downstream architecture endpoints during application startup.
 builder.Services
     .AddOptions<ArchitectureEndpointOptions>()
     .Bind(builder.Configuration.GetSection(ArchitectureEndpointOptions.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+// Configure the client that runs scenarios through the Microservices architecture.
 builder.Services.AddHttpClient<MicroservicesArchitectureClient>((services, client) => {
     ArchitectureEndpointOptions options = services
         .GetRequiredService<IOptions<ArchitectureEndpointOptions>>()
@@ -26,6 +30,7 @@ builder.Services.AddHttpClient<MicroservicesArchitectureClient>((services, clien
     client.BaseAddress = new Uri(options.MicroservicesBaseUrl);
 });
 
+// Configure the client that runs scenarios through the Virtual Actors architecture.
 builder.Services.AddHttpClient<VirtualActorsArchitectureClient>((services, client) => {
     ArchitectureEndpointOptions options = services
         .GetRequiredService<IOptions<ArchitectureEndpointOptions>>()
@@ -40,14 +45,17 @@ WebApplication app = builder.Build();
 app.Use(async (context, next) => {
     const string CorrelationIdHeader = "X-Correlation-ID";
 
+    // Preserve a caller-supplied identifier or create one at the gateway boundary.
     var correlationId = context.Request.Headers[CorrelationIdHeader].FirstOrDefault();
     if (string.IsNullOrWhiteSpace(correlationId)) {
         correlationId = $"run-{Guid.NewGuid():N}";
     }
 
+    // Return the identifier to the caller and expose it to the downstream architecture clients.
     context.Response.Headers[CorrelationIdHeader] = correlationId;
     CorrelationContext.CurrentCorrelationId = correlationId;
 
+    // Enrich every gateway log written during this request with the same identifier.
     using IDisposable? scope = app.Logger.BeginScope(new Dictionary<string, object>(StringComparer.Ordinal) {
         ["CorrelationId"] = correlationId,
     });
@@ -57,17 +65,21 @@ app.Use(async (context, next) => {
     try {
         await next().ConfigureAwait(false);
     } finally {
+        // Prevent the ambient correlation identifier from leaking into a later request.
         CorrelationContext.CurrentCorrelationId = null;
     }
 });
 
+// Convert unhandled failures outside the explicitly handled scenario flow into problem-details responses.
 app.UseExceptionHandler();
 
+// Describe the gateway and its architecture-selection contract.
 app.MapGet("/", () => Results.Ok(new {
     Name = "Architecture Comparison Gateway",
     Description = "Routes scenario requests by X-Architecture header.",
 }));
 
+// Report the current reachability of the gateway and both architecture backends.
 app.MapGet("/api/status", async (
     IHttpClientFactory httpClientFactory,
     IOptions<ArchitectureEndpointOptions> options,
@@ -90,10 +102,19 @@ app.MapGet("/api/status", async (
     return Results.Ok(new BackendStatusResponse(gateway, microservices, virtualActors));
 });
 
+// Run the selected comparison scenario against one or both architectures.
 app.MapPost("/api/scenarios/run", RunScenario);
 
 await app.RunAsync().ConfigureAwait(false);
 
+/// <summary>
+/// Checks whether an architecture backend responds successfully to its health endpoint.
+/// </summary>
+/// <param name="httpClient">The HTTP client used to call the backend.</param>
+/// <param name="name">The display name of the backend.</param>
+/// <param name="baseUrl">The backend base URL.</param>
+/// <param name="cancellationToken">The token used to cancel the request.</param>
+/// <returns>The current backend service status.</returns>
 static async Task<ServiceStatus> CheckBackendAsync(
     HttpClient httpClient,
     string name,
@@ -115,6 +136,7 @@ static async Task<ServiceStatus> CheckBackendAsync(
                 : "Health endpoint returned a non-success status code.");
     }
     catch (OperationCanceledException) {
+        // Preserve request cancellation instead of reporting the backend as unavailable.
         throw;
     }
     catch (Exception exception) {
@@ -127,6 +149,16 @@ static async Task<ServiceStatus> CheckBackendAsync(
     }
 }
 
+/// <summary>
+/// Runs a comparison scenario against the architecture selected by the request header.
+/// </summary>
+/// <param name="request">The scenario request.</param>
+/// <param name="httpRequest">The current HTTP request containing the architecture selection.</param>
+/// <param name="microservicesClient">The Microservices architecture client.</param>
+/// <param name="virtualActorsClient">The Virtual Actors architecture client.</param>
+/// <param name="loggerFactory">The logger factory.</param>
+/// <param name="cancellationToken">The token used to cancel scenario execution.</param>
+/// <returns>The scenario result or an error response.</returns>
 static async Task<IResult> RunScenario(
     RunScenarioRequest request,
     HttpRequest httpRequest,
@@ -139,10 +171,12 @@ static async Task<IResult> RunScenario(
     const string MicroservicesArchitecture = "microservices";
     const string VirtualActorsArchitecture = "virtual-actors";
 
+    // Default to both architectures when the caller does not provide an explicit selection.
     var architecture = httpRequest.Headers.TryGetValue(ArchitectureHeader, out StringValues values)
         ? values.FirstOrDefault() ?? BothArchitectures
         : BothArchitectures;
 
+    // Resolve the selection once so the execution branches remain simple and explicit.
     bool runMicroservices = architecture.Equals(MicroservicesArchitecture, StringComparison.OrdinalIgnoreCase)
         || architecture.Equals(BothArchitectures, StringComparison.OrdinalIgnoreCase);
     bool runVirtualActors = architecture.Equals(VirtualActorsArchitecture, StringComparison.OrdinalIgnoreCase)
@@ -150,6 +184,7 @@ static async Task<IResult> RunScenario(
 
     ILogger logger = loggerFactory.CreateLogger("Comparison.Gateway");
 
+    // Reject unsupported selections before reporting that scenario execution has started.
     if (!runMicroservices && !runVirtualActors) {
         logger.UnsupportedArchitectureRequested(architecture);
 
@@ -164,6 +199,7 @@ static async Task<IResult> RunScenario(
         ArchitectureRunResult? microservices = null;
         ArchitectureRunResult? virtualActors = null;
 
+        // Execute only the architecture branches selected by the caller.
         if (runMicroservices) {
             microservices = await microservicesClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
         }
@@ -181,9 +217,11 @@ static async Task<IResult> RunScenario(
         return Results.Ok(new RunScenarioResponse(request.Scenario, microservices, virtualActors));
     }
     catch (OperationCanceledException) {
+        // Preserve cancellation so the hosting pipeline can handle it correctly.
         throw;
     }
     catch (Exception exception) {
+        // Add scenario context once and convert the unexpected failure into a stable API response.
         logger.ScenarioExecutionFailed(exception, request.Scenario, architecture);
 
         return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
