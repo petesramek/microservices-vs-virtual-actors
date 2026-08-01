@@ -87,19 +87,27 @@ app.MapGet("/api/status", async (
     HttpClient httpClient = httpClientFactory.CreateClient();
     var gateway = new ServiceStatus("Gateway", "local", IsOnline: true, "Online", Error: null);
 
-    ServiceStatus microservices = await CheckBackendAsync(
+    // Start both independent health checks before awaiting either result.
+    Task<ServiceStatus> microservicesTask = CheckBackendAsync(
         httpClient,
         "Microservices",
         options.Value.MicroservicesBaseUrl,
-        cancellationToken).ConfigureAwait(false);
+        cancellationToken);
 
-    ServiceStatus virtualActors = await CheckBackendAsync(
+    Task<ServiceStatus> virtualActorsTask = CheckBackendAsync(
         httpClient,
         "Virtual Actors",
         options.Value.VirtualActorsBaseUrl,
-        cancellationToken).ConfigureAwait(false);
+        cancellationToken);
 
-    return Results.Ok(new BackendStatusResponse(gateway, microservices, virtualActors));
+    ServiceStatus[] backendStatuses = await Task.WhenAll(
+        microservicesTask,
+        virtualActorsTask).ConfigureAwait(false);
+
+    return Results.Ok(new BackendStatusResponse(
+        gateway,
+        backendStatuses[0],
+        backendStatuses[1]));
 });
 
 // Run the selected comparison scenario against one or both architectures.
@@ -199,12 +207,26 @@ static async Task<IResult> RunScenario(
         ArchitectureRunResult? microservices = null;
         ArchitectureRunResult? virtualActors = null;
 
-        // Execute only the architecture branches selected by the caller.
-        if (runMicroservices) {
+        // Start both independent architecture runs together when the caller requests a comparison.
+        if (runMicroservices && runVirtualActors) {
+            Task<ArchitectureRunResult> microservicesTask = microservicesClient.RunAsync(
+                request,
+                cancellationToken);
+            Task<ArchitectureRunResult> virtualActorsTask = virtualActorsClient.RunAsync(
+                request,
+                cancellationToken);
+
+            ArchitectureRunResult[] results = await Task.WhenAll(
+                microservicesTask,
+                virtualActorsTask).ConfigureAwait(false);
+
+            microservices = results[0];
+            virtualActors = results[1];
+        }
+        else if (runMicroservices) {
             microservices = await microservicesClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
         }
-
-        if (runVirtualActors) {
+        else {
             virtualActors = await virtualActorsClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
