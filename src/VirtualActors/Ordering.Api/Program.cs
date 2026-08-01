@@ -133,6 +133,8 @@ app.MapGet("/api/orders/{orderId:guid}", async (
         GrainOrderResult? result = await order.GetAsync().ConfigureAwait(false);
 
         if (result is null) {
+            logger.OrderNotFound(orderId);
+
             return Results.NotFound();
         }
 

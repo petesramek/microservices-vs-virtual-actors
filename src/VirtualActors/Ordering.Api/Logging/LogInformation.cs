@@ -105,4 +105,18 @@ internal static partial class LogInformation {
         this ILogger logger,
         string productId,
         int quantity);
+
+
+    /// <summary>
+    /// Logs that an order was not found.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="orderId">The order identifier.</param>
+    [LoggerMessage(
+        EventId = EventIdBase + 8,
+        Level = Level,
+        Message = "Order {OrderId} was not found.")]
+    public static partial void OrderNotFound(
+        this ILogger logger,
+        Guid orderId);
 }
