@@ -1,12 +1,11 @@
-using ArchitectureComparison.Contracts;
+namespace Orders.Api.Clients.Abstraction;
 
-namespace Orders.Api.Clients;
+using ArchitectureComparison.Contracts;
 
 /// <summary>
 /// Inventory service client abstraction.
 /// </summary>
-public interface IInventoryClient
-{
+public interface IInventoryClient {
     /// <summary>
     /// Resets inventory for a product.
     /// </summary>

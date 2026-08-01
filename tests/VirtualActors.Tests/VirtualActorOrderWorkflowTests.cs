@@ -1,30 +1,27 @@
-﻿using ArchitectureComparison.Contracts;
+namespace VirtualActors.Tests;
+
+using ArchitectureComparison.Contracts;
 using FluentAssertions;
 using Ordering.Grains.Interfaces;
 using Xunit;
-
-namespace VirtualActors.Tests;
 
 /// <summary>
 /// Tests for the virtual actor-style order workflow.
 /// </summary>
 [Collection(OrleansClusterCollection.Name)]
-public sealed class VirtualActorOrderWorkflowTests
-{
+public sealed class VirtualActorOrderWorkflowTests {
     private readonly OrleansClusterFixture _fixture;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="VirtualActorOrderWorkflowTests"/> class.
     /// </summary>
     /// <param name="fixture">The Orleans cluster fixture.</param>
-    public VirtualActorOrderWorkflowTests(OrleansClusterFixture fixture)
-    {
+    public VirtualActorOrderWorkflowTests(OrleansClusterFixture fixture) {
         _fixture = fixture;
     }
 
     [Fact]
-    public async Task OrdersApi_Should_CompleteSuccessfulOrder()
-    {
+    public async Task OrdersApi_Should_CompleteSuccessfulOrder() {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
 
@@ -36,8 +33,7 @@ public sealed class VirtualActorOrderWorkflowTests
     }
 
     [Fact]
-    public async Task OrdersApi_Should_RejectOrderWhenInventoryIsInsufficient()
-    {
+    public async Task OrdersApi_Should_RejectOrderWhenInventoryIsInsufficient() {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 1);
 
@@ -50,8 +46,7 @@ public sealed class VirtualActorOrderWorkflowTests
     }
 
     [Fact]
-    public async Task OrdersApi_Should_ReleaseInventoryWhenPaymentFails()
-    {
+    public async Task OrdersApi_Should_ReleaseInventoryWhenPaymentFails() {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
 
@@ -64,8 +59,7 @@ public sealed class VirtualActorOrderWorkflowTests
     }
 
     [Fact]
-    public async Task OrdersApi_Should_NotOverReserveInventoryForConcurrentOrders()
-    {
+    public async Task OrdersApi_Should_NotOverReserveInventoryForConcurrentOrders() {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 3);
 
@@ -82,8 +76,7 @@ public sealed class VirtualActorOrderWorkflowTests
     }
 
     [Fact]
-    public async Task OrderGrain_Should_ReturnExistingResultForDuplicateOrder()
-    {
+    public async Task OrderGrain_Should_ReturnExistingResultForDuplicateOrder() {
         var productId = UniqueProductId();
         await ResetInventoryAsync(productId, 10);
         var orderId = Guid.NewGuid();
@@ -98,14 +91,12 @@ public sealed class VirtualActorOrderWorkflowTests
         inventory.AvailableQuantity.Should().Be(8);
     }
 
-    private async Task ResetInventoryAsync(string productId, int quantity)
-    {
+    private async Task ResetInventoryAsync(string productId, int quantity) {
         var inventory = _fixture.Cluster.Client.GetGrain<IInventoryItemGrain>(productId);
         await inventory.ResetAsync(quantity);
     }
 
-    private async Task<Ordering.Grains.Contracts.InventorySnapshot> GetInventoryAsync(string productId)
-    {
+    private async Task<Ordering.Grains.Contracts.InventorySnapshot> GetInventoryAsync(string productId) {
         var inventory = _fixture.Cluster.Client.GetGrain<IInventoryItemGrain>(productId);
         return await inventory.GetAsync();
     }
@@ -114,8 +105,7 @@ public sealed class VirtualActorOrderWorkflowTests
         string productId,
         int quantity,
         bool simulatePaymentFailure,
-        string? idempotencyKey = null)
-    {
+        string? idempotencyKey = null) {
         var order = _fixture.Cluster.Client.GetGrain<IOrderGrain>(Guid.NewGuid());
         return await order.PlaceAsync(
             idempotencyKey ?? Guid.NewGuid().ToString("N"),
@@ -125,8 +115,7 @@ public sealed class VirtualActorOrderWorkflowTests
             simulatePaymentFailure);
     }
 
-    private static string UniqueProductId()
-    {
+    private static string UniqueProductId() {
         return $"product-{Guid.NewGuid():N}";
     }
 }

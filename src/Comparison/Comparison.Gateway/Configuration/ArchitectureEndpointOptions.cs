@@ -1,12 +1,11 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace Comparison.Gateway.Configuration;
+
+using System.ComponentModel.DataAnnotations;
 
 /// <summary>
 /// Represents backend endpoint configuration for architecture implementations.
 /// </summary>
-public sealed class ArchitectureEndpointOptions
-{
+public sealed class ArchitectureEndpointOptions {
     /// <summary>
     /// The configuration section name.
     /// </summary>

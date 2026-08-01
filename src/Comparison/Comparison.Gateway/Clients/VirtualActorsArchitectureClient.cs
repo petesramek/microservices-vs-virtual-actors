@@ -1,18 +1,15 @@
-using ArchitectureComparison.Contracts;
-
 namespace Comparison.Gateway.Clients;
+
+using ArchitectureComparison.Contracts;
 
 /// <summary>
 /// Runs scenarios against the virtual actor-style implementation.
 /// </summary>
 /// <param name="httpClient">The HTTP client configured for Ordering API.</param>
-public sealed class VirtualActorsArchitectureClient(HttpClient httpClient) : HttpArchitectureClient(httpClient, "Virtual Actors")
-{
+public sealed class VirtualActorsArchitectureClient(HttpClient httpClient) : HttpArchitectureClient(httpClient, "Virtual Actors") {
     /// <inheritdoc />
-    protected override IReadOnlyList<ScenarioEvent> CreateTimeline(RunScenarioRequest request, OrderResponse order, InventoryResponse inventory)
-    {
-        return request.Scenario switch
-        {
+    protected override IReadOnlyList<ScenarioEvent> CreateTimeline(RunScenarioRequest request, OrderResponse order, InventoryResponse inventory) {
+        return request.Scenario switch {
             ScenarioKind.InsufficientInventory =>
             [
                 new ScenarioEvent("Ordering.Api", "Received order request."),

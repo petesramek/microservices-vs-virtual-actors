@@ -1,6 +1,6 @@
-using Orleans;
-
 namespace Ordering.Grains.Contracts;
+
+using Orleans;
 
 /// <summary>
 /// Result returned by an inventory grain reservation attempt.

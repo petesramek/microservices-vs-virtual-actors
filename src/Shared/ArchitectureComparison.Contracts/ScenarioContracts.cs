@@ -1,12 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
-
 namespace ArchitectureComparison.Contracts;
+
+using System.ComponentModel.DataAnnotations;
 
 /// <summary>
 /// Request used by the comparison gateway and UI to run a scenario.
 /// </summary>
-public sealed record RunScenarioRequest
-{
+public sealed record RunScenarioRequest {
     /// <summary>
     /// Gets or sets the scenario to run.
     /// </summary>

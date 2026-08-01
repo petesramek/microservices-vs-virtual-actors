@@ -3,8 +3,7 @@ namespace Inventory.Api.Models;
 /// <summary>
 /// Represents a reserved inventory quantity.
 /// </summary>
-public sealed class InventoryReservation
-{
+public sealed class InventoryReservation {
     /// <summary>
     /// Gets or sets the reservation identifier.
     /// </summary>

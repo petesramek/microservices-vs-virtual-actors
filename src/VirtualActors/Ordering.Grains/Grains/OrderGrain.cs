@@ -1,14 +1,14 @@
+namespace Ordering.Grains.Grains;
+
 using ArchitectureComparison.Contracts;
 using Ordering.Grains.Contracts;
 using Ordering.Grains.Interfaces;
-
-namespace Ordering.Grains.Grains;
+using Orleans;
 
 /// <summary>
 /// Grain that owns one order workflow.
 /// </summary>
-public sealed class OrderGrain : Grain, IOrderGrain
-{
+public sealed class OrderGrain : Grain, IOrderGrain {
     private GrainOrderResult? _result;
 
     /// <inheritdoc />
@@ -17,10 +17,8 @@ public sealed class OrderGrain : Grain, IOrderGrain
         string customerId,
         string productId,
         int quantity,
-        bool simulatePaymentFailure)
-    {
-        if (_result is not null)
-        {
+        bool simulatePaymentFailure) {
+        if (_result is not null) {
             return _result;
         }
 
@@ -29,8 +27,7 @@ public sealed class OrderGrain : Grain, IOrderGrain
         var inventory = GrainFactory.GetGrain<IInventoryItemGrain>(productId);
 
         var reservation = await inventory.ReserveAsync(reservationId, orderId, quantity);
-        if (!reservation.Reserved)
-        {
+        if (!reservation.Reserved) {
             _result = new GrainOrderResult(orderId, OrderStatus.Rejected.ToString(), reservation.Reason);
             return _result;
         }
@@ -38,8 +35,7 @@ public sealed class OrderGrain : Grain, IOrderGrain
         var payment = GrainFactory.GetGrain<IPaymentAccountGrain>(customerId);
         var authorization = await payment.AuthorizeAsync(Guid.NewGuid(), orderId, idempotencyKey, simulatePaymentFailure);
 
-        if (!authorization.Authorized)
-        {
+        if (!authorization.Authorized) {
             await inventory.ReleaseAsync(reservationId);
             _result = new GrainOrderResult(orderId, OrderStatus.Rejected.ToString(), authorization.Reason);
             return _result;
@@ -50,8 +46,7 @@ public sealed class OrderGrain : Grain, IOrderGrain
     }
 
     /// <inheritdoc />
-    public Task<GrainOrderResult?> GetAsync()
-    {
+    public Task<GrainOrderResult?> GetAsync() {
         return Task.FromResult(_result);
     }
 }

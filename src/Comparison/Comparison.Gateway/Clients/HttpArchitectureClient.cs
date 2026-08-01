@@ -1,21 +1,18 @@
-﻿using System.Diagnostics;
-using System.Net.Http.Json;
-using ArchitectureComparison.Contracts;
-
 namespace Comparison.Gateway.Clients;
+
+using ArchitectureComparison.Contracts;
+using System.Diagnostics;
+using System.Net.Http.Json;
 
 /// <summary>
 /// Base HTTP implementation for architecture clients.
 /// </summary>
 /// <param name="httpClient">The HTTP client.</param>
 /// <param name="architectureName">The architecture name.</param>
-public abstract class HttpArchitectureClient(HttpClient httpClient, string architectureName) : IArchitectureClient
-{
+public abstract class HttpArchitectureClient(HttpClient httpClient, string architectureName) : IArchitectureClient {
     /// <inheritdoc />
-    public async Task<ArchitectureRunResult> RunAsync(RunScenarioRequest request, CancellationToken cancellationToken)
-    {
-        return request.Scenario switch
-        {
+    public async Task<ArchitectureRunResult> RunAsync(RunScenarioRequest request, CancellationToken cancellationToken) {
+        return request.Scenario switch {
             ScenarioKind.ConcurrentOrders => await RunConcurrentOrdersAsync(request, cancellationToken),
             ScenarioKind.HotProductContention => await RunConcurrentOrdersAsync(request, cancellationToken),
             ScenarioKind.DuplicateRequest => await RunDuplicateRequestAsync(request, cancellationToken),
@@ -37,8 +34,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
 
     private async Task<ArchitectureRunResult> RunSingleOrderAsync(
         RunScenarioRequest request,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         var prepared = PrepareScenarioRequest(request);
         var stopwatch = Stopwatch.StartNew();
 
@@ -48,8 +44,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
 
         stopwatch.Stop();
 
-        if (prepared.Scenario == ScenarioKind.PaymentTimeoutAfterReservation)
-        {
+        if (prepared.Scenario == ScenarioKind.PaymentTimeoutAfterReservation) {
             return ToResult(
                 prepared,
                 order with { Reason = "PaymentTimeout" },
@@ -69,10 +64,8 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
 
     private async Task<ArchitectureRunResult> RunConcurrentOrdersAsync(
         RunScenarioRequest request,
-        CancellationToken cancellationToken)
-    {
-        var prepared = PrepareScenarioRequest(request with
-        {
+        CancellationToken cancellationToken) {
+        var prepared = PrepareScenarioRequest(request with {
             Quantity = Math.Max(1, request.Quantity),
             InitialStock = request.InitialStock,
             SimulatePaymentFailure = false
@@ -82,8 +75,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         await ResetInventoryAsync(prepared.ProductId, prepared.InitialStock, cancellationToken);
 
         var tasks = Enumerable.Range(1, prepared.ConcurrentRequests)
-            .Select(index => PlaceOrderAsync(prepared with
-            {
+            .Select(index => PlaceOrderAsync(prepared with {
                 OrderId = Guid.NewGuid(),
                 IdempotencyKey = $"{prepared.IdempotencyKey}-{index}"
             }, cancellationToken))
@@ -112,10 +104,8 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
 
     private async Task<ArchitectureRunResult> RunDuplicateRequestAsync(
         RunScenarioRequest request,
-        CancellationToken cancellationToken)
-    {
-        var prepared = PrepareScenarioRequest(request with
-        {
+        CancellationToken cancellationToken) {
+        var prepared = PrepareScenarioRequest(request with {
             ConcurrentRequests = Math.Max(2, request.ConcurrentRequests),
             InitialStock = Math.Max(request.InitialStock, request.Quantity),
             SimulatePaymentFailure = false
@@ -159,10 +149,8 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
 
     private IReadOnlyList<ScenarioEvent> CreatePaymentTimeoutTimeline(
         RunScenarioRequest request,
-        InventoryResponse inventory)
-    {
-        if (architectureName.Equals("Virtual Actors", StringComparison.OrdinalIgnoreCase))
-        {
+        InventoryResponse inventory) {
+        if (architectureName.Equals("Virtual Actors", StringComparison.OrdinalIgnoreCase)) {
             return
             [
                 new ScenarioEvent("Ordering.Api", "Received order request."),
@@ -188,11 +176,9 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         RunScenarioRequest request,
         int completed,
         int rejected,
-        int remainingInventory)
-    {
+        int remainingInventory) {
         var totalSubmissions = completed + rejected;
-        if (architectureName.Equals("Virtual Actors", StringComparison.OrdinalIgnoreCase))
-        {
+        if (architectureName.Equals("Virtual Actors", StringComparison.OrdinalIgnoreCase)) {
             return
             [
                 new ScenarioEvent("Ordering.Api", $"Received {totalSubmissions} concurrent order submissions."),
@@ -218,10 +204,8 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         int uniqueCompletedOrders,
         int uniqueRejectedOrders,
         int idempotentResponses,
-        int remainingInventory)
-    {
-        if (architectureName.Equals("Virtual Actors", StringComparison.OrdinalIgnoreCase))
-        {
+        int remainingInventory) {
+        if (architectureName.Equals("Virtual Actors", StringComparison.OrdinalIgnoreCase)) {
             return
             [
                 new ScenarioEvent("Ordering.Api", $"Received {request.ConcurrentRequests} duplicate request submissions."),
@@ -242,33 +226,26 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         ];
     }
 
-    private static RunScenarioRequest PrepareScenarioRequest(RunScenarioRequest request)
-    {
-        var isolatedRequest = request with
-        {
+    private static RunScenarioRequest PrepareScenarioRequest(RunScenarioRequest request) {
+        var isolatedRequest = request with {
             OrderId = Guid.NewGuid(),
             IdempotencyKey = $"{request.Scenario}-{Guid.NewGuid():N}"
         };
 
-        return isolatedRequest.Scenario switch
-        {
-            ScenarioKind.InsufficientInventory => isolatedRequest with
-            {
+        return isolatedRequest.Scenario switch {
+            ScenarioKind.InsufficientInventory => isolatedRequest with {
                 InitialStock = Math.Min(isolatedRequest.InitialStock, Math.Max(0, isolatedRequest.Quantity - 1)),
                 SimulatePaymentFailure = false
             },
-            ScenarioKind.PaymentFailureCompensation => isolatedRequest with
-            {
+            ScenarioKind.PaymentFailureCompensation => isolatedRequest with {
                 InitialStock = Math.Max(isolatedRequest.InitialStock, isolatedRequest.Quantity),
                 SimulatePaymentFailure = true
             },
-            ScenarioKind.PaymentTimeoutAfterReservation => isolatedRequest with
-            {
+            ScenarioKind.PaymentTimeoutAfterReservation => isolatedRequest with {
                 InitialStock = Math.Max(isolatedRequest.InitialStock, isolatedRequest.Quantity),
                 SimulatePaymentFailure = true
             },
-            ScenarioKind.SuccessfulOrder => isolatedRequest with
-            {
+            ScenarioKind.SuccessfulOrder => isolatedRequest with {
                 InitialStock = Math.Max(isolatedRequest.InitialStock, isolatedRequest.Quantity),
                 SimulatePaymentFailure = false
             },
@@ -276,10 +253,8 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         };
     }
 
-    private async Task ResetInventoryAsync(string productId, int quantity, CancellationToken cancellationToken)
-    {
-        using var message = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/reset")
-        {
+    private async Task ResetInventoryAsync(string productId, int quantity, CancellationToken cancellationToken) {
+        using var message = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/reset") {
             Content = JsonContent.Create(new ResetInventoryRequest(productId, quantity))
         };
         AddCorrelationHeader(message);
@@ -288,10 +263,8 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         response.EnsureSuccessStatusCode();
     }
 
-    private async Task<OrderResponse> PlaceOrderAsync(RunScenarioRequest request, CancellationToken cancellationToken)
-    {
-        using var message = new HttpRequestMessage(HttpMethod.Post, "/api/orders")
-        {
+    private async Task<OrderResponse> PlaceOrderAsync(RunScenarioRequest request, CancellationToken cancellationToken) {
+        using var message = new HttpRequestMessage(HttpMethod.Post, "/api/orders") {
             Content = JsonContent.Create(request)
         };
         AddCorrelationHeader(message);
@@ -301,8 +274,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         return (await response.Content.ReadFromJsonAsync<OrderResponse>(cancellationToken))!;
     }
 
-    private async Task<InventoryResponse> GetInventoryAsync(string productId, CancellationToken cancellationToken)
-    {
+    private async Task<InventoryResponse> GetInventoryAsync(string productId, CancellationToken cancellationToken) {
         using var message = new HttpRequestMessage(HttpMethod.Get, $"/api/inventory/{productId}");
         AddCorrelationHeader(message);
 
@@ -311,11 +283,9 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         return (await response.Content.ReadFromJsonAsync<InventoryResponse>(cancellationToken))!;
     }
 
-    private static void AddCorrelationHeader(HttpRequestMessage message)
-    {
+    private static void AddCorrelationHeader(HttpRequestMessage message) {
         var correlationId = CorrelationContext.CurrentCorrelationId;
-        if (!string.IsNullOrWhiteSpace(correlationId))
-        {
+        if (!string.IsNullOrWhiteSpace(correlationId)) {
             message.Headers.TryAddWithoutValidation("X-Correlation-ID", correlationId);
         }
     }
@@ -326,8 +296,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         InventoryResponse inventory,
         long elapsedMilliseconds,
         IReadOnlyList<ScenarioEvent> events,
-        string? reason = null)
-    {
+        string? reason = null) {
         return new ArchitectureRunResult(
             architectureName,
             order.Status,

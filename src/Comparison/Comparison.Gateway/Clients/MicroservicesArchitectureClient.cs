@@ -1,18 +1,15 @@
-using ArchitectureComparison.Contracts;
-
 namespace Comparison.Gateway.Clients;
+
+using ArchitectureComparison.Contracts;
 
 /// <summary>
 /// Runs scenarios against the microservice-style implementation.
 /// </summary>
 /// <param name="httpClient">The HTTP client configured for Orders API.</param>
-public sealed class MicroservicesArchitectureClient(HttpClient httpClient) : HttpArchitectureClient(httpClient, "Microservices")
-{
+public sealed class MicroservicesArchitectureClient(HttpClient httpClient) : HttpArchitectureClient(httpClient, "Microservices") {
     /// <inheritdoc />
-    protected override IReadOnlyList<ScenarioEvent> CreateTimeline(RunScenarioRequest request, OrderResponse order, InventoryResponse inventory)
-    {
-        return request.Scenario switch
-        {
+    protected override IReadOnlyList<ScenarioEvent> CreateTimeline(RunScenarioRequest request, OrderResponse order, InventoryResponse inventory) {
+        return request.Scenario switch {
             ScenarioKind.InsufficientInventory =>
             [
                 new ScenarioEvent("Orders.Api", "Received order request."),

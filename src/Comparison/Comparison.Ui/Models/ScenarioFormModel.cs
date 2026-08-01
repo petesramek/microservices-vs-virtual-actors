@@ -1,14 +1,12 @@
-﻿
-using System.ComponentModel.DataAnnotations;
-using ArchitectureComparison.Contracts;
-
 namespace Comparison.Ui.Models;
+
+using ArchitectureComparison.Contracts;
+using System.ComponentModel.DataAnnotations;
 
 /// <summary>
 /// UI form model used by the scenario runner page.
 /// </summary>
-public sealed class ScenarioFormModel : IValidatableObject
-{
+public sealed class ScenarioFormModel : IValidatableObject {
     /// <summary>
     /// Gets or sets the selected scenario.
     /// </summary>
@@ -61,12 +59,10 @@ public sealed class ScenarioFormModel : IValidatableObject
     /// Creates a request contract from this form model.
     /// </summary>
     /// <returns>The scenario request.</returns>
-    public RunScenarioRequest ToRequest()
-    {
+    public RunScenarioRequest ToRequest() {
         var defaults = ScenarioDefaults.For(Scenario);
 
-        return new RunScenarioRequest
-        {
+        return new RunScenarioRequest {
             Scenario = Scenario,
             ProductId = ProductId.Trim(),
             CustomerId = CustomerId.Trim(),
@@ -79,10 +75,8 @@ public sealed class ScenarioFormModel : IValidatableObject
     }
 
     /// <inheritdoc />
-    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-    {
-        if (UsesConcurrentRequests && ConcurrentRequests is < 1 or > 100)
-        {
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) {
+        if (UsesConcurrentRequests && ConcurrentRequests is < 1 or > 100) {
             yield return new ValidationResult(
                 "Concurrent requests must be between 1 and 100 for local demo safety.",
                 [nameof(ConcurrentRequests)]);
@@ -92,8 +86,7 @@ public sealed class ScenarioFormModel : IValidatableObject
     /// <summary>
     /// Resets scenario-specific advanced values to defaults.
     /// </summary>
-    public void ResetAdvancedSettings()
-    {
+    public void ResetAdvancedSettings() {
         var defaults = ScenarioDefaults.For(Scenario);
         InitialStock = defaults.InitialStock;
         Quantity = defaults.Quantity;
@@ -108,8 +101,7 @@ public sealed class ScenarioFormModel : IValidatableObject
     /// </summary>
     /// <param name="scenario">The scenario.</param>
     /// <returns>The form model.</returns>
-    public static ScenarioFormModel Create(ScenarioKind scenario)
-    {
+    public static ScenarioFormModel Create(ScenarioKind scenario) {
         var model = new ScenarioFormModel { Scenario = scenario };
         model.ResetAdvancedSettings();
         return model;
@@ -122,17 +114,14 @@ public sealed class ScenarioFormModel : IValidatableObject
 /// <param name="InitialStock">The initial inventory stock.</param>
 /// <param name="Quantity">The quantity requested by each order.</param>
 /// <param name="ConcurrentRequests">The number of concurrent requests.</param>
-public sealed record ScenarioDefaults(int InitialStock, int Quantity, int ConcurrentRequests)
-{
+public sealed record ScenarioDefaults(int InitialStock, int Quantity, int ConcurrentRequests) {
     /// <summary>
     /// Gets defaults for the specified scenario.
     /// </summary>
     /// <param name="scenario">The scenario.</param>
     /// <returns>The defaults.</returns>
-    public static ScenarioDefaults For(ScenarioKind scenario)
-    {
-        return scenario switch
-        {
+    public static ScenarioDefaults For(ScenarioKind scenario) {
+        return scenario switch {
             ScenarioKind.InsufficientInventory => new ScenarioDefaults(1, 2, 10),
             ScenarioKind.PaymentFailureCompensation => new ScenarioDefaults(10, 2, 10),
             ScenarioKind.PaymentTimeoutAfterReservation => new ScenarioDefaults(10, 2, 10),

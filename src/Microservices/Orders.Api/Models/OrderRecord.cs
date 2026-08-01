@@ -3,8 +3,7 @@ namespace Orders.Api.Models;
 /// <summary>
 /// Represents an order stored by the orders service.
 /// </summary>
-public sealed class OrderRecord
-{
+public sealed class OrderRecord {
     /// <summary>
     /// Gets or sets the order identifier.
     /// </summary>

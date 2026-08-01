@@ -3,8 +3,7 @@ namespace ArchitectureComparison.Contracts;
 /// <summary>
 /// Defines externally visible order states used by both implementations.
 /// </summary>
-public enum OrderStatus
-{
+public enum OrderStatus {
     /// <summary>
     /// The order has been created.
     /// </summary>

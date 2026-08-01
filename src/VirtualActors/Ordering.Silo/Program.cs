@@ -2,8 +2,7 @@ using Microsoft.Extensions.Hosting;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.UseOrleans(siloBuilder =>
-{
+builder.UseOrleans(siloBuilder => {
     siloBuilder.UseLocalhostClustering();
 });
 

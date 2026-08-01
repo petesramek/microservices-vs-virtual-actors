@@ -1,24 +1,21 @@
+namespace Orders.Api.Data;
+
 using Microsoft.EntityFrameworkCore;
 using Orders.Api.Models;
-
-namespace Orders.Api.Data;
 
 /// <summary>
 /// Orders service database context.
 /// </summary>
 /// <param name="options">The context options.</param>
-public sealed class OrdersDbContext(DbContextOptions<OrdersDbContext> options) : DbContext(options)
-{
+public sealed class OrdersDbContext(DbContextOptions<OrdersDbContext> options) : DbContext(options) {
     /// <summary>
     /// Gets orders.
     /// </summary>
     public DbSet<OrderRecord> Orders => Set<OrderRecord>();
 
     /// <inheritdoc />
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<OrderRecord>(entity =>
-        {
+    protected override void OnModelCreating(ModelBuilder modelBuilder) {
+        modelBuilder.Entity<OrderRecord>(entity => {
             entity.HasKey(order => order.OrderId);
             entity.Property(order => order.CustomerId).HasMaxLength(100);
             entity.Property(order => order.ProductId).HasMaxLength(100);

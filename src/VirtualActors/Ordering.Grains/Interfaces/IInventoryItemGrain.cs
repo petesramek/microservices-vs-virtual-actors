@@ -1,12 +1,12 @@
-using Ordering.Grains.Contracts;
-
 namespace Ordering.Grains.Interfaces;
+
+using Ordering.Grains.Contracts;
+using Orleans;
 
 /// <summary>
 /// Represents inventory for one product identity.
 /// </summary>
-public interface IInventoryItemGrain : IGrainWithStringKey
-{
+public interface IInventoryItemGrain : IGrainWithStringKey {
     /// <summary>
     /// Resets available inventory for deterministic scenarios.
     /// </summary>

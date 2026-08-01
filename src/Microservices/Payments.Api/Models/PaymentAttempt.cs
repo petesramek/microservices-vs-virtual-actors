@@ -3,8 +3,7 @@ namespace Payments.Api.Models;
 /// <summary>
 /// Represents a payment authorization attempt.
 /// </summary>
-public sealed class PaymentAttempt
-{
+public sealed class PaymentAttempt {
     /// <summary>
     /// Gets or sets the payment identifier.
     /// </summary>

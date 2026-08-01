@@ -1,12 +1,11 @@
-using ArchitectureComparison.Contracts;
-
 namespace Comparison.Gateway.Clients;
+
+using ArchitectureComparison.Contracts;
 
 /// <summary>
 /// Runs scenarios against one architecture implementation.
 /// </summary>
-public interface IArchitectureClient
-{
+public interface IArchitectureClient {
     /// <summary>
     /// Runs the specified scenario.
     /// </summary>

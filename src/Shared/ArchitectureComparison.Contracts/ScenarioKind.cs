@@ -1,10 +1,9 @@
-﻿namespace ArchitectureComparison.Contracts;
+namespace ArchitectureComparison.Contracts;
 
 /// <summary>
 /// Defines the supported comparison scenarios.
 /// </summary>
-public enum ScenarioKind
-{
+public enum ScenarioKind {
     /// <summary>
     /// Inventory is available and payment succeeds.
     /// </summary>
