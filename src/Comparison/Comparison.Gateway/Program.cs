@@ -18,31 +18,38 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-ArchitectureEndpointOptions endpointOptions = builder.Configuration
-    .GetSection(ArchitectureEndpointOptions.SectionName)
-    .Get<ArchitectureEndpointOptions>() ?? new ArchitectureEndpointOptions();
+builder.Services.AddHttpClient<MicroservicesArchitectureClient>((services, client) => {
+    ArchitectureEndpointOptions options = services
+        .GetRequiredService<IOptions<ArchitectureEndpointOptions>>()
+        .Value;
 
-builder.Services.AddHttpClient<MicroservicesArchitectureClient>(client => {
-    client.BaseAddress = new Uri(endpointOptions.MicroservicesBaseUrl);
+    client.BaseAddress = new Uri(options.MicroservicesBaseUrl);
 });
 
-builder.Services.AddHttpClient<VirtualActorsArchitectureClient>(client => {
-    client.BaseAddress = new Uri(endpointOptions.VirtualActorsBaseUrl);
+builder.Services.AddHttpClient<VirtualActorsArchitectureClient>((services, client) => {
+    ArchitectureEndpointOptions options = services
+        .GetRequiredService<IOptions<ArchitectureEndpointOptions>>()
+        .Value;
+
+    client.BaseAddress = new Uri(options.VirtualActorsBaseUrl);
 });
 
 WebApplication app = builder.Build();
-// correlation-id-logging
+
+// Establish one correlation identifier for the gateway request and all downstream calls.
 app.Use(async (context, next) => {
-    var correlationId = context.Request.Headers[$"X-Correlation-ID"].FirstOrDefault();
+    const string CorrelationIdHeader = "X-Correlation-ID";
+
+    var correlationId = context.Request.Headers[CorrelationIdHeader].FirstOrDefault();
     if (string.IsNullOrWhiteSpace(correlationId)) {
         correlationId = $"run-{Guid.NewGuid():N}";
     }
 
-    context.Response.Headers[$"X-Correlation-ID"] = correlationId;
+    context.Response.Headers[CorrelationIdHeader] = correlationId;
     CorrelationContext.CurrentCorrelationId = correlationId;
 
     using IDisposable? scope = app.Logger.BeginScope(new Dictionary<string, object>(StringComparer.Ordinal) {
-        [$"CorrelationId"] = correlationId,
+        ["CorrelationId"] = correlationId,
     });
 
     app.Logger.HandlingRequestWithCorrelationId(correlationId);
@@ -56,34 +63,34 @@ app.Use(async (context, next) => {
 
 app.UseExceptionHandler();
 
-app.MapGet($"/", () => Results.Ok(new {
-    Name = $"Architecture Comparison Gateway",
-    Description = $"Routes scenario requests by X-Architecture header.",
+app.MapGet("/", () => Results.Ok(new {
+    Name = "Architecture Comparison Gateway",
+    Description = "Routes scenario requests by X-Architecture header.",
 }));
 
-app.MapGet($"/api/status", async (
+app.MapGet("/api/status", async (
     IHttpClientFactory httpClientFactory,
     IOptions<ArchitectureEndpointOptions> options,
     CancellationToken cancellationToken) => {
     HttpClient httpClient = httpClientFactory.CreateClient();
-    var gateway = new ServiceStatus($"Gateway", $"local", IsOnline: true, $"Online", Error: null);
+    var gateway = new ServiceStatus("Gateway", "local", IsOnline: true, "Online", Error: null);
 
     ServiceStatus microservices = await CheckBackendAsync(
         httpClient,
-        $"Microservices",
+        "Microservices",
         options.Value.MicroservicesBaseUrl,
         cancellationToken).ConfigureAwait(false);
 
     ServiceStatus virtualActors = await CheckBackendAsync(
         httpClient,
-        $"Virtual Actors",
+        "Virtual Actors",
         options.Value.VirtualActorsBaseUrl,
         cancellationToken).ConfigureAwait(false);
 
     return Results.Ok(new BackendStatusResponse(gateway, microservices, virtualActors));
 });
 
-app.MapPost($"/api/scenarios/run", RunScenario);
+app.MapPost("/api/scenarios/run", RunScenario);
 
 await app.RunAsync().ConfigureAwait(false);
 
@@ -92,8 +99,9 @@ static async Task<ServiceStatus> CheckBackendAsync(
     string name,
     string baseUrl,
     CancellationToken cancellationToken) {
-    var healthUrl = new Uri(new Uri(baseUrl.TrimEnd('/') + $"/"), $"health/live");
+    var healthUrl = new Uri(new Uri(baseUrl.TrimEnd('/') + "/"), "health/live");
 
+    // Health-check failures are returned as backend status rather than failing the gateway status endpoint.
     try {
         using HttpResponseMessage response = await httpClient.GetAsync(healthUrl, cancellationToken).ConfigureAwait(false);
 
@@ -102,13 +110,19 @@ static async Task<ServiceStatus> CheckBackendAsync(
             healthUrl.ToString(),
             response.IsSuccessStatusCode,
             $"{(int)response.StatusCode} {response.StatusCode}",
-            response.IsSuccessStatusCode ? null : $"Health endpoint returned a non-success status code.");
-    } catch (Exception exception) {
+            response.IsSuccessStatusCode
+                ? null
+                : "Health endpoint returned a non-success status code.");
+    }
+    catch (OperationCanceledException) {
+        throw;
+    }
+    catch (Exception exception) {
         return new ServiceStatus(
             name,
             healthUrl.ToString(),
             IsOnline: false,
-            $"Unavailable",
+            "Unavailable",
             exception.Message);
     }
 }
@@ -120,31 +134,39 @@ static async Task<IResult> RunScenario(
     VirtualActorsArchitectureClient virtualActorsClient,
     ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) {
-    var architecture = httpRequest.Headers.TryGetValue($"X-Architecture", out StringValues values)
-        ? values.FirstOrDefault() ?? $"both"
-        : $"both";
+    const string ArchitectureHeader = "X-Architecture";
+    const string BothArchitectures = "both";
+    const string MicroservicesArchitecture = "microservices";
+    const string VirtualActorsArchitecture = "virtual-actors";
 
-    ILogger logger = loggerFactory.CreateLogger($"Comparison.Gateway");
+    var architecture = httpRequest.Headers.TryGetValue(ArchitectureHeader, out StringValues values)
+        ? values.FirstOrDefault() ?? BothArchitectures
+        : BothArchitectures;
+
+    bool runMicroservices = architecture.Equals(MicroservicesArchitecture, StringComparison.OrdinalIgnoreCase)
+        || architecture.Equals(BothArchitectures, StringComparison.OrdinalIgnoreCase);
+    bool runVirtualActors = architecture.Equals(VirtualActorsArchitecture, StringComparison.OrdinalIgnoreCase)
+        || architecture.Equals(BothArchitectures, StringComparison.OrdinalIgnoreCase);
+
+    if (!runMicroservices && !runVirtualActors) {
+        return Results.BadRequest(new {
+            Error = "Unsupported X-Architecture value. Use microservices, virtual-actors, or both.",
+        });
+    }
+
+    ILogger logger = loggerFactory.CreateLogger("Comparison.Gateway");
     logger.RunningScenario(request.Scenario, architecture);
 
     try {
         ArchitectureRunResult? microservices = null;
         ArchitectureRunResult? virtualActors = null;
 
-        if (architecture.Equals($"microservices", StringComparison.OrdinalIgnoreCase)
-            || architecture.Equals($"both", StringComparison.OrdinalIgnoreCase)) {
+        if (runMicroservices) {
             microservices = await microservicesClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
-        if (architecture.Equals($"virtual-actors", StringComparison.OrdinalIgnoreCase)
-            || architecture.Equals($"both", StringComparison.OrdinalIgnoreCase)) {
+        if (runVirtualActors) {
             virtualActors = await virtualActorsClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
-        }
-
-        if (microservices is null && virtualActors is null) {
-            return Results.BadRequest(new {
-                Error = $"Unsupported X-Architecture value. Use microservices, virtual-actors, or both.",
-            });
         }
 
         logger.ScenarioCompleted(
