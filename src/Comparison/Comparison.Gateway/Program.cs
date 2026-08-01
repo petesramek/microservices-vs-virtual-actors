@@ -1,11 +1,8 @@
-using Comparison.Contracts;
 using Comparison.Gateway.Clients;
 using Comparison.Gateway.Configuration;
 using Comparison.Gateway.Endpoints;
 using Comparison.Gateway.Extensions;
-using Comparison.Gateway.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -62,101 +59,8 @@ app.MapGet("/", () => Results.Ok(new {
 app.MapStatusEndpoints();
 
 // Run the selected comparison scenario against one or both architectures.
-app.MapPost("/api/scenarios/run", RunScenario);
+app.MapScenarioEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);
-
-/// <summary>
-/// Runs a comparison scenario against the architecture selected by the request header.
-/// </summary>
-/// <param name="request">The scenario request.</param>
-/// <param name="httpRequest">The current HTTP request containing the architecture selection.</param>
-/// <param name="microservicesClient">The Microservices architecture client.</param>
-/// <param name="virtualActorsClient">The Virtual Actors architecture client.</param>
-/// <param name="loggerFactory">The logger factory.</param>
-/// <param name="cancellationToken">The token used to cancel scenario execution.</param>
-/// <returns>The scenario result or an error response.</returns>
-static async Task<IResult> RunScenario(
-    RunScenarioRequest request,
-    HttpRequest httpRequest,
-    MicroservicesArchitectureClient microservicesClient,
-    VirtualActorsArchitectureClient virtualActorsClient,
-    ILoggerFactory loggerFactory,
-    CancellationToken cancellationToken) {
-    const string ArchitectureHeader = "X-Architecture";
-    const string BothArchitectures = "both";
-    const string MicroservicesArchitecture = "microservices";
-    const string VirtualActorsArchitecture = "virtual-actors";
-
-    // Default to both architectures when the caller does not provide an explicit selection.
-    var architecture = httpRequest.Headers.TryGetValue(ArchitectureHeader, out StringValues values)
-        ? values.FirstOrDefault() ?? BothArchitectures
-        : BothArchitectures;
-
-    // Resolve the selection once so the execution branches remain simple and explicit.
-    bool runMicroservices = architecture.Equals(MicroservicesArchitecture, StringComparison.OrdinalIgnoreCase)
-        || architecture.Equals(BothArchitectures, StringComparison.OrdinalIgnoreCase);
-    bool runVirtualActors = architecture.Equals(VirtualActorsArchitecture, StringComparison.OrdinalIgnoreCase)
-        || architecture.Equals(BothArchitectures, StringComparison.OrdinalIgnoreCase);
-
-    ILogger logger = loggerFactory.CreateLogger("Comparison.Gateway");
-
-    // Reject unsupported selections before reporting that scenario execution has started.
-    if (!runMicroservices && !runVirtualActors) {
-        logger.UnsupportedArchitectureRequested(architecture);
-
-        return Results.BadRequest(new {
-            Error = "Unsupported X-Architecture value. Use microservices, virtual-actors, or both.",
-        });
-    }
-
-    logger.RunningScenario(request.Scenario, architecture);
-
-    try {
-        ArchitectureRunResult? microservices = null;
-        ArchitectureRunResult? virtualActors = null;
-
-        // Start both independent architecture runs together when the caller requests a comparison.
-        if (runMicroservices && runVirtualActors) {
-            Task<ArchitectureRunResult> microservicesTask = microservicesClient.RunAsync(
-                request,
-                cancellationToken);
-            Task<ArchitectureRunResult> virtualActorsTask = virtualActorsClient.RunAsync(
-                request,
-                cancellationToken);
-
-            ArchitectureRunResult[] results = await Task.WhenAll(
-                microservicesTask,
-                virtualActorsTask).ConfigureAwait(false);
-
-            microservices = results[0];
-            virtualActors = results[1];
-        }
-        else if (runMicroservices) {
-            microservices = await microservicesClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
-        }
-        else {
-            virtualActors = await virtualActorsClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
-        }
-
-        logger.ScenarioCompleted(
-            request.Scenario,
-            architecture,
-            microservices is not null,
-            virtualActors is not null);
-
-        return Results.Ok(new RunScenarioResponse(request.Scenario, microservices, virtualActors));
-    }
-    catch (OperationCanceledException) {
-        // Preserve cancellation so the hosting pipeline can handle it correctly.
-        throw;
-    }
-    catch (Exception exception) {
-        // Add scenario context once and convert the unexpected failure into a stable API response.
-        logger.ScenarioExecutionFailed(exception, request.Scenario, architecture);
-
-        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
-    }
-}
 
 public partial class Program;

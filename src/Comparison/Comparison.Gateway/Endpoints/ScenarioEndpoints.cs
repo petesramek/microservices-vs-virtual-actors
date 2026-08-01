@@ -1,0 +1,118 @@
+namespace Comparison.Gateway.Endpoints;
+
+using Comparison.Contracts;
+using Comparison.Gateway.Clients;
+using Comparison.Gateway.Logging;
+using Microsoft.Extensions.Primitives;
+
+/// <summary>
+/// Provides endpoint mappings for running architecture comparison scenarios.
+/// </summary>
+internal static class ScenarioEndpoints {
+    private const string ArchitectureHeader = "X-Architecture";
+    private const string BothArchitectures = "both";
+    private const string MicroservicesArchitecture = "microservices";
+    private const string VirtualActorsArchitecture = "virtual-actors";
+
+    /// <summary>
+    /// Maps the scenario execution endpoint.
+    /// </summary>
+    /// <param name="endpoints">The endpoint route builder.</param>
+    /// <returns>The endpoint route builder.</returns>
+    public static IEndpointRouteBuilder MapScenarioEndpoints(this IEndpointRouteBuilder endpoints) {
+        ArgumentNullException.ThrowIfNull(endpoints);
+
+        endpoints.MapPost("/api/scenarios/run", RunScenarioAsync);
+
+        return endpoints;
+    }
+
+    /// <summary>
+    /// Runs a comparison scenario against the architecture selected by the request header.
+    /// </summary>
+    /// <param name="request">The scenario request.</param>
+    /// <param name="httpRequest">The current HTTP request containing the architecture selection.</param>
+    /// <param name="microservicesClient">The Microservices architecture client.</param>
+    /// <param name="virtualActorsClient">The Virtual Actors architecture client.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="cancellationToken">The token used to cancel scenario execution.</param>
+    /// <returns>The scenario result or an error response.</returns>
+    private static async Task<IResult> RunScenarioAsync(
+        RunScenarioRequest request,
+        HttpRequest httpRequest,
+        MicroservicesArchitectureClient microservicesClient,
+        VirtualActorsArchitectureClient virtualActorsClient,
+        ILoggerFactory loggerFactory,
+        CancellationToken cancellationToken) {
+        string architecture = httpRequest.Headers.TryGetValue(ArchitectureHeader, out StringValues values)
+            ? values.FirstOrDefault() ?? BothArchitectures
+            : BothArchitectures;
+
+        bool runMicroservices = architecture.Equals(MicroservicesArchitecture, StringComparison.OrdinalIgnoreCase)
+            || architecture.Equals(BothArchitectures, StringComparison.OrdinalIgnoreCase);
+        bool runVirtualActors = architecture.Equals(VirtualActorsArchitecture, StringComparison.OrdinalIgnoreCase)
+            || architecture.Equals(BothArchitectures, StringComparison.OrdinalIgnoreCase);
+
+        ILogger logger = loggerFactory.CreateLogger("Comparison.Gateway");
+
+        if (!runMicroservices && !runVirtualActors) {
+            logger.UnsupportedArchitectureRequested(architecture);
+
+            return Results.BadRequest(new {
+                Error = "Unsupported X-Architecture value. Use microservices, virtual-actors, or both.",
+            });
+        }
+
+        logger.RunningScenario(request.Scenario, architecture);
+
+        try {
+            ArchitectureRunResult? microservices = null;
+            ArchitectureRunResult? virtualActors = null;
+
+            if (runMicroservices && runVirtualActors) {
+                Task<ArchitectureRunResult> microservicesTask = microservicesClient.RunAsync(
+                    request,
+                    cancellationToken);
+                Task<ArchitectureRunResult> virtualActorsTask = virtualActorsClient.RunAsync(
+                    request,
+                    cancellationToken);
+
+                await Task.WhenAll(
+                    microservicesTask,
+                    virtualActorsTask).ConfigureAwait(false);
+
+                microservices = await microservicesTask.ConfigureAwait(false);
+                virtualActors = await virtualActorsTask.ConfigureAwait(false);
+            }
+            else if (runMicroservices) {
+                microservices = await microservicesClient
+                    .RunAsync(request, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else {
+                virtualActors = await virtualActorsClient
+                    .RunAsync(request, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            logger.ScenarioCompleted(
+                request.Scenario,
+                architecture,
+                microservices is not null,
+                virtualActors is not null);
+
+            return Results.Ok(new RunScenarioResponse(
+                request.Scenario,
+                microservices,
+                virtualActors));
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception exception) {
+            logger.ScenarioExecutionFailed(exception, request.Scenario, architecture);
+
+            return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+}
