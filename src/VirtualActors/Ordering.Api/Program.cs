@@ -66,6 +66,12 @@ app.MapPost("/api/orders", async (
     ILogger logger = loggerFactory.CreateLogger("Ordering.PlaceOrder");
     IOrderGrain order = client.GetGrain<IOrderGrain>(request.OrderId);
 
+    logger.PlacingOrder(
+        request.OrderId,
+        request.CustomerId,
+        request.ProductId,
+        request.Quantity);
+
     GrainOrderResult result = await order.PlaceAsync(
         request.IdempotencyKey,
         request.CustomerId,

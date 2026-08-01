@@ -58,13 +58,32 @@ internal static partial class LogInformation {
         int availableQuantity);
 
     /// <summary>
+    /// Logs that an order is being placed.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="orderId">The order identifier.</param>
+    /// <param name="customerId">The customer identifier.</param>
+    /// <param name="productId">The product identifier.</param>
+    /// <param name="quantity">The requested quantity.</param>
+    [LoggerMessage(
+        EventId = EventIdBase + 5,
+        Level = Level,
+        Message = "Placing order {OrderId} for customer {CustomerId}, product {ProductId}, and quantity {Quantity}.")]
+    public static partial void PlacingOrder(
+        this ILogger logger,
+        Guid orderId,
+        string customerId,
+        string productId,
+        int quantity);
+
+    /// <summary>
     /// Logs that an order was retrieved with its current status.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="orderId">The order identifier.</param>
     /// <param name="status">The current order status.</param>
     [LoggerMessage(
-        EventId = EventIdBase + 5,
+        EventId = EventIdBase + 6,
         Level = Level,
         Message = "Order {OrderId} was retrieved with status {Status}.")]
     public static partial void OrderRetrievedWithStatus(
