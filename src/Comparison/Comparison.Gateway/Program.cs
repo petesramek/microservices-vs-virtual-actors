@@ -1,6 +1,7 @@
 using Comparison.Contracts;
 using Comparison.Gateway.Clients;
 using Comparison.Gateway.Configuration;
+using Comparison.Gateway.Endpoints;
 using Comparison.Gateway.Extensions;
 using Comparison.Gateway.Logging;
 using Microsoft.Extensions.Options;
@@ -57,33 +58,8 @@ app.MapGet("/", () => Results.Ok(new {
     Description = "Routes scenario requests by X-Architecture header.",
 }));
 
-// Report the current reachability of the gateway and both architecture backends.
-app.MapGet("/api/status", async (
-    ServiceStatusClient statusChecker,
-    IOptions<ArchitectureEndpointOptions> options,
-    CancellationToken cancellationToken) => {
-    var gateway = new ServiceStatus("Gateway", "local", IsOnline: true, "Online", Error: null);
-
-    // Start both independent health checks before awaiting either result.
-    Task<ServiceStatus> microservicesTask = statusChecker.GetAsync(
-        "Microservices",
-        options.Value.MicroservicesBaseUrl,
-        cancellationToken);
-
-    Task<ServiceStatus> virtualActorsTask = statusChecker.GetAsync(
-        "Virtual Actors",
-        options.Value.VirtualActorsBaseUrl,
-        cancellationToken);
-
-    await Task.WhenAll(
-        microservicesTask,
-        virtualActorsTask).ConfigureAwait(false);
-
-    return Results.Ok(new BackendStatusResponse(
-        gateway,
-        await microservicesTask.ConfigureAwait(false),
-        await virtualActorsTask.ConfigureAwait(false)));
-});
+// Report the current reachability of the gateway and both architecture services.
+app.MapStatusEndpoints();
 
 // Run the selected comparison scenario against one or both architectures.
 app.MapPost("/api/scenarios/run", RunScenario);
