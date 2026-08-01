@@ -148,13 +148,16 @@ static async Task<IResult> RunScenario(
     bool runVirtualActors = architecture.Equals(VirtualActorsArchitecture, StringComparison.OrdinalIgnoreCase)
         || architecture.Equals(BothArchitectures, StringComparison.OrdinalIgnoreCase);
 
+    ILogger logger = loggerFactory.CreateLogger("Comparison.Gateway");
+
     if (!runMicroservices && !runVirtualActors) {
+        logger.UnsupportedArchitectureRequested(architecture);
+
         return Results.BadRequest(new {
             Error = "Unsupported X-Architecture value. Use microservices, virtual-actors, or both.",
         });
     }
 
-    ILogger logger = loggerFactory.CreateLogger("Comparison.Gateway");
     logger.RunningScenario(request.Scenario, architecture);
 
     try {
