@@ -15,7 +15,7 @@ builder.Logging.AddConsole();
 // Produce standardized problem-details responses for unhandled gateway failures.
 builder.Services.AddProblemDetails();
 
-// Encapsulate backend health checks and their status mapping.
+// Encapsulate service health checks and their status mapping.
 builder.Services.AddSingleton<ServiceStatusClient>();
 
 // Bind and validate the downstream architecture endpoints during application startup.
