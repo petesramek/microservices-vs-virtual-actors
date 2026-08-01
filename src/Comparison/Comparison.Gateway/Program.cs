@@ -1,14 +1,15 @@
 using Comparison.Contracts;
 using Comparison.Gateway.Clients;
 using Comparison.Gateway.Configuration;
-using Microsoft.Extensions.Options;
 using Comparison.Gateway.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
+
 builder.Services.AddProblemDetails();
 
 builder.Services
@@ -64,23 +65,26 @@ app.MapGet($"/api/status", async (
     IHttpClientFactory httpClientFactory,
     IOptions<ArchitectureEndpointOptions> options,
     CancellationToken cancellationToken) => {
-        HttpClient httpClient = httpClientFactory.CreateClient();
-        var gateway = new ServiceStatus($"Gateway", $"local", IsOnline: true, $"Online", Error: null);
-        ServiceStatus microservices = await CheckBackendAsync(
-            httpClient,
-            $"Microservices",
-            options.Value.MicroservicesBaseUrl,
-            cancellationToken).ConfigureAwait(false);
-        ServiceStatus virtualActors = await CheckBackendAsync(
-            httpClient,
-            $"Virtual Actors",
-            options.Value.VirtualActorsBaseUrl,
-            cancellationToken).ConfigureAwait(false);
+    HttpClient httpClient = httpClientFactory.CreateClient();
+    var gateway = new ServiceStatus($"Gateway", $"local", IsOnline: true, $"Online", Error: null);
 
-        return Results.Ok(new BackendStatusResponse(gateway, microservices, virtualActors));
-    });
+    ServiceStatus microservices = await CheckBackendAsync(
+        httpClient,
+        $"Microservices",
+        options.Value.MicroservicesBaseUrl,
+        cancellationToken).ConfigureAwait(false);
+
+    ServiceStatus virtualActors = await CheckBackendAsync(
+        httpClient,
+        $"Virtual Actors",
+        options.Value.VirtualActorsBaseUrl,
+        cancellationToken).ConfigureAwait(false);
+
+    return Results.Ok(new BackendStatusResponse(gateway, microservices, virtualActors));
+});
 
 app.MapPost($"/api/scenarios/run", RunScenario);
+
 await app.RunAsync().ConfigureAwait(false);
 
 static async Task<ServiceStatus> CheckBackendAsync(
@@ -92,6 +96,7 @@ static async Task<ServiceStatus> CheckBackendAsync(
 
     try {
         using HttpResponseMessage response = await httpClient.GetAsync(healthUrl, cancellationToken).ConfigureAwait(false);
+
         return new ServiceStatus(
             name,
             healthUrl.ToString(),
@@ -102,8 +107,8 @@ static async Task<ServiceStatus> CheckBackendAsync(
         return new ServiceStatus(
             name,
             healthUrl.ToString(),
-IsOnline: false,
-$"Unavailable",
+            IsOnline: false,
+            $"Unavailable",
             exception.Message);
     }
 }
@@ -116,29 +121,38 @@ static async Task<IResult> RunScenario(
     ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) {
     var architecture = httpRequest.Headers.TryGetValue($"X-Architecture", out StringValues values)
-        ? values.FirstOrDefault() ?? $"both" : $"both";
+        ? values.FirstOrDefault() ?? $"both"
+        : $"both";
 
     ILogger logger = loggerFactory.CreateLogger($"Comparison.Gateway");
-
-    logger.RunningScenarioForArchitecture(request.Scenario, architecture);
+    logger.RunningScenario(request.Scenario, architecture);
 
     ArchitectureRunResult? microservices = null;
     ArchitectureRunResult? virtualActors = null;
 
-    if (architecture.Equals($"microservices", StringComparison.OrdinalIgnoreCase) || architecture.Equals($"both", StringComparison.OrdinalIgnoreCase)) {
+    if (architecture.Equals($"microservices", StringComparison.OrdinalIgnoreCase)
+        || architecture.Equals($"both", StringComparison.OrdinalIgnoreCase)) {
         microservices = await microservicesClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
-    if (architecture.Equals($"virtual-actors", StringComparison.OrdinalIgnoreCase) || architecture.Equals($"both", StringComparison.OrdinalIgnoreCase)) {
+    if (architecture.Equals($"virtual-actors", StringComparison.OrdinalIgnoreCase)
+        || architecture.Equals($"both", StringComparison.OrdinalIgnoreCase)) {
         virtualActors = await virtualActorsClient.RunAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     if (microservices is null && virtualActors is null) {
-        return Results.BadRequest(new { Error = $"Unsupported X-Architecture value. Use microservices, virtual-actors, or both." });
+        return Results.BadRequest(new {
+            Error = $"Unsupported X-Architecture value. Use microservices, virtual-actors, or both.",
+        });
     }
+
+    logger.ScenarioCompleted(
+        request.Scenario,
+        architecture,
+        microservices is not null,
+        virtualActors is not null);
 
     return Results.Ok(new RunScenarioResponse(request.Scenario, microservices, virtualActors));
 }
 
 public partial class Program;
-
