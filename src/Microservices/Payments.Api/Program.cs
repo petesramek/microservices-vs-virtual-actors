@@ -59,7 +59,7 @@ app.MapPost($"/api/payments/authorize", async (AuthorizePaymentRequest request, 
 
     var logger = loggerFactory.CreateLogger($"Payments.Authorize");
     if (logger.IsEnabled(LogLevel.Information)) {
-        logger.LogInformation($"Payment authorization for order {OrderId} completed with authorized={Authorized}", request.OrderId, authorized);
+        logger.LogInformation($"Payment authorization for order {request.OrderId} completed with authorized={authorized}");
     }
 
     return Results.Ok(new AuthorizePaymentResponse(authorized, reason));

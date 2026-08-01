@@ -53,14 +53,14 @@ app.MapPost($"/api/inventory/reset", async (ResetInventoryRequest request, Inven
     return Results.Ok(new InventoryResponse(item.ProductId, item.AvailableQuantity));
 });
 
-app.MapGet($"/api/inventory/{productId}", async (string productId, InventoryDbContext db, CancellationToken cancellationToken) => {
+app.MapGet("/api/inventory/{productId}", async (string productId, InventoryDbContext db, CancellationToken cancellationToken) => {
     var item = await db.Items.AsNoTracking().SingleOrDefaultAsync(x => x.ProductId == productId, cancellationToken).ConfigureAwait(false);
     return item is null
         ? Results.Ok(new InventoryResponse(productId, 0))
         : Results.Ok(new InventoryResponse(item.ProductId, item.AvailableQuantity));
 });
 
-app.MapPost($"/api/inventory/{productId}/reserve", async (string productId, ReserveInventoryRequest request, InventoryDbContext db, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
+app.MapPost("/api/inventory/{productId}/reserve", async (string productId, ReserveInventoryRequest request, InventoryDbContext db, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
     var logger = loggerFactory.CreateLogger($"Inventory.Reserve");
 
     var existingReservation = await db.Reservations.AsNoTracking().SingleOrDefaultAsync(x => x.ReservationId == request.ReservationId, cancellationToken).ConfigureAwait(false);
@@ -90,13 +90,13 @@ app.MapPost($"/api/inventory/{productId}/reserve", async (string productId, Rese
     await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
     if (logger.IsEnabled(LogLevel.Information)) {
-        logger.LogInformation($"Reserved {Quantity} item(s) of product {ProductId} for order {OrderId}", request.Quantity, productId, request.OrderId);
+        logger.LogInformation($"Reserved {request.Quantity} item(s) of product {productId} for order {request.OrderId}");
     }
     return Results.Ok(new ReserveInventoryResponse(true, null, item.AvailableQuantity));
     }
 });
 
-app.MapPost($"/api/inventory/{productId}/release", async (string productId, ReleaseInventoryRequest request, InventoryDbContext db, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
+app.MapPost("/api/inventory/{productId}/release", async (string productId, ReleaseInventoryRequest request, InventoryDbContext db, ILoggerFactory loggerFactory, CancellationToken cancellationToken) => {
     var logger = loggerFactory.CreateLogger($"Inventory.Release");
     var reservation = await db.Reservations.SingleOrDefaultAsync(x => x.ReservationId == request.ReservationId && x.ProductId == productId, cancellationToken).ConfigureAwait(false);
 
@@ -111,7 +111,7 @@ app.MapPost($"/api/inventory/{productId}/release", async (string productId, Rele
     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
     if (logger.IsEnabled(LogLevel.Information)) {
-        logger.LogInformation($"Released reservation {ReservationId} for product {ProductId}", request.ReservationId, productId);
+        logger.LogInformation($"Released reservation {request.ReservationId} for product {productId}");
     }
     return Results.Ok(new InventoryResponse(productId, item.AvailableQuantity));
 });
