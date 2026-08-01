@@ -49,7 +49,7 @@ internal static class StatusEndpoints {
             microservicesTask,
             virtualActorsTask).ConfigureAwait(false);
 
-        return Results.Ok(new BackendStatusResponse(
+        return Results.Ok(new ServiceStatusResponse(
             gateway,
             await microservicesTask.ConfigureAwait(false),
             await virtualActorsTask.ConfigureAwait(false)));

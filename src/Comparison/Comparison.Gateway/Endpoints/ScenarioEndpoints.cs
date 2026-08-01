@@ -69,15 +69,15 @@ internal static class ScenarioEndpoints {
         logger.RunningScenario(request.Scenario, architecture);
 
         try {
-            ArchitectureRunResult? microservices = null;
-            ArchitectureRunResult? virtualActors = null;
+            ScenarioExecutionResult? microservices = null;
+            ScenarioExecutionResult? virtualActors = null;
 
             if (runMicroservices && runVirtualActors) {
-                Task<ArchitectureRunResult> microservicesTask = scenarioRunner.RunAsync(
+                Task<ScenarioExecutionResult> microservicesTask = scenarioRunner.RunAsync(
                     microservicesClient,
                     request,
                     cancellationToken);
-                Task<ArchitectureRunResult> virtualActorsTask = scenarioRunner.RunAsync(
+                Task<ScenarioExecutionResult> virtualActorsTask = scenarioRunner.RunAsync(
                     virtualActorsClient,
                     request,
                     cancellationToken);

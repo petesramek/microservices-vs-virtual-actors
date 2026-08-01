@@ -1,7 +1,7 @@
 namespace Comparison.Contracts;
 
 /// <summary>
-/// Defines externally visible order states used by both implementations.
+/// Defines the externally visible order statuses used by both implementations.
 /// </summary>
 public enum OrderStatus {
     /// <summary>
@@ -10,12 +10,12 @@ public enum OrderStatus {
     Created,
 
     /// <summary>
-    /// Inventory has been reserved.
+    /// Inventory has been reserved for the order.
     /// </summary>
     InventoryReserved,
 
     /// <summary>
-    /// Payment has been authorized.
+    /// Payment has been authorized for the order.
     /// </summary>
     PaymentAuthorized,
 

@@ -12,8 +12,8 @@ public sealed class ScenarioRunnerClient(HttpClient httpClient) {
     /// Gets backend status from the gateway.
     /// </summary>
     /// <returns>The backend status response.</returns>
-    public async Task<BackendStatusResponse?> GetStatusAsync() {
-        return await httpClient.GetFromJsonAsync<BackendStatusResponse>($"/api/status").ConfigureAwait(false);
+    public async Task<ServiceStatusResponse?> GetStatusAsync() {
+        return await httpClient.GetFromJsonAsync<ServiceStatusResponse>($"/api/status").ConfigureAwait(false);
     }
 
     /// <summary>

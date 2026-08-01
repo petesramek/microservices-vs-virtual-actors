@@ -1,4 +1,4 @@
-﻿
+
 @page "/"
 @rendermode InteractiveServer
 @inject ScenarioRunnerClient Client
@@ -12,18 +12,15 @@
 </section>
 
 <section class="status-strip" aria-label="Backend status">
-    @if (backendStatus is null && !isLoadingStatus)
-    {
+    @if (serviceStatus is null && !isLoadingStatus)   {
         <article class="status-pill status-offline">
             <span>Gateway</span>
             <strong>Unknown</strong>
         </article>
-    }
-    else if (backendStatus is not null)
-    {
-        <StatusPill Status="backendStatus.Gateway" />
-        <StatusPill Status="backendStatus.Microservices" />
-        <StatusPill Status="backendStatus.VirtualActors" />
+    } else if (serviceStatus is not null)  {
+        <StatusPill Status="serviceStatus.Gateway" />
+        <StatusPill Status="serviceStatus.Microservices" />
+        <StatusPill Status="serviceStatus.VirtualActors" />
     }
     else
     {
@@ -216,7 +213,7 @@
     private string architecture = "both";
     private ScenarioFormModel model = ScenarioFormModel.Create(ScenarioKind.SuccessfulOrder);
     private RunScenarioResponse? response;
-    private BackendStatusResponse? backendStatus;
+    private ServiceStatusResponse? serviceStatus;
     private string? errorMessage;
     private string? statusErrorMessage;
     private bool isRunning;
@@ -254,11 +251,11 @@
 
         try
         {
-            backendStatus = await Client.GetStatusAsync();
+            serviceStatus = await Client.GetStatusAsync();
         }
         catch (Exception exception)
         {
-            backendStatus = null;
+            serviceStatus = null;
             statusErrorMessage = exception.Message;
         }
         finally

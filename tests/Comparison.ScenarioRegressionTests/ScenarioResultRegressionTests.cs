@@ -22,7 +22,7 @@ public sealed class ScenarioResultRegressionTests {
         (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.SuccessfulOrder, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
-        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
+        ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(1);
@@ -40,7 +40,7 @@ public sealed class ScenarioResultRegressionTests {
         (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.InsufficientInventory, initialStock: 1, quantity: 2, concurrentRequests: 10);
 
-        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
+        ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(0);
@@ -59,7 +59,7 @@ public sealed class ScenarioResultRegressionTests {
         (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.PaymentFailureCompensation, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
-        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
+        ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(0);
@@ -78,7 +78,7 @@ public sealed class ScenarioResultRegressionTests {
         (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.PaymentTimeoutAfterReservation, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
-        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
+        ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(1);
         result.CompletedOrders.ShouldBe(0);
@@ -98,7 +98,7 @@ public sealed class ScenarioResultRegressionTests {
         (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.HotProductContention, initialStock: 25, quantity: 1, concurrentRequests: 50);
 
-        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
+        ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(50);
         result.CompletedOrders.ShouldBe(25);
@@ -116,7 +116,7 @@ public sealed class ScenarioResultRegressionTests {
         (ScenarioRunner runner, IServiceClient client) = CreateRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.DuplicateRequest, initialStock: 10, quantity: 2, concurrentRequests: 20);
 
-        ArchitectureRunResult result = await runner.RunAsync(client, request, CancellationToken.None);
+        ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
 
         result.TotalRequestSubmissions.ShouldBe(20);
         result.CompletedOrders.ShouldBe(1);

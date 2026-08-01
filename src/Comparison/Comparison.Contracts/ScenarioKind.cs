@@ -20,7 +20,7 @@ public enum ScenarioKind {
     PaymentFailureCompensation,
 
     /// <summary>
-    /// A payment times out after the inventory reservation has already been made.
+    /// Payment times out after inventory has been reserved.
     /// </summary>
     PaymentTimeoutAfterReservation,
 
@@ -35,9 +35,7 @@ public enum ScenarioKind {
     DuplicateRequest,
 
     /// <summary>
-    /// A hot product experiences high contention as many requests compete for the same inventory.
+    /// Many requests compete concurrently for the same product inventory.
     /// </summary>
     HotProductContention,
 }
-
-

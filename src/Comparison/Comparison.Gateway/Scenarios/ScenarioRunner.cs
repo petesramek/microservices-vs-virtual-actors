@@ -14,8 +14,8 @@ public sealed class ScenarioRunner {
     /// <param name="serviceClient">The service client used to execute the scenario.</param>
     /// <param name="request">The scenario request.</param>
     /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>The architecture run result.</returns>
-    public Task<ArchitectureRunResult> RunAsync(
+    /// <returns>The scenario execution result.</returns>
+    public Task<ScenarioExecutionResult> RunAsync(
         IServiceClient serviceClient,
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
@@ -30,7 +30,7 @@ public sealed class ScenarioRunner {
         };
     }
 
-    private static async Task<ArchitectureRunResult> RunSingleOrderAsync(
+    private static async Task<ScenarioExecutionResult> RunSingleOrderAsync(
         IServiceClient serviceClient,
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
@@ -71,7 +71,7 @@ public sealed class ScenarioRunner {
             serviceClient.CreateTimeline(prepared, order, inventory));
     }
 
-    private static async Task<ArchitectureRunResult> RunConcurrentOrdersAsync(
+    private static async Task<ScenarioExecutionResult> RunConcurrentOrdersAsync(
         IServiceClient serviceClient,
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
@@ -104,7 +104,7 @@ public sealed class ScenarioRunner {
         var rejected = orders.Count(order => order.Status == OrderStatus.Rejected);
         OrderResponse representative = orders.FirstOrDefault(order => order.Status == OrderStatus.Completed) ?? orders[0];
 
-        return new ArchitectureRunResult(
+        return new ScenarioExecutionResult(
             serviceClient.Name,
             representative.Status,
             rejected > 0 ? "SomeOrdersRejected" : representative.Reason,
@@ -122,7 +122,7 @@ public sealed class ScenarioRunner {
             0);
     }
 
-    private static async Task<ArchitectureRunResult> RunDuplicateRequestAsync(
+    private static async Task<ScenarioExecutionResult> RunDuplicateRequestAsync(
         IServiceClient serviceClient,
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
@@ -162,7 +162,7 @@ public sealed class ScenarioRunner {
         var uniqueLogicalResults = Math.Max(1, uniqueCompletedOrders + uniqueRejectedOrders);
         var idempotentResponses = Math.Max(0, prepared.ConcurrentRequests - uniqueLogicalResults);
 
-        return new ArchitectureRunResult(
+        return new ScenarioExecutionResult(
             serviceClient.Name,
             representative.Status,
             idempotentResponses > 0 ? "IdempotentResultReturned" : representative.Reason,
@@ -208,7 +208,7 @@ public sealed class ScenarioRunner {
         };
     }
 
-    private static ArchitectureRunResult ToResult(
+    private static ScenarioExecutionResult ToResult(
         string serviceName,
         RunScenarioRequest request,
         OrderResponse order,
@@ -216,7 +216,7 @@ public sealed class ScenarioRunner {
         long elapsedMilliseconds,
         IReadOnlyList<ScenarioEvent> events,
         string? reason = null) {
-        return new ArchitectureRunResult(
+        return new ScenarioExecutionResult(
             serviceName,
             order.Status,
             reason ?? order.Reason,
