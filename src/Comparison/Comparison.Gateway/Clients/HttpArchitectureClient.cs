@@ -16,7 +16,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
             ScenarioKind.ConcurrentOrders => await RunConcurrentOrdersAsync(request, cancellationToken),
             ScenarioKind.HotProductContention => await RunConcurrentOrdersAsync(request, cancellationToken),
             ScenarioKind.DuplicateRequest => await RunDuplicateRequestAsync(request, cancellationToken),
-            _ => await RunSingleOrderAsync(request, cancellationToken)
+            _ => await RunSingleOrderAsync(request, cancellationToken),
         };
     }
 
@@ -68,7 +68,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         var prepared = PrepareScenarioRequest(request with {
             Quantity = Math.Max(1, request.Quantity),
             InitialStock = request.InitialStock,
-            SimulatePaymentFailure = false
+            SimulatePaymentFailure = false,
         });
 
         var stopwatch = Stopwatch.StartNew();
@@ -77,7 +77,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         var tasks = Enumerable.Range(1, prepared.ConcurrentRequests)
             .Select(index => PlaceOrderAsync(prepared with {
                 OrderId = Guid.NewGuid(),
-                IdempotencyKey = $"{prepared.IdempotencyKey}-{index}"
+                IdempotencyKey = $"{prepared.IdempotencyKey}-{index}",
             }, cancellationToken))
             .ToArray();
 
@@ -108,7 +108,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
         var prepared = PrepareScenarioRequest(request with {
             ConcurrentRequests = Math.Max(2, request.ConcurrentRequests),
             InitialStock = Math.Max(request.InitialStock, request.Quantity),
-            SimulatePaymentFailure = false
+            SimulatePaymentFailure = false,
         });
 
         var stopwatch = Stopwatch.StartNew();
@@ -158,7 +158,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
                 new ScenarioEvent("InventoryItemGrain", $"Reserved inventory for quantity {request.Quantity}."),
                 new ScenarioEvent("PaymentAccountGrain", "Payment authorization timed out."),
                 new ScenarioEvent("InventoryItemGrain", "Released inventory reservation after timeout."),
-                new ScenarioEvent("OrderGrain", $"Rejected order after payment timeout. Remaining inventory is {inventory.AvailableQuantity}.")
+                new ScenarioEvent("OrderGrain", $"Rejected order after payment timeout. Remaining inventory is {inventory.AvailableQuantity}."),
             ];
         }
 
@@ -168,7 +168,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
             new ScenarioEvent("Inventory.Api", $"Reserved inventory for quantity {request.Quantity}."),
             new ScenarioEvent("Payments.Api", "Payment authorization timed out."),
             new ScenarioEvent("Inventory.Api", "Released inventory reservation after timeout."),
-            new ScenarioEvent("Orders.Api", $"Rejected order after payment timeout. Remaining inventory is {inventory.AvailableQuantity}.")
+            new ScenarioEvent("Orders.Api", $"Rejected order after payment timeout. Remaining inventory is {inventory.AvailableQuantity}."),
         ];
     }
 
@@ -185,7 +185,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
                 new ScenarioEvent("InventoryItemGrain", $"Serialized reservation attempts for hot product '{request.ProductId}'."),
                 new ScenarioEvent("InventoryItemGrain", $"Reserved inventory for {completed} submissions."),
                 new ScenarioEvent("InventoryItemGrain", $"Rejected {rejected} submissions after stock was exhausted."),
-                new ScenarioEvent("OrderGrain", $"Completed {completed} submissions and rejected {rejected} submissions. Remaining inventory is {remainingInventory}.")
+                new ScenarioEvent("OrderGrain", $"Completed {completed} submissions and rejected {rejected} submissions. Remaining inventory is {remainingInventory}."),
             ];
         }
 
@@ -195,7 +195,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
             new ScenarioEvent("Inventory.Api", $"Protected reservation attempts for hot product '{request.ProductId}'."),
             new ScenarioEvent("Inventory.Api", $"Reserved inventory for {completed} submissions."),
             new ScenarioEvent("Inventory.Api", $"Rejected {rejected} submissions after stock was exhausted."),
-            new ScenarioEvent("Orders.Api", $"Completed {completed} submissions and rejected {rejected} submissions. Remaining inventory is {remainingInventory}.")
+            new ScenarioEvent("Orders.Api", $"Completed {completed} submissions and rejected {rejected} submissions. Remaining inventory is {remainingInventory}."),
         ];
     }
 
@@ -212,7 +212,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
                 new ScenarioEvent("OrderGrain", "Serialized duplicate submissions for one order identity."),
                 new ScenarioEvent("InventoryItemGrain", $"Reserved inventory once for quantity {request.Quantity}."),
                 new ScenarioEvent("OrderGrain", $"Created {uniqueCompletedOrders} unique successful order and returned {idempotentResponses} idempotent duplicate responses."),
-                new ScenarioEvent("Ordering.Api", $"Rejected submissions: {uniqueRejectedOrders}. Remaining inventory is {remainingInventory}.")
+                new ScenarioEvent("Ordering.Api", $"Rejected submissions: {uniqueRejectedOrders}. Remaining inventory is {remainingInventory}."),
             ];
         }
 
@@ -222,40 +222,40 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
             new ScenarioEvent("Orders.Api", "Created one unique order for the idempotency key."),
             new ScenarioEvent("Inventory.Api", $"Reserved inventory once for quantity {request.Quantity}."),
             new ScenarioEvent("Orders.Api", $"Returned {idempotentResponses} idempotent duplicate responses."),
-            new ScenarioEvent("Orders.Api", $"Rejected submissions: {uniqueRejectedOrders}. Remaining inventory is {remainingInventory}.")
+            new ScenarioEvent("Orders.Api", $"Rejected submissions: {uniqueRejectedOrders}. Remaining inventory is {remainingInventory}."),
         ];
     }
 
     private static RunScenarioRequest PrepareScenarioRequest(RunScenarioRequest request) {
         var isolatedRequest = request with {
             OrderId = Guid.NewGuid(),
-            IdempotencyKey = $"{request.Scenario}-{Guid.NewGuid():N}"
+            IdempotencyKey = $"{request.Scenario}-{Guid.NewGuid():N}",
         };
 
         return isolatedRequest.Scenario switch {
             ScenarioKind.InsufficientInventory => isolatedRequest with {
                 InitialStock = Math.Min(isolatedRequest.InitialStock, Math.Max(0, isolatedRequest.Quantity - 1)),
-                SimulatePaymentFailure = false
+                SimulatePaymentFailure = false,
             },
             ScenarioKind.PaymentFailureCompensation => isolatedRequest with {
                 InitialStock = Math.Max(isolatedRequest.InitialStock, isolatedRequest.Quantity),
-                SimulatePaymentFailure = true
+                SimulatePaymentFailure = true,
             },
             ScenarioKind.PaymentTimeoutAfterReservation => isolatedRequest with {
                 InitialStock = Math.Max(isolatedRequest.InitialStock, isolatedRequest.Quantity),
-                SimulatePaymentFailure = true
+                SimulatePaymentFailure = true,
             },
             ScenarioKind.SuccessfulOrder => isolatedRequest with {
                 InitialStock = Math.Max(isolatedRequest.InitialStock, isolatedRequest.Quantity),
-                SimulatePaymentFailure = false
+                SimulatePaymentFailure = false,
             },
-            _ => isolatedRequest
+            _ => isolatedRequest,
         };
     }
 
     private async Task ResetInventoryAsync(string productId, int quantity, CancellationToken cancellationToken) {
         using var message = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/reset") {
-            Content = JsonContent.Create(new ResetInventoryRequest(productId, quantity))
+            Content = JsonContent.Create(new ResetInventoryRequest(productId, quantity)),
         };
         AddCorrelationHeader(message);
 
@@ -265,7 +265,7 @@ public abstract class HttpArchitectureClient(HttpClient httpClient, string archi
 
     private async Task<OrderResponse> PlaceOrderAsync(RunScenarioRequest request, CancellationToken cancellationToken) {
         using var message = new HttpRequestMessage(HttpMethod.Post, "/api/orders") {
-            Content = JsonContent.Create(request)
+            Content = JsonContent.Create(request),
         };
         AddCorrelationHeader(message);
 

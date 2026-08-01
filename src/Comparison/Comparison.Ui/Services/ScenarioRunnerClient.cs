@@ -24,7 +24,7 @@ public sealed class ScenarioRunnerClient(HttpClient httpClient) {
     /// <returns>The scenario response.</returns>
     public async Task<RunScenarioResponse?> RunAsync(string architecture, RunScenarioRequest request) {
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/run") {
-            Content = JsonContent.Create(request)
+            Content = JsonContent.Create(request),
         };
 
         httpRequest.Headers.Add("X-Architecture", architecture);

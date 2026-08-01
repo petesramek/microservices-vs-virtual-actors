@@ -14,7 +14,7 @@ public sealed class MicroservicesArchitectureClient(HttpClient httpClient) : Htt
             [
                 new ScenarioEvent("Orders.Api", "Received order request."),
                 new ScenarioEvent("Inventory.Api", "Rejected reservation because inventory was insufficient."),
-                new ScenarioEvent("Orders.Api", "Rejected order without calling Payments.Api.")
+                new ScenarioEvent("Orders.Api", "Rejected order without calling Payments.Api."),
             ],
             ScenarioKind.PaymentFailureCompensation =>
             [
@@ -22,27 +22,27 @@ public sealed class MicroservicesArchitectureClient(HttpClient httpClient) : Htt
                 new ScenarioEvent("Inventory.Api", "Reserved inventory."),
                 new ScenarioEvent("Payments.Api", "Rejected payment authorization."),
                 new ScenarioEvent("Inventory.Api", "Released reserved inventory."),
-                new ScenarioEvent("Orders.Api", "Rejected order because payment failed.")
+                new ScenarioEvent("Orders.Api", "Rejected order because payment failed."),
             ],
             ScenarioKind.ConcurrentOrders =>
             [
                 new ScenarioEvent("Orders.Api", "Received concurrent order requests."),
                 new ScenarioEvent("Inventory.Api", "Serialized reservations through inventory update logic."),
                 new ScenarioEvent("Payments.Api", "Authorized successful reservations."),
-                new ScenarioEvent("Orders.Api", "Completed only orders with successful reservations.")
+                new ScenarioEvent("Orders.Api", "Completed only orders with successful reservations."),
             ],
             ScenarioKind.DuplicateRequest =>
             [
                 new ScenarioEvent("Orders.Api", "Received duplicate request."),
-                new ScenarioEvent("Orders.Api", "Returned existing order result for idempotency key.")
+                new ScenarioEvent("Orders.Api", "Returned existing order result for idempotency key."),
             ],
             _ =>
             [
                 new ScenarioEvent("Orders.Api", "Received order request."),
                 new ScenarioEvent("Inventory.Api", "Reserved inventory."),
                 new ScenarioEvent("Payments.Api", "Authorized payment."),
-                new ScenarioEvent("Orders.Api", "Completed order.")
-            ]
+                new ScenarioEvent("Orders.Api", "Completed order."),
+            ],
         };
     }
 }

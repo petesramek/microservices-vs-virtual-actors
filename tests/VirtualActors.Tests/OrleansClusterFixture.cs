@@ -16,22 +16,11 @@ public sealed class OrleansClusterFixture : IAsyncLifetime {
     public async Task InitializeAsync() {
         var builder = new InProcessTestClusterBuilder();
         Cluster = builder.Build();
-        await Cluster.DeployAsync();
+        await Cluster.DeployAsync().ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task DisposeAsync() {
-        await Cluster.DisposeAsync();
+        await Cluster.DisposeAsync().ConfigureAwait(false);
     }
-}
-
-/// <summary>
-/// Collection fixture definition for Orleans cluster tests.
-/// </summary>
-[CollectionDefinition(Name)]
-public sealed class OrleansClusterFixtureDefinition : ICollectionFixture<OrleansClusterFixture> {
-    /// <summary>
-    /// The collection name.
-    /// </summary>
-    public const string Name = "OrleansCluster";
 }

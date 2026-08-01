@@ -70,8 +70,8 @@ public sealed class VirtualActorOrderWorkflowTests {
         var results = await Task.WhenAll(tasks);
         var inventory = await GetInventoryAsync(productId);
 
-        results.Count(result => result.Status == OrderStatus.Completed.ToString()).ShouldBe(3);
-        results.Count(result => result.Status == OrderStatus.Rejected.ToString()).ShouldBe(7);
+        results.Count(result => string.Equals(result.Status, OrderStatus.Completed.ToString(), StringComparison.Ordinal)).ShouldBe(3);
+        results.Count(result => string.Equals(result.Status, OrderStatus.Rejected.ToString(), StringComparison.Ordinal)).ShouldBe(7);
         inventory.AvailableQuantity.ShouldBe(0);
     }
 
@@ -93,12 +93,12 @@ public sealed class VirtualActorOrderWorkflowTests {
 
     private async Task ResetInventoryAsync(string productId, int quantity) {
         var inventory = _fixture.Cluster.Client.GetGrain<IInventoryItemGrain>(productId);
-        await inventory.ResetAsync(quantity);
+        await inventory.ResetAsync(quantity).ConfigureAwait(false);
     }
 
     private async Task<Ordering.Grains.Contracts.InventorySnapshot> GetInventoryAsync(string productId) {
         var inventory = _fixture.Cluster.Client.GetGrain<IInventoryItemGrain>(productId);
-        return await inventory.GetAsync();
+        return await inventory.GetAsync().ConfigureAwait(false);
     }
 
     private async Task<Ordering.Grains.Contracts.GrainOrderResult> PlaceOrderAsync(
@@ -112,7 +112,7 @@ public sealed class VirtualActorOrderWorkflowTests {
             "customer-001",
             productId,
             quantity,
-            simulatePaymentFailure);
+            simulatePaymentFailure).ConfigureAwait(false);
     }
 
     private static string UniqueProductId() {

@@ -3,6 +3,7 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Orleans.Analyzers" />
     <PackageReference Include="Microsoft.Orleans.Server" />
     <ProjectReference Include="../Ordering.Grains/Ordering.Grains.csproj" />
   </ItemGroup>

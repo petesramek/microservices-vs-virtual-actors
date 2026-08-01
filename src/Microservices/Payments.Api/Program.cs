@@ -23,7 +23,7 @@ app.Use(async (context, next) => {
     }
 
     using var scope = app.Logger.BeginScope(new Dictionary<string, object> {
-        ["CorrelationId"] = correlationId
+        ["CorrelationId"] = correlationId,
     });
 
     if (app.Logger.IsEnabled(LogLevel.Information)) {
@@ -52,7 +52,7 @@ app.MapPost("/api/payments/authorize", async (AuthorizePaymentRequest request, P
         CustomerId = request.CustomerId,
         IdempotencyKey = request.IdempotencyKey,
         Authorized = authorized,
-        Reason = reason
+        Reason = reason,
     });
 
     await db.SaveChangesAsync(cancellationToken);

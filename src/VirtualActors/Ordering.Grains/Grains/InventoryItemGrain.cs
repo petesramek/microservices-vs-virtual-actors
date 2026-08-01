@@ -8,7 +8,7 @@ using Orleans;
 /// Grain that owns inventory state for one product.
 /// </summary>
 public sealed class InventoryItemGrain : Grain, IInventoryItemGrain {
-    private readonly Dictionary<Guid, int> _reservations = new();
+    private readonly Dictionary<Guid, int> _reservations = [];
     private int _availableQuantity;
 
     /// <inheritdoc />

@@ -15,7 +15,7 @@ public sealed class VirtualActorsArchitectureClient(HttpClient httpClient) : Htt
                 new ScenarioEvent("Ordering.Api", "Received order request."),
                 new ScenarioEvent("OrderGrain", "Started order workflow."),
                 new ScenarioEvent("InventoryItemGrain", "Rejected reservation because inventory was insufficient."),
-                new ScenarioEvent("OrderGrain", "Rejected order without calling PaymentAccountGrain.")
+                new ScenarioEvent("OrderGrain", "Rejected order without calling PaymentAccountGrain."),
             ],
             ScenarioKind.PaymentFailureCompensation =>
             [
@@ -24,19 +24,19 @@ public sealed class VirtualActorsArchitectureClient(HttpClient httpClient) : Htt
                 new ScenarioEvent("InventoryItemGrain", "Reserved inventory."),
                 new ScenarioEvent("PaymentAccountGrain", "Rejected payment authorization."),
                 new ScenarioEvent("InventoryItemGrain", "Released reserved inventory."),
-                new ScenarioEvent("OrderGrain", "Rejected order because payment failed.")
+                new ScenarioEvent("OrderGrain", "Rejected order because payment failed."),
             ],
             ScenarioKind.ConcurrentOrders =>
             [
                 new ScenarioEvent("Ordering.Api", "Received concurrent order requests."),
                 new ScenarioEvent("OrderGrain", "Coordinated each order workflow."),
                 new ScenarioEvent("InventoryItemGrain", "Serialized reservations for the product identity."),
-                new ScenarioEvent("PaymentAccountGrain", "Authorized successful reservations.")
+                new ScenarioEvent("PaymentAccountGrain", "Authorized successful reservations."),
             ],
             ScenarioKind.DuplicateRequest =>
             [
                 new ScenarioEvent("Ordering.Api", "Received duplicate request."),
-                new ScenarioEvent("OrderGrain", "Returned existing order result for the order identity.")
+                new ScenarioEvent("OrderGrain", "Returned existing order result for the order identity."),
             ],
             _ =>
             [
@@ -44,8 +44,8 @@ public sealed class VirtualActorsArchitectureClient(HttpClient httpClient) : Htt
                 new ScenarioEvent("OrderGrain", "Started order workflow."),
                 new ScenarioEvent("InventoryItemGrain", "Reserved inventory."),
                 new ScenarioEvent("PaymentAccountGrain", "Authorized payment."),
-                new ScenarioEvent("OrderGrain", "Completed order.")
-            ]
+                new ScenarioEvent("OrderGrain", "Completed order."),
+            ],
         };
     }
 }

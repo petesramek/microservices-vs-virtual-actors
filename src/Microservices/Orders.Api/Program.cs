@@ -37,7 +37,7 @@ app.Use(async (context, next) => {
     }
 
     using var scope = app.Logger.BeginScope(new Dictionary<string, object> {
-        ["CorrelationId"] = correlationId
+        ["CorrelationId"] = correlationId,
     });
 
     app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
@@ -118,7 +118,7 @@ app.MapPost("/api/orders", async (RunScenarioRequest request, OrdersDbContext db
         ProductId = request.ProductId,
         Quantity = request.Quantity,
         ReservationId = reservationId,
-        Status = OrderStatus.Created.ToString()
+        Status = OrderStatus.Created.ToString(),
     };
 
     db.Orders.Add(order);

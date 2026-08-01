@@ -129,7 +129,7 @@ public sealed class ScenarioResultRegressionTests {
     private static IArchitectureClient CreateClient() {
         var handler = new ScenarioRegressionHttpMessageHandler();
         var httpClient = new HttpClient(handler) {
-            BaseAddress = new Uri("http://scenario-regression.test")
+            BaseAddress = new Uri("http://scenario-regression.test"),
         };
 
         return new RegressionArchitectureClient(httpClient, "Microservices");
@@ -148,7 +148,7 @@ public sealed class ScenarioResultRegressionTests {
             Quantity = quantity,
             ConcurrentRequests = concurrentRequests,
             IdempotencyKey = $"{scenario}-{Guid.NewGuid():N}",
-            SimulatePaymentFailure = scenario is ScenarioKind.PaymentFailureCompensation or ScenarioKind.PaymentTimeoutAfterReservation
+            SimulatePaymentFailure = scenario is ScenarioKind.PaymentFailureCompensation or ScenarioKind.PaymentTimeoutAfterReservation,
         };
     }
 
@@ -162,7 +162,7 @@ public sealed class ScenarioResultRegressionTests {
             return
             [
                 new ScenarioEvent("Scenario", $"Processed {request.Scenario} with status {order.Status}."),
-                new ScenarioEvent("Inventory", $"Remaining inventory is {inventory.AvailableQuantity}.")
+                new ScenarioEvent("Inventory", $"Remaining inventory is {inventory.AvailableQuantity}."),
             ];
         }
     }
@@ -195,7 +195,7 @@ public sealed class ScenarioResultRegressionTests {
             }
 
             return new HttpResponseMessage(HttpStatusCode.NotFound) {
-                Content = new StringContent($"No fake route for {request.Method} {path}")
+                Content = new StringContent($"No fake route for {request.Method} {path}"),
             };
         }
 
@@ -241,7 +241,7 @@ public sealed class ScenarioResultRegressionTests {
 
         private static HttpResponseMessage Json<T>(T payload) {
             return new HttpResponseMessage(HttpStatusCode.OK) {
-                Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json")
+                Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json"),
             };
         }
 

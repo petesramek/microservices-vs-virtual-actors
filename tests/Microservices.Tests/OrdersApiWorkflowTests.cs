@@ -46,7 +46,7 @@ public sealed class OrdersApiWorkflowTests {
         var response = await PlaceOrderAsync(client, new RunScenarioRequest {
             ProductId = "product-001",
             Quantity = 2,
-            SimulatePaymentFailure = true
+            SimulatePaymentFailure = true,
         });
         var inventory = await factory.InventoryClient.GetAsync("product-001", CancellationToken.None);
 
@@ -66,7 +66,7 @@ public sealed class OrdersApiWorkflowTests {
                 OrderId = Guid.NewGuid(),
                 ProductId = "product-001",
                 Quantity = 1,
-                IdempotencyKey = $"concurrent-{index}"
+                IdempotencyKey = $"concurrent-{index}",
             }))
             .ToArray();
 
@@ -89,7 +89,7 @@ public sealed class OrdersApiWorkflowTests {
             OrderId = orderId,
             ProductId = "product-001",
             Quantity = 2,
-            IdempotencyKey = "duplicate-request"
+            IdempotencyKey = "duplicate-request",
         };
 
         var first = await PlaceOrderAsync(client, request);
@@ -101,9 +101,9 @@ public sealed class OrdersApiWorkflowTests {
     }
 
     private static async Task<OrderResponse> PlaceOrderAsync(HttpClient client, RunScenarioRequest request) {
-        var response = await client.PostAsJsonAsync("/api/orders", request);
+        var response = await client.PostAsJsonAsync("/api/orders", request).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<OrderResponse>())!;
+        return (await response.Content.ReadFromJsonAsync<OrderResponse>().ConfigureAwait(false))!;
     }
 }
 

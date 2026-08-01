@@ -25,8 +25,8 @@ public sealed class ComparisonGatewayAcceptanceTests {
                 Scenario = ScenarioKind.SuccessfulOrder,
                 ProductId = "product-001",
                 InitialStock = 10,
-                Quantity = 2
-            })
+                Quantity = 2,
+            }),
         };
         request.Headers.Add("X-Architecture", architecture);
 
@@ -50,7 +50,7 @@ public sealed class ComparisonGatewayAcceptanceTests {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/run") {
-            Content = JsonContent.Create(new RunScenarioRequest())
+            Content = JsonContent.Create(new RunScenarioRequest()),
         };
         request.Headers.Add("X-Architecture", "unknown");
 
@@ -109,7 +109,7 @@ public sealed class ComparisonGatewayAcceptanceTests {
 
         private static Task<HttpResponseMessage> Json<T>(T value) {
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
-                Content = JsonContent.Create(value)
+                Content = JsonContent.Create(value),
             });
         }
     }

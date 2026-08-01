@@ -39,7 +39,7 @@ app.Use(async (context, next) => {
     CorrelationContext.CurrentCorrelationId = correlationId;
 
     using var scope = app.Logger.BeginScope(new Dictionary<string, object> {
-        ["CorrelationId"] = correlationId
+        ["CorrelationId"] = correlationId,
     });
 
     app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
@@ -55,7 +55,7 @@ app.UseExceptionHandler();
 
 app.MapGet("/", () => Results.Ok(new {
     Name = "Architecture Comparison Gateway",
-    Description = "Routes scenario requests by X-Architecture header."
+    Description = "Routes scenario requests by X-Architecture header.",
 }));
 
 app.MapGet("/api/status", async (

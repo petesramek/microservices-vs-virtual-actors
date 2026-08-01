@@ -70,7 +70,7 @@ public sealed class ScenarioFormModel : IValidatableObject {
             InitialStock = InitialStock,
             ConcurrentRequests = UsesConcurrentRequests ? ConcurrentRequests : defaults.ConcurrentRequests,
             IdempotencyKey = IdempotencyKey.Trim(),
-            SimulatePaymentFailure = Scenario is ScenarioKind.PaymentFailureCompensation or ScenarioKind.PaymentTimeoutAfterReservation
+            SimulatePaymentFailure = Scenario is ScenarioKind.PaymentFailureCompensation or ScenarioKind.PaymentTimeoutAfterReservation,
         };
     }
 
@@ -128,7 +128,7 @@ public sealed record ScenarioDefaults(int InitialStock, int Quantity, int Concur
             ScenarioKind.ConcurrentOrders => new ScenarioDefaults(3, 1, 10),
             ScenarioKind.HotProductContention => new ScenarioDefaults(25, 1, 50),
             ScenarioKind.DuplicateRequest => new ScenarioDefaults(10, 2, 20),
-            _ => new ScenarioDefaults(10, 1, 10)
+            _ => new ScenarioDefaults(10, 1, 10),
         };
     }
 }

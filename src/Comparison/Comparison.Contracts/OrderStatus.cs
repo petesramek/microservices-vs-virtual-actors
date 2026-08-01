@@ -27,5 +27,5 @@ public enum OrderStatus {
     /// <summary>
     /// The order has been rejected.
     /// </summary>
-    Rejected
+    Rejected,
 }

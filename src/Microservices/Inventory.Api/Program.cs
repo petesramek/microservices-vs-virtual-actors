@@ -23,7 +23,7 @@ app.Use(async (context, next) => {
     }
 
     using var scope = app.Logger.BeginScope(new Dictionary<string, object> {
-        ["CorrelationId"] = correlationId
+        ["CorrelationId"] = correlationId,
     });
 
     if (app.Logger.IsEnabled(LogLevel.Information)) {
@@ -82,7 +82,7 @@ app.MapPost("/api/inventory/{productId}/reserve", async (string productId, Reser
         ReservationId = request.ReservationId,
         OrderId = request.OrderId,
         ProductId = productId,
-        Quantity = request.Quantity
+        Quantity = request.Quantity,
     });
 
     await db.SaveChangesAsync(cancellationToken);

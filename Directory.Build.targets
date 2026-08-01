@@ -1,0 +1,5 @@
+<Project>
+  <ItemGroup>
+	<PackageReference Include="Meziantou.Analyzer" />
+  </ItemGroup>
+</Project>

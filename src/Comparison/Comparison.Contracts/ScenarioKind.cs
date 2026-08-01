@@ -37,7 +37,7 @@ public enum ScenarioKind {
     /// <summary>
     /// A hot product experiences high contention as many requests compete for the same inventory.
     /// </summary>
-    HotProductContention
+    HotProductContention,
 }
 
 

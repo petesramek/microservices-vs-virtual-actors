@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <PackageReference Include="Microsoft.Orleans.Analyzers" />
     <PackageReference Include="Microsoft.Orleans.Server" />
     <ProjectReference Include="../../Comparison/Comparison.Contracts/Comparison.Contracts.csproj" />
     <ProjectReference Include="../Ordering.Grains/Ordering.Grains.csproj" />

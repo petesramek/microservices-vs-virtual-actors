@@ -16,18 +16,18 @@ var app = builder.Build();
 app.Use(async (context, next) => {
     var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault();
     if (string.IsNullOrWhiteSpace(correlationId)) {
-        await next();
+        await next().ConfigureAwait(false);
         return;
     }
 
-    using var scope = app.Logger.BeginScope(new Dictionary<string, object> {
-        ["CorrelationId"] = correlationId
+    using var scope = app.Logger.BeginScope(new Dictionary<string, object>(StringComparer.Ordinal) {
+        ["CorrelationId"] = correlationId,
     });
 
     if (app.Logger.IsEnabled(LogLevel.Information)) {
         app.Logger.LogInformation("Handling request with correlation id {CorrelationId}.", correlationId);
     }
-    await next();
+    await next().ConfigureAwait(false);
 });
 
 app.MapGet("/", () => Results.Ok(new { Name = "Ordering API", Phase = "Virtual Actors" }));
@@ -35,13 +35,13 @@ app.MapGet("/health/live", () => Results.Ok("Healthy"));
 
 app.MapPost("/api/scenarios/reset", async (ResetInventoryRequest request, IClusterClient client) => {
     var inventory = client.GetGrain<IInventoryItemGrain>(request.ProductId);
-    var snapshot = await inventory.ResetAsync(request.Quantity);
+    var snapshot = await inventory.ResetAsync(request.Quantity).ConfigureAwait(false);
     return Results.Ok(new InventoryResponse(snapshot.ProductId, snapshot.AvailableQuantity));
 });
 
 app.MapGet("/api/inventory/{productId}", async (string productId, IClusterClient client) => {
     var inventory = client.GetGrain<IInventoryItemGrain>(productId);
-    var snapshot = await inventory.GetAsync();
+    var snapshot = await inventory.GetAsync().ConfigureAwait(false);
     return Results.Ok(new InventoryResponse(snapshot.ProductId, snapshot.AvailableQuantity));
 });
 
@@ -54,7 +54,7 @@ app.MapPost("/api/orders", async (RunScenarioRequest request, IClusterClient cli
         request.CustomerId,
         request.ProductId,
         request.Quantity,
-        request.SimulatePaymentFailure);
+        request.SimulatePaymentFailure).ConfigureAwait(false);
 
     if (logger.IsEnabled(LogLevel.Information)) {
         logger.LogInformation("Virtual actor order {OrderId} completed with status {Status}", result.OrderId, result.Status);
@@ -64,7 +64,7 @@ app.MapPost("/api/orders", async (RunScenarioRequest request, IClusterClient cli
 
 app.MapGet("/api/orders/{orderId:guid}", async (Guid orderId, IClusterClient client) => {
     var order = client.GetGrain<IOrderGrain>(orderId);
-    var result = await order.GetAsync();
+    var result = await order.GetAsync().ConfigureAwait(false);
     return result is null ? Results.NotFound() : Results.Ok(ToResponse(result));
 });
 

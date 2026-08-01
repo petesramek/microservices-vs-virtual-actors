@@ -9,7 +9,7 @@ using Orders.Api.Clients.Abstraction;
 public sealed class FakeInventoryClient : IInventoryClient {
     private readonly object _syncRoot = new();
     private readonly Dictionary<string, int> _available = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<Guid, (string ProductId, int Quantity)> _reservations = new();
+    private readonly Dictionary<Guid, (string ProductId, int Quantity)> _reservations = [];
 
     public Task<InventoryResponse> ResetAsync(ResetInventoryRequest request, CancellationToken cancellationToken) {
         lock (_syncRoot) {
