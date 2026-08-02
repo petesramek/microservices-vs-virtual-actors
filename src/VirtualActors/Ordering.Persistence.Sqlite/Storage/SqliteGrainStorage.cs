@@ -16,7 +16,7 @@ using Orleans.Storage;
 internal sealed class SqliteGrainStorage :
     IGrainStorage,
     ILifecycleParticipant<ISiloLifecycle> {
-    private static readonly SemaphoreSlim InitializationLock = new(
+    private static readonly SemaphoreSlim WriteLock = new(
         initialCount: 1,
         maxCount: 1);
 
@@ -90,52 +90,61 @@ internal sealed class SqliteGrainStorage :
         ArgumentException.ThrowIfNullOrWhiteSpace(stateName);
         ArgumentNullException.ThrowIfNull(grainState);
 
-        using GrainStateDbContext context = await _dbContextFactory
-            .CreateDbContextAsync()
+        await WriteLock
+            .WaitAsync()
             .ConfigureAwait(false);
 
-        GrainStateEntity? entity = await FindStateAsync(
-            context,
-            stateName,
-            grainId).ConfigureAwait(false);
+        try {
+            using GrainStateDbContext context = await _dbContextFactory
+                .CreateDbContextAsync()
+                .ConfigureAwait(false);
 
-        byte[] payload = _serializer
-            .Serialize(grainState.State)
-            .ToArray();
-
-        if (entity is null) {
-            await InsertStateAsync(
+            GrainStateEntity? entity = await FindStateAsync(
                 context,
                 stateName,
-                grainId,
-                grainState,
-                payload).ConfigureAwait(false);
-            return;
+                grainId).ConfigureAwait(false);
+
+            byte[] payload = _serializer
+                .Serialize(grainState.State)
+                .ToArray();
+
+            if (entity is null) {
+                await InsertStateAsync(
+                    context,
+                    stateName,
+                    grainId,
+                    grainState,
+                    payload).ConfigureAwait(false);
+                return;
+            }
+
+            string storedETag = FormatVersion(entity.Version);
+            EnsureETagMatches(grainState.ETag, storedETag, grainId, "write");
+
+            entity.Payload = payload;
+            entity.Version++;
+            entity.ModifiedUtc = DateTimeOffset.UtcNow;
+
+            try {
+                await context
+                    .SaveChangesAsync()
+                    .ConfigureAwait(false);
+            }
+            catch (DbUpdateConcurrencyException exception) {
+                throw CreateInconsistentStateException(
+                    grainId,
+                    storedETag,
+                    grainState.ETag,
+                    "write",
+                    exception);
+            }
+
+            grainState.ETag = FormatVersion(entity.Version);
+            grainState.RecordExists = true;
         }
-
-        string storedETag = FormatVersion(entity.Version);
-        EnsureETagMatches(grainState.ETag, storedETag, grainId, "write");
-
-        entity.Payload = payload;
-        entity.Version++;
-        entity.ModifiedUtc = DateTimeOffset.UtcNow;
-
-        try {
-            await context
-                .SaveChangesAsync()
-                .ConfigureAwait(false);
+        finally {
+            WriteLock.Release();
         }
-        catch (DbUpdateConcurrencyException exception) {
-            throw CreateInconsistentStateException(
-                grainId,
-                storedETag,
-                grainState.ETag,
-                "write",
-                exception);
-        }
-
-        grainState.ETag = FormatVersion(entity.Version);
-        grainState.RecordExists = true;
     }
 
     /// <inheritdoc />
@@ -146,42 +155,51 @@ internal sealed class SqliteGrainStorage :
         ArgumentException.ThrowIfNullOrWhiteSpace(stateName);
         ArgumentNullException.ThrowIfNull(grainState);
 
-        using GrainStateDbContext context = await _dbContextFactory
-            .CreateDbContextAsync()
+        await WriteLock
+            .WaitAsync()
             .ConfigureAwait(false);
 
-        GrainStateEntity? entity = await FindStateAsync(
-            context,
-            stateName,
-            grainId).ConfigureAwait(false);
+        try {
+            using GrainStateDbContext context = await _dbContextFactory
+                .CreateDbContextAsync()
+                .ConfigureAwait(false);
 
-        if (entity is null) {
+            GrainStateEntity? entity = await FindStateAsync(
+                context,
+                stateName,
+                grainId).ConfigureAwait(false);
+
+            if (entity is null) {
+                grainState.ETag = null!;
+                grainState.RecordExists = false;
+                return;
+            }
+
+            string storedETag = FormatVersion(entity.Version);
+            EnsureETagMatches(grainState.ETag, storedETag, grainId, "clear");
+
+            context.GrainStates.Remove(entity);
+
+            try {
+                await context
+                    .SaveChangesAsync()
+                    .ConfigureAwait(false);
+            }
+            catch (DbUpdateConcurrencyException exception) {
+                throw CreateInconsistentStateException(
+                    grainId,
+                    storedETag,
+                    grainState.ETag,
+                    "clear",
+                    exception);
+            }
+
             grainState.ETag = null!;
             grainState.RecordExists = false;
-            return;
         }
-
-        string storedETag = FormatVersion(entity.Version);
-        EnsureETagMatches(grainState.ETag, storedETag, grainId, "clear");
-
-        context.GrainStates.Remove(entity);
-
-        try {
-            await context
-                .SaveChangesAsync()
-                .ConfigureAwait(false);
+        finally {
+            WriteLock.Release();
         }
-        catch (DbUpdateConcurrencyException exception) {
-            throw CreateInconsistentStateException(
-                grainId,
-                storedETag,
-                grainState.ETag,
-                "clear",
-                exception);
-        }
-
-        grainState.ETag = null!;
-        grainState.RecordExists = false;
     }
 
     /// <inheritdoc />
@@ -195,21 +213,22 @@ internal sealed class SqliteGrainStorage :
     }
 
     private async Task InitializeAsync(CancellationToken cancellationToken) {
-        await InitializationLock
+        await WriteLock
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
 
         try {
-            using GrainStateDbContext context = await _dbContextFactory
+            GrainStateDbContext context = await _dbContextFactory
                 .CreateDbContextAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            await context.Database
+            await using (context.ConfigureAwait(false)) {
+                await context.Database
                 .MigrateAsync(cancellationToken)
                 .ConfigureAwait(false);
-        }
-        finally {
-            InitializationLock.Release();
+            }
+        } finally {
+            WriteLock.Release();
         }
 
         _logger.LogInformation(
