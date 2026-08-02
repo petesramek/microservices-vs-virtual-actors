@@ -1,9 +1,16 @@
 namespace VirtualActors.Tests;
 
 using System.Globalization;
+using Comparison.Contracts;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
+using Ordering.Grains.Contracts;
 using Ordering.Grains.Interfaces;
+using Ordering.Grains.State;
 using Ordering.Persistence.Sqlite.Extensions;
+using Orleans;
+using Orleans.Runtime;
+using Orleans.Storage;
 using Orleans.TestingHost;
 using Shouldly;
 using Xunit;
@@ -119,6 +126,185 @@ public sealed class SqliteGrainPersistenceTests {
     }
 
     /// <summary>
+    /// Verifies that persisted payment idempotency state survives a cluster restart.
+    /// </summary>
+    [Fact]
+    public async Task PaymentStateSurvivesClusterRestart() {
+        string databasePath = CreateDatabasePath();
+        string connectionString = $"Data Source={databasePath}";
+        string customerId = CreateIdentifier("customer");
+        string idempotencyKey = CreateIdentifier("payment");
+        string serviceId = CreateIdentifier("ordering-persistence");
+        string clusterId = CreateIdentifier("ordering-persistence");
+
+        try {
+            InProcessTestCluster firstCluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            try {
+                IPaymentAccountGrain payment = firstCluster.Client
+                    .GetGrain<IPaymentAccountGrain>(customerId);
+
+                PaymentAuthorizationResult result = await payment.AuthorizeAsync(
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    idempotencyKey,
+                    simulateFailure: false);
+
+                result.Authorized.ShouldBeTrue();
+            }
+            finally {
+                await firstCluster.DisposeAsync();
+            }
+
+            InProcessTestCluster secondCluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            try {
+                IPaymentAccountGrain payment = secondCluster.Client
+                    .GetGrain<IPaymentAccountGrain>(customerId);
+
+                PaymentAuthorizationResult result = await payment.AuthorizeAsync(
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    idempotencyKey,
+                    simulateFailure: true);
+
+                result.Authorized.ShouldBeTrue();
+                result.Reason.ShouldBeNull();
+            }
+            finally {
+                await secondCluster.DisposeAsync();
+            }
+        }
+        finally {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    /// <summary>
+    /// Verifies that a persisted final order result survives a cluster restart.
+    /// </summary>
+    [Fact]
+    public async Task OrderStateSurvivesClusterRestart() {
+        string databasePath = CreateDatabasePath();
+        string connectionString = $"Data Source={databasePath}";
+        Guid orderId = Guid.NewGuid();
+        string productId = CreateIdentifier("product");
+        string customerId = CreateIdentifier("customer");
+        string idempotencyKey = CreateIdentifier("order");
+        string serviceId = CreateIdentifier("ordering-persistence");
+        string clusterId = CreateIdentifier("ordering-persistence");
+
+        try {
+            InProcessTestCluster firstCluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            GrainOrderResult firstResult;
+
+            try {
+                IInventoryItemGrain inventory = firstCluster.Client
+                    .GetGrain<IInventoryItemGrain>(productId);
+                IOrderGrain order = firstCluster.Client
+                    .GetGrain<IOrderGrain>(orderId);
+
+                await inventory.ResetAsync(10);
+                firstResult = await order.PlaceAsync(
+                    idempotencyKey,
+                    customerId,
+                    productId,
+                    quantity: 3,
+                    simulatePaymentFailure: false);
+
+                firstResult.Status.ShouldBe(OrderStatus.Completed.ToString());
+            }
+            finally {
+                await firstCluster.DisposeAsync();
+            }
+
+            InProcessTestCluster secondCluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            try {
+                IOrderGrain order = secondCluster.Client
+                    .GetGrain<IOrderGrain>(orderId);
+
+                GrainOrderResult? restoredResult = await order.GetAsync();
+                GrainOrderResult repeatedResult = await order.PlaceAsync(
+                    idempotencyKey,
+                    customerId,
+                    productId,
+                    quantity: 3,
+                    simulatePaymentFailure: true);
+
+                restoredResult.ShouldNotBeNull();
+                restoredResult.ShouldBe(firstResult);
+                repeatedResult.ShouldBe(firstResult);
+            }
+            finally {
+                await secondCluster.DisposeAsync();
+            }
+        }
+        finally {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    /// <summary>
+    /// Verifies that clearing existing state removes its persisted record.
+    /// </summary>
+    [Fact]
+    public async Task ClearingExistingStateRemovesRecord() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        IGrainStorage storage = GetStorage(context);
+        GrainId grainId = GrainId.Create("test-inventory", context.CreateProductId());
+        var grainState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 10,
+            });
+
+        await storage.WriteStateAsync(InventoryStateName, grainId, grainState);
+        await storage.ClearStateAsync(InventoryStateName, grainId, grainState);
+
+        grainState.RecordExists.ShouldBeFalse();
+        grainState.ETag.ShouldBeNull();
+
+        var restoredState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        await storage.ReadStateAsync(InventoryStateName, grainId, restoredState);
+
+        restoredState.RecordExists.ShouldBeFalse();
+        restoredState.ETag.ShouldBeNull();
+        restoredState.State.AvailableQuantity.ShouldBe(0);
+    }
+
+    /// <summary>
+    /// Verifies that clearing missing state remains an idempotent operation.
+    /// </summary>
+    [Fact]
+    public async Task ClearingMissingStateLeavesStateMissing() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        IGrainStorage storage = GetStorage(context);
+        GrainId grainId = GrainId.Create("test-inventory", context.CreateProductId());
+        var grainState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+
+        await storage.ClearStateAsync(InventoryStateName, grainId, grainState);
+
+        grainState.RecordExists.ShouldBeFalse();
+        grainState.ETag.ShouldBeNull();
+        grainState.State.AvailableQuantity.ShouldBe(0);
+    }
+
+    /// <summary>
     /// Verifies that persisted inventory state is restored after restarting the cluster.
     /// </summary>
     [Fact]
@@ -167,6 +353,15 @@ public sealed class SqliteGrainPersistenceTests {
         finally {
             DeleteDatabaseFiles(databasePath);
         }
+    }
+
+    private static IGrainStorage GetStorage(
+        PersistenceTestContext context) {
+        IServiceProvider serviceProvider =
+            context.Cluster.GetSiloServiceProvider();
+
+        return serviceProvider.GetRequiredKeyedService<IGrainStorage>(
+            StorageProviderName);
     }
 
     private static async Task<PersistenceTestContext> CreateContextAsync() {
