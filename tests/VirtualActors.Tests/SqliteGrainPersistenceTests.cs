@@ -260,6 +260,247 @@ public sealed class SqliteGrainPersistenceTests {
     }
 
     /// <summary>
+    /// Verifies that a persisted successful payment remains authoritative for a new order using the same key.
+    /// </summary>
+    [Fact]
+    public async Task SuccessfulPaymentRemainsAuthoritativeForNewOrder() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        string productId = context.CreateProductId();
+        string customerId = CreateIdentifier("customer");
+        string idempotencyKey = CreateIdentifier("payment");
+
+        IInventoryItemGrain inventory = context.Cluster.Client
+            .GetGrain<IInventoryItemGrain>(productId);
+        IOrderGrain firstOrder = context.Cluster.Client
+            .GetGrain<IOrderGrain>(Guid.NewGuid());
+        IOrderGrain secondOrder = context.Cluster.Client
+            .GetGrain<IOrderGrain>(Guid.NewGuid());
+
+        await inventory.ResetAsync(10);
+        GrainOrderResult firstResult = await firstOrder.PlaceAsync(
+            idempotencyKey,
+            customerId,
+            productId,
+            quantity: 2,
+            simulatePaymentFailure: false);
+
+        await inventory.ResetAsync(10);
+        GrainOrderResult secondResult = await secondOrder.PlaceAsync(
+            idempotencyKey,
+            customerId,
+            productId,
+            quantity: 2,
+            simulatePaymentFailure: true);
+        InventorySnapshot inventoryAfterSecondOrder = await inventory.GetAsync();
+
+        firstResult.Status.ShouldBe(OrderStatus.Completed.ToString());
+        secondResult.Status.ShouldBe(OrderStatus.Completed.ToString());
+        secondResult.Reason.ShouldBeNull();
+        inventoryAfterSecondOrder.AvailableQuantity.ShouldBe(8);
+    }
+
+    /// <summary>
+    /// Verifies that a persisted failed payment remains authoritative for a new order using the same key.
+    /// </summary>
+    [Fact]
+    public async Task FailedPaymentRemainsAuthoritativeForNewOrder() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        string productId = context.CreateProductId();
+        string customerId = CreateIdentifier("customer");
+        string idempotencyKey = CreateIdentifier("payment");
+
+        IInventoryItemGrain inventory = context.Cluster.Client
+            .GetGrain<IInventoryItemGrain>(productId);
+        IOrderGrain firstOrder = context.Cluster.Client
+            .GetGrain<IOrderGrain>(Guid.NewGuid());
+        IOrderGrain secondOrder = context.Cluster.Client
+            .GetGrain<IOrderGrain>(Guid.NewGuid());
+
+        await inventory.ResetAsync(10);
+        GrainOrderResult firstResult = await firstOrder.PlaceAsync(
+            idempotencyKey,
+            customerId,
+            productId,
+            quantity: 2,
+            simulatePaymentFailure: true);
+
+        await inventory.ResetAsync(10);
+        GrainOrderResult secondResult = await secondOrder.PlaceAsync(
+            idempotencyKey,
+            customerId,
+            productId,
+            quantity: 2,
+            simulatePaymentFailure: false);
+        InventorySnapshot inventoryAfterSecondOrder = await inventory.GetAsync();
+
+        firstResult.Status.ShouldBe(OrderStatus.Rejected.ToString());
+        firstResult.Reason.ShouldBe("PaymentFailed");
+        secondResult.Status.ShouldBe(OrderStatus.Rejected.ToString());
+        secondResult.Reason.ShouldBe("PaymentFailed");
+        inventoryAfterSecondOrder.AvailableQuantity.ShouldBe(10);
+    }
+
+    /// <summary>
+    /// Verifies that identical idempotency keys remain isolated across customer grains.
+    /// </summary>
+    [Fact]
+    public async Task SamePaymentKeyAcrossCustomersRemainsIsolated() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        string productId = context.CreateProductId();
+        string firstCustomerId = CreateIdentifier("customer");
+        string secondCustomerId = CreateIdentifier("customer");
+        string idempotencyKey = CreateIdentifier("payment");
+
+        IInventoryItemGrain inventory = context.Cluster.Client
+            .GetGrain<IInventoryItemGrain>(productId);
+        IOrderGrain firstOrder = context.Cluster.Client
+            .GetGrain<IOrderGrain>(Guid.NewGuid());
+        IOrderGrain secondOrder = context.Cluster.Client
+            .GetGrain<IOrderGrain>(Guid.NewGuid());
+
+        await inventory.ResetAsync(10);
+        GrainOrderResult firstResult = await firstOrder.PlaceAsync(
+            idempotencyKey,
+            firstCustomerId,
+            productId,
+            quantity: 2,
+            simulatePaymentFailure: false);
+
+        await inventory.ResetAsync(10);
+        GrainOrderResult secondResult = await secondOrder.PlaceAsync(
+            idempotencyKey,
+            secondCustomerId,
+            productId,
+            quantity: 2,
+            simulatePaymentFailure: true);
+        InventorySnapshot inventoryAfterSecondOrder = await inventory.GetAsync();
+
+        firstResult.Status.ShouldBe(OrderStatus.Completed.ToString());
+        secondResult.Status.ShouldBe(OrderStatus.Rejected.ToString());
+        secondResult.Reason.ShouldBe("PaymentFailed");
+        inventoryAfterSecondOrder.AvailableQuantity.ShouldBe(10);
+    }
+
+    /// <summary>
+    /// Verifies that repeated duplicate-request runs reserve inventory once per new order identity.
+    /// </summary>
+    [Fact]
+    public async Task RepeatedDuplicateRequestRunReservesInventoryOncePerOrder() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        string productId = context.CreateProductId();
+        string customerId = CreateIdentifier("customer");
+        string idempotencyKey = CreateIdentifier("payment");
+
+        IInventoryItemGrain inventory = context.Cluster.Client
+            .GetGrain<IInventoryItemGrain>(productId);
+        IOrderGrain firstOrder = context.Cluster.Client
+            .GetGrain<IOrderGrain>(Guid.NewGuid());
+        IOrderGrain secondOrder = context.Cluster.Client
+            .GetGrain<IOrderGrain>(Guid.NewGuid());
+
+        await inventory.ResetAsync(10);
+        GrainOrderResult[] firstResponses = await Task.WhenAll(
+            Enumerable.Range(0, 20).Select(_ => firstOrder.PlaceAsync(
+                idempotencyKey,
+                customerId,
+                productId,
+                quantity: 2,
+                simulatePaymentFailure: false)));
+        InventorySnapshot inventoryAfterFirstRun = await inventory.GetAsync();
+
+        await inventory.ResetAsync(10);
+        GrainOrderResult[] secondResponses = await Task.WhenAll(
+            Enumerable.Range(0, 20).Select(_ => secondOrder.PlaceAsync(
+                idempotencyKey,
+                customerId,
+                productId,
+                quantity: 2,
+                simulatePaymentFailure: true)));
+        InventorySnapshot inventoryAfterSecondRun = await inventory.GetAsync();
+
+        firstResponses.ShouldAllBe(result =>
+            result.Status == OrderStatus.Completed.ToString());
+        firstResponses.Select(result => result.OrderId).Distinct().Count().ShouldBe(1);
+        inventoryAfterFirstRun.AvailableQuantity.ShouldBe(8);
+        secondResponses.ShouldAllBe(result =>
+            result.Status == OrderStatus.Completed.ToString());
+        secondResponses.Select(result => result.OrderId).Distinct().Count().ShouldBe(1);
+        inventoryAfterSecondRun.AvailableQuantity.ShouldBe(8);
+    }
+
+    /// <summary>
+    /// Verifies that persisted payment idempotency remains authoritative for a new order after restart.
+    /// </summary>
+    [Fact]
+    public async Task RepeatedOrderAfterRestartReusesPersistedPaymentResult() {
+        string databasePath = CreateDatabasePath();
+        string connectionString = $"Data Source={databasePath}";
+        string productId = CreateIdentifier("product");
+        string customerId = CreateIdentifier("customer");
+        string idempotencyKey = CreateIdentifier("payment");
+        string serviceId = CreateIdentifier("ordering-persistence");
+        string clusterId = CreateIdentifier("ordering-persistence");
+
+        try {
+            InProcessTestCluster firstCluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            try {
+                IInventoryItemGrain inventory = firstCluster.Client
+                    .GetGrain<IInventoryItemGrain>(productId);
+                IOrderGrain order = firstCluster.Client
+                    .GetGrain<IOrderGrain>(Guid.NewGuid());
+
+                await inventory.ResetAsync(10);
+                GrainOrderResult result = await order.PlaceAsync(
+                    idempotencyKey,
+                    customerId,
+                    productId,
+                    quantity: 2,
+                    simulatePaymentFailure: false);
+
+                result.Status.ShouldBe(OrderStatus.Completed.ToString());
+            }
+            finally {
+                await firstCluster.DisposeAsync();
+            }
+
+            InProcessTestCluster secondCluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            try {
+                IInventoryItemGrain inventory = secondCluster.Client
+                    .GetGrain<IInventoryItemGrain>(productId);
+                IOrderGrain order = secondCluster.Client
+                    .GetGrain<IOrderGrain>(Guid.NewGuid());
+
+                await inventory.ResetAsync(10);
+                GrainOrderResult result = await order.PlaceAsync(
+                    idempotencyKey,
+                    customerId,
+                    productId,
+                    quantity: 2,
+                    simulatePaymentFailure: true);
+                InventorySnapshot inventoryAfterOrder = await inventory.GetAsync();
+
+                result.Status.ShouldBe(OrderStatus.Completed.ToString());
+                result.Reason.ShouldBeNull();
+                inventoryAfterOrder.AvailableQuantity.ShouldBe(8);
+            }
+            finally {
+                await secondCluster.DisposeAsync();
+            }
+        }
+        finally {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    /// <summary>
     /// Verifies that clearing existing state removes its persisted record.
     /// </summary>
     [Fact]
