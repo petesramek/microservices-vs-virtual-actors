@@ -505,6 +505,113 @@ public sealed class SqliteGrainPersistenceTests {
     }
 
     /// <summary>
+    /// Verifies that concurrent insertion permits only one writer for the same state.
+    /// </summary>
+    [Fact]
+    public async Task ConcurrentInsertionAllowsOnlyOneWriter() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        IGrainStorage storage = GetStorage(context);
+        GrainId grainId = GrainId.Create(
+            "test-inventory",
+            context.CreateProductId());
+        var firstState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 10,
+            });
+        var secondState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 20,
+            });
+
+        Exception?[] exceptions = await Task.WhenAll(
+            CaptureExceptionAsync(() => storage.WriteStateAsync(
+                InventoryStateName,
+                grainId,
+                firstState)),
+            CaptureExceptionAsync(() => storage.WriteStateAsync(
+                InventoryStateName,
+                grainId,
+                secondState)));
+
+        exceptions.Count(exception => exception is null).ShouldBe(1);
+        exceptions.Count(exception => exception is InconsistentStateException)
+            .ShouldBe(1);
+
+        var restoredState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        await storage.ReadStateAsync(
+            InventoryStateName,
+            grainId,
+            restoredState);
+
+        restoredState.RecordExists.ShouldBeTrue();
+        restoredState.ETag.ShouldBe("1");
+        restoredState.State.AvailableQuantity.ShouldBeOneOf(10, 20);
+    }
+
+    /// <summary>
+    /// Verifies that concurrent updates permit only one writer for the same ETag.
+    /// </summary>
+    [Fact]
+    public async Task ConcurrentUpdateAllowsOnlyOneWriter() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        IGrainStorage storage = GetStorage(context);
+        GrainId grainId = GrainId.Create(
+            "test-inventory",
+            context.CreateProductId());
+        var initialState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 10,
+            });
+
+        await storage.WriteStateAsync(
+            InventoryStateName,
+            grainId,
+            initialState);
+
+        var firstState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        var secondState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        await storage.ReadStateAsync(
+            InventoryStateName,
+            grainId,
+            firstState);
+        await storage.ReadStateAsync(
+            InventoryStateName,
+            grainId,
+            secondState);
+
+        firstState.State.AvailableQuantity = 20;
+        secondState.State.AvailableQuantity = 30;
+
+        Exception?[] exceptions = await Task.WhenAll(
+            CaptureExceptionAsync(() => storage.WriteStateAsync(
+                InventoryStateName,
+                grainId,
+                firstState)),
+            CaptureExceptionAsync(() => storage.WriteStateAsync(
+                InventoryStateName,
+                grainId,
+                secondState)));
+
+        exceptions.Count(exception => exception is null).ShouldBe(1);
+        exceptions.Count(exception => exception is InconsistentStateException)
+            .ShouldBe(1);
+
+        var restoredState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        await storage.ReadStateAsync(
+            InventoryStateName,
+            grainId,
+            restoredState);
+
+        restoredState.RecordExists.ShouldBeTrue();
+        restoredState.ETag.ShouldBe("2");
+        restoredState.State.AvailableQuantity.ShouldBeOneOf(20, 30);
+    }
+
+    /// <summary>
     /// Verifies that persisted inventory state is restored after restarting the cluster.
     /// </summary>
     [Fact]
@@ -552,6 +659,17 @@ public sealed class SqliteGrainPersistenceTests {
         }
         finally {
             DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    private static async Task<Exception?> CaptureExceptionAsync(
+        Func<Task> action) {
+        try {
+            await action();
+            return null;
+        }
+        catch (Exception exception) {
+            return exception;
         }
     }
 
