@@ -612,6 +612,312 @@ public sealed class SqliteGrainPersistenceTests {
     }
 
     /// <summary>
+    /// Verifies that clearing state with a stale ETag is rejected.
+    /// </summary>
+    [Fact]
+    public async Task StaleETagRejectsClear() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        IGrainStorage storage = GetStorage(context);
+        GrainId grainId = GrainId.Create(
+            "test-inventory",
+            context.CreateProductId());
+        var initialState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 10,
+            });
+
+        await storage.WriteStateAsync(
+            InventoryStateName,
+            grainId,
+            initialState);
+
+        var currentState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        var staleState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        await storage.ReadStateAsync(
+            InventoryStateName,
+            grainId,
+            currentState);
+        await storage.ReadStateAsync(
+            InventoryStateName,
+            grainId,
+            staleState);
+
+        currentState.State.AvailableQuantity = 20;
+        await storage.WriteStateAsync(
+            InventoryStateName,
+            grainId,
+            currentState);
+
+        await Should.ThrowAsync<InconsistentStateException>(
+            async () => await storage.ClearStateAsync(
+                InventoryStateName,
+                grainId,
+                staleState));
+
+        var restoredState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        await storage.ReadStateAsync(
+            InventoryStateName,
+            grainId,
+            restoredState);
+
+        restoredState.RecordExists.ShouldBeTrue();
+        restoredState.ETag.ShouldBe("2");
+        restoredState.State.AvailableQuantity.ShouldBe(20);
+    }
+
+    /// <summary>
+    /// Verifies that multiple providers can initialize one new SQLite schema concurrently.
+    /// </summary>
+    [Fact]
+    public async Task ConcurrentSchemaInitializationSucceeds() {
+        await using PersistenceTestContext context = await CreateContextAsync(
+            registerSecondaryProvider: true);
+
+        GetStorage(context).ShouldNotBeNull();
+        GetStorage(context, SecondaryStorageProviderName).ShouldNotBeNull();
+
+        long tableCount = await CountTableAsync(
+            context.ConnectionString,
+            "GrainStates");
+
+        tableCount.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies that a failed stale write does not replace the persisted payload.
+    /// </summary>
+    [Fact]
+    public async Task FailedWritePreservesPersistedPayloadAfterRestart() {
+        string databasePath = CreateDatabasePath();
+        string connectionString = $"Data Source={databasePath}";
+        string serviceId = CreateIdentifier("ordering-persistence");
+        string clusterId = CreateIdentifier("ordering-persistence");
+        GrainId grainId = GrainId.Create(
+            "test-inventory",
+            CreateIdentifier("product"));
+
+        try {
+            InProcessTestCluster firstCluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            try {
+                IGrainStorage storage = GetStorage(firstCluster);
+                var initialState = new GrainState<InventoryItemState>(
+                    new InventoryItemState {
+                        AvailableQuantity = 10,
+                    });
+                await storage.WriteStateAsync(
+                    InventoryStateName,
+                    grainId,
+                    initialState);
+
+                var currentState = new GrainState<InventoryItemState>(
+                    new InventoryItemState());
+                var staleState = new GrainState<InventoryItemState>(
+                    new InventoryItemState());
+                await storage.ReadStateAsync(
+                    InventoryStateName,
+                    grainId,
+                    currentState);
+                await storage.ReadStateAsync(
+                    InventoryStateName,
+                    grainId,
+                    staleState);
+
+                currentState.State.AvailableQuantity = 20;
+                await storage.WriteStateAsync(
+                    InventoryStateName,
+                    grainId,
+                    currentState);
+
+                staleState.State.AvailableQuantity = 30;
+                await Should.ThrowAsync<InconsistentStateException>(
+                    async () => await storage.WriteStateAsync(
+                        InventoryStateName,
+                        grainId,
+                        staleState));
+            }
+            finally {
+                await firstCluster.DisposeAsync();
+            }
+
+            InProcessTestCluster secondCluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            try {
+                IGrainStorage storage = GetStorage(secondCluster);
+                var restoredState = new GrainState<InventoryItemState>(
+                    new InventoryItemState());
+
+                await storage.ReadStateAsync(
+                    InventoryStateName,
+                    grainId,
+                    restoredState);
+
+                restoredState.RecordExists.ShouldBeTrue();
+                restoredState.ETag.ShouldBe("2");
+                restoredState.State.AvailableQuantity.ShouldBe(20);
+            }
+            finally {
+                await secondCluster.DisposeAsync();
+            }
+        }
+        finally {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    /// <summary>
+    /// Verifies that writing state after clearing creates a new version-one record.
+    /// </summary>
+    [Fact]
+    public async Task ClearFollowedByNewWriteCreatesVersionOne() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        IGrainStorage storage = GetStorage(context);
+        GrainId grainId = GrainId.Create(
+            "test-inventory",
+            context.CreateProductId());
+        var state = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 10,
+            });
+
+        await storage.WriteStateAsync(InventoryStateName, grainId, state);
+        await storage.ClearStateAsync(InventoryStateName, grainId, state);
+
+        state.State = new InventoryItemState {
+            AvailableQuantity = 20,
+        };
+        await storage.WriteStateAsync(InventoryStateName, grainId, state);
+
+        state.RecordExists.ShouldBeTrue();
+        state.ETag.ShouldBe("1");
+
+        var restoredState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        await storage.ReadStateAsync(
+            InventoryStateName,
+            grainId,
+            restoredState);
+
+        restoredState.ETag.ShouldBe("1");
+        restoredState.State.AvailableQuantity.ShouldBe(20);
+    }
+
+    /// <summary>
+    /// Verifies that nontrivial inventory state survives a cluster restart.
+    /// </summary>
+    [Fact]
+    public async Task ComplexInventoryStateSurvivesClusterRestart() {
+        string databasePath = CreateDatabasePath();
+        string connectionString = $"Data Source={databasePath}";
+        string serviceId = CreateIdentifier("ordering-persistence");
+        string clusterId = CreateIdentifier("ordering-persistence");
+        GrainId grainId = GrainId.Create(
+            "test-inventory",
+            CreateIdentifier("product"));
+        Guid firstReservationId = Guid.NewGuid();
+        Guid secondReservationId = Guid.NewGuid();
+
+        try {
+            InProcessTestCluster firstCluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            try {
+                IGrainStorage storage = GetStorage(firstCluster);
+                var state = new GrainState<InventoryItemState>(
+                    new InventoryItemState {
+                        AvailableQuantity = 12,
+                        Reservations = {
+                            [firstReservationId] = 3,
+                            [secondReservationId] = 5,
+                        },
+                    });
+
+                await storage.WriteStateAsync(
+                    InventoryStateName,
+                    grainId,
+                    state);
+            }
+            finally {
+                await firstCluster.DisposeAsync();
+            }
+
+            InProcessTestCluster secondCluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            try {
+                IGrainStorage storage = GetStorage(secondCluster);
+                var restoredState = new GrainState<InventoryItemState>(
+                    new InventoryItemState());
+
+                await storage.ReadStateAsync(
+                    InventoryStateName,
+                    grainId,
+                    restoredState);
+
+                restoredState.State.AvailableQuantity.ShouldBe(12);
+                restoredState.State.Reservations.Count.ShouldBe(2);
+                restoredState.State.Reservations[firstReservationId].ShouldBe(3);
+                restoredState.State.Reservations[secondReservationId].ShouldBe(5);
+            }
+            finally {
+                await secondCluster.DisposeAsync();
+            }
+        }
+        finally {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    /// <summary>
+    /// Verifies that an existing empty SQLite database receives the grain-state schema.
+    /// </summary>
+    [Fact]
+    public async Task ExistingEmptyDatabaseInitializesSchema() {
+        string databasePath = CreateDatabasePath();
+        string connectionString = $"Data Source={databasePath}";
+        string serviceId = CreateIdentifier("ordering-persistence");
+        string clusterId = CreateIdentifier("ordering-persistence");
+
+        try {
+            await using (var connection = new SqliteConnection(connectionString)) {
+                await connection.OpenAsync();
+            }
+
+            File.Exists(databasePath).ShouldBeTrue();
+            (await CountTableAsync(connectionString, "GrainStates")).ShouldBe(0);
+
+            InProcessTestCluster cluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            try {
+                (await CountTableAsync(connectionString, "GrainStates"))
+                    .ShouldBe(1);
+            }
+            finally {
+                await cluster.DisposeAsync();
+            }
+        }
+        finally {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    /// <summary>
     /// Verifies that persisted inventory state is restored after restarting the cluster.
     /// </summary>
     [Fact]
@@ -660,6 +966,25 @@ public sealed class SqliteGrainPersistenceTests {
         finally {
             DeleteDatabaseFiles(databasePath);
         }
+    }
+
+    private static async Task<long> CountTableAsync(
+        string connectionString,
+        string tableName) {
+        await using var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using SqliteCommand command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COUNT(*)
+            FROM sqlite_master
+            WHERE type = 'table'
+              AND name = $tableName;
+            """;
+        command.Parameters.AddWithValue("$tableName", tableName);
+
+        object? result = await command.ExecuteScalarAsync();
+        return Convert.ToInt64(result, CultureInfo.InvariantCulture);
     }
 
     private static async Task<Exception?> CaptureExceptionAsync(
