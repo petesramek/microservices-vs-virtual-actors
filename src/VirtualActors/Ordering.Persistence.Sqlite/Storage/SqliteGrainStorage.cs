@@ -129,8 +129,7 @@ internal sealed class SqliteGrainStorage :
                 await context
                     .SaveChangesAsync()
                     .ConfigureAwait(false);
-            }
-            catch (DbUpdateConcurrencyException exception) {
+            } catch (DbUpdateConcurrencyException exception) {
                 throw CreateInconsistentStateException(
                     grainId,
                     storedETag,
@@ -141,8 +140,7 @@ internal sealed class SqliteGrainStorage :
 
             grainState.ETag = FormatVersion(entity.Version);
             grainState.RecordExists = true;
-        }
-        finally {
+        } finally {
             WriteLock.Release();
         }
     }
@@ -160,44 +158,44 @@ internal sealed class SqliteGrainStorage :
             .ConfigureAwait(false);
 
         try {
-            using GrainStateDbContext context = await _dbContextFactory
+            GrainStateDbContext context = await _dbContextFactory
                 .CreateDbContextAsync()
                 .ConfigureAwait(false);
 
-            GrainStateEntity? entity = await FindStateAsync(
+            await using (context.ConfigureAwait(false)) {
+                GrainStateEntity? entity = await FindStateAsync(
                 context,
                 stateName,
                 grainId).ConfigureAwait(false);
 
-            if (entity is null) {
+                if (entity is null) {
+                    grainState.ETag = null!;
+                    grainState.RecordExists = false;
+                    return;
+                }
+
+                string storedETag = FormatVersion(entity.Version);
+                EnsureETagMatches(grainState.ETag, storedETag, grainId, "clear");
+
+                context.GrainStates.Remove(entity);
+
+                try {
+                    await context
+                        .SaveChangesAsync()
+                        .ConfigureAwait(false);
+                } catch (DbUpdateConcurrencyException exception) {
+                    throw CreateInconsistentStateException(
+                        grainId,
+                        storedETag,
+                        grainState.ETag,
+                        "clear",
+                        exception);
+                }
+
                 grainState.ETag = null!;
                 grainState.RecordExists = false;
-                return;
             }
-
-            string storedETag = FormatVersion(entity.Version);
-            EnsureETagMatches(grainState.ETag, storedETag, grainId, "clear");
-
-            context.GrainStates.Remove(entity);
-
-            try {
-                await context
-                    .SaveChangesAsync()
-                    .ConfigureAwait(false);
-            }
-            catch (DbUpdateConcurrencyException exception) {
-                throw CreateInconsistentStateException(
-                    grainId,
-                    storedETag,
-                    grainState.ETag,
-                    "clear",
-                    exception);
-            }
-
-            grainState.ETag = null!;
-            grainState.RecordExists = false;
-        }
-        finally {
+        } finally {
             WriteLock.Release();
         }
     }
@@ -224,8 +222,8 @@ internal sealed class SqliteGrainStorage :
 
             await using (context.ConfigureAwait(false)) {
                 await context.Database
-                .MigrateAsync(cancellationToken)
-                .ConfigureAwait(false);
+                    .MigrateAsync(cancellationToken)
+                    .ConfigureAwait(false);
 
                 await context.Database
                     .ExecuteSqlRawAsync(
@@ -274,11 +272,10 @@ internal sealed class SqliteGrainStorage :
             await context
                 .SaveChangesAsync()
                 .ConfigureAwait(false);
-        }
-        catch (DbUpdateException exception)
-            when (exception.InnerException is SqliteException {
-                SqliteErrorCode: 19,
-            }) {
+        } catch (DbUpdateException exception)
+              when (exception.InnerException is SqliteException {
+                  SqliteErrorCode: 19,
+              }) {
             throw CreateInconsistentStateException(
                 grainId,
                 storedETag: null,
