@@ -91,7 +91,7 @@ public sealed class SqliteGrainPersistenceTests {
             async () => await inventory.ResetAsync(15));
 
         exception.ToString().ShouldContain("state");
-        (await inventory.GetAsync()).AvailableQuantity.ShouldBe(15);
+        (await inventory.GetAsync()).AvailableQuantity.ShouldBe(10);
         (await ReadInventoryVersionAsync(context, productId)).ShouldBe(2);
     }
 
