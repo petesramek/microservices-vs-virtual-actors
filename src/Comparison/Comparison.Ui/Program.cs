@@ -3,6 +3,9 @@ using Comparison.Ui.Services;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
+builder.AddServiceDefaults();
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
@@ -22,4 +25,8 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// Map the shared health and aliveness endpoints.
+app.MapDefaultEndpoints();
+
 await app.RunAsync().ConfigureAwait(false);

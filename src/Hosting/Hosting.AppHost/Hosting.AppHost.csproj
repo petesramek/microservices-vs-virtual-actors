@@ -1,0 +1,18 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.2.4">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<UserSecretsId>453bac7f-3ac8-4763-b909-31b542984930</UserSecretsId>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Comparison\Comparison.Gateway\Comparison.Gateway.csproj" />
+		<ProjectReference Include="..\..\Comparison\Comparison.Ui\Comparison.Ui.csproj" />
+		<ProjectReference Include="..\..\Microservices\Inventory.Api\Inventory.Api.csproj" />
+		<ProjectReference Include="..\..\Microservices\Orders.Api\Orders.Api.csproj" />
+		<ProjectReference Include="..\..\Microservices\Payments.Api\Payments.Api.csproj" />
+		<ProjectReference Include="..\..\VirtualActors\Ordering.Api\Ordering.Api.csproj" />
+		<ProjectReference Include="..\..\VirtualActors\Ordering.Silo\Ordering.Silo.csproj" />
+	</ItemGroup>
+
+</Project>

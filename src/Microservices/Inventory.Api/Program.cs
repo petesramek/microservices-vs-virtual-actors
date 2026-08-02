@@ -7,6 +7,9 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
+builder.AddServiceDefaults();
+
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
@@ -255,6 +258,9 @@ app.MapPost("/api/inventory/{productId}/release", async (
         return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
     }
 });
+
+// Map the shared health and aliveness endpoints.
+app.MapDefaultEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);
 

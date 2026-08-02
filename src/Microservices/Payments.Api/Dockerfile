@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY Directory.Build.props ./
-COPY src/Shared/ArchitectureComparison.Contracts/ArchitectureComparison.Contracts.csproj src/Shared/ArchitectureComparison.Contracts/
+COPY src/Shared/Comparison.Contracts/Comparison.Contracts.csproj src/Shared/Comparison.Contracts/
 COPY src/Comparison/Comparison.Gateway/Comparison.Gateway.csproj src/Comparison/Comparison.Gateway/
 COPY src/Comparison/Comparison.Ui/Comparison.Ui.csproj src/Comparison/Comparison.Ui/
 COPY src/Microservices/Orders.Api/Orders.Api.csproj src/Microservices/Orders.Api/

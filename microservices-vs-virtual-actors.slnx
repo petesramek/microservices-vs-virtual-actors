@@ -11,6 +11,10 @@
   <Folder Name="/src/Comparison/Comparison.Ui/">
     <Project Path="src\Comparison\Comparison.Ui\Comparison.Ui.csproj" />
   </Folder>
+  <Folder Name="/src/Hosting/">
+    <Project Path="src/Hosting/Hosting.AppHost/Hosting.AppHost.csproj" Id="4eeba294-4d93-451b-9be0-3fa1f29e3ef5" />
+    <Project Path="src/Hosting/Hosting.ServiceDefaults/Hosting.ServiceDefaults.csproj" />
+  </Folder>
   <Folder Name="/src/Microservices/" />
   <Folder Name="/src/Microservices/Inventory.Api/">
     <Project Path="src\Microservices\Inventory.Api\Inventory.Api.csproj" />
