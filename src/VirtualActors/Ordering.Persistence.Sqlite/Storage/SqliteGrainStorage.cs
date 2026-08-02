@@ -226,6 +226,12 @@ internal sealed class SqliteGrainStorage :
                 await context.Database
                 .MigrateAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+                await context.Database
+                    .ExecuteSqlRawAsync(
+                    "PRAGMA journal_mode=WAL;",
+                    cancellationToken)
+                    .ConfigureAwait(false);
             }
         } finally {
             WriteLock.Release();
