@@ -7,7 +7,7 @@ using Ordering.Persistence.Sqlite.Extensions;
 const string ConnectionName = "Default";
 const string StorageProviderName = "OrderingStorage";
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 string connectionString =
     builder.Configuration.GetConnectionString(ConnectionName)
@@ -17,12 +17,17 @@ string connectionString =
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
-builder.Host.UseOrleans(siloBuilder => {
+builder.UseOrleans(siloBuilder => {
     siloBuilder.UseLocalhostClustering();
 
     siloBuilder.AddSqliteGrainStorage(
         StorageProviderName,
         connectionString);
 });
+
+await builder
+    .Build()
+    .RunAsync()
+    .ConfigureAwait(false);
 
 public partial class Program;

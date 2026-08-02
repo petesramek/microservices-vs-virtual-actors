@@ -1,27 +1,33 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-  </PropertyGroup>
-  <ItemGroup>
-    <Content Include="appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" />
-    <PackageReference Include="Microsoft.Orleans.Analyzers" />
-    <PackageReference Include="Microsoft.Orleans.Server" />
-    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
-    <ProjectReference Include="../Ordering.Grains/Ordering.Grains.csproj" />
-    <ProjectReference Include="..\..\Hosting\Hosting.ServiceDefaults\Hosting.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\Ordering.Persistence.Sqlite\Ordering.Persistence.Sqlite.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Update="Meziantou.Analyzer">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+	</PropertyGroup>
+	<ItemGroup>
+		<Content Include="appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Data.Sqlite" />
+		<PackageReference Include="Microsoft.Orleans.Analyzers" />
+		<PackageReference Include="Microsoft.Orleans.Server" />
+		<PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
+		<ProjectReference Include="../Ordering.Grains/Ordering.Grains.csproj" />
+		<ProjectReference Include="..\..\Hosting\Hosting.ServiceDefaults\Hosting.ServiceDefaults.csproj" />
+		<ProjectReference Include="..\Ordering.Persistence.Sqlite\Ordering.Persistence.Sqlite.csproj" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+		<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>
+				runtime; build; native; contentfiles; analyzers; buildtransitive
+			</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Update="Meziantou.Analyzer">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
 </Project>
