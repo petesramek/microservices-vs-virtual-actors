@@ -20,6 +20,7 @@ using Xunit;
 /// </summary>
 public sealed class SqliteGrainPersistenceTests {
     private const string InventoryStateName = "inventory";
+    private const string SecondaryStorageProviderName = "SecondaryOrderingStorage";
     private const string StorageProviderName = "OrderingStorage";
 
     /// <summary>
@@ -305,6 +306,205 @@ public sealed class SqliteGrainPersistenceTests {
     }
 
     /// <summary>
+    /// Verifies that identical grain keys remain isolated across grain types.
+    /// </summary>
+    [Fact]
+    public async Task SameGrainKeyAcrossDifferentTypesPersistsIsolatedState() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        IGrainStorage storage = GetStorage(context);
+        string grainKey = context.CreateProductId();
+        GrainId firstGrainId = GrainId.Create("first-inventory", grainKey);
+        GrainId secondGrainId = GrainId.Create("second-inventory", grainKey);
+        var firstState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 10,
+            });
+        var secondState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 20,
+            });
+
+        await storage.WriteStateAsync(
+            InventoryStateName,
+            firstGrainId,
+            firstState);
+        await storage.WriteStateAsync(
+            InventoryStateName,
+            secondGrainId,
+            secondState);
+
+        var restoredFirstState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        var restoredSecondState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+
+        await storage.ReadStateAsync(
+            InventoryStateName,
+            firstGrainId,
+            restoredFirstState);
+        await storage.ReadStateAsync(
+            InventoryStateName,
+            secondGrainId,
+            restoredSecondState);
+
+        restoredFirstState.State.AvailableQuantity.ShouldBe(10);
+        restoredSecondState.State.AvailableQuantity.ShouldBe(20);
+    }
+
+    /// <summary>
+    /// Verifies that different state names on one grain remain isolated.
+    /// </summary>
+    [Fact]
+    public async Task SameGrainWithDifferentStateNamesPersistsIsolatedState() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        IGrainStorage storage = GetStorage(context);
+        GrainId grainId = GrainId.Create(
+            "test-inventory",
+            context.CreateProductId());
+        var firstState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 10,
+            });
+        var secondState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 20,
+            });
+
+        await storage.WriteStateAsync("first-state", grainId, firstState);
+        await storage.WriteStateAsync("second-state", grainId, secondState);
+
+        var restoredFirstState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        var restoredSecondState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+
+        await storage.ReadStateAsync(
+            "first-state",
+            grainId,
+            restoredFirstState);
+        await storage.ReadStateAsync(
+            "second-state",
+            grainId,
+            restoredSecondState);
+
+        restoredFirstState.State.AvailableQuantity.ShouldBe(10);
+        restoredSecondState.State.AvailableQuantity.ShouldBe(20);
+    }
+
+    /// <summary>
+    /// Verifies that identical grain state remains isolated across Orleans service identifiers.
+    /// </summary>
+    [Fact]
+    public async Task SameGrainStateAcrossDifferentServiceIdsRemainsIsolated() {
+        string databasePath = CreateDatabasePath();
+        string connectionString = $"Data Source={databasePath}";
+        string firstServiceId = CreateIdentifier("ordering-persistence");
+        string secondServiceId = CreateIdentifier("ordering-persistence");
+        string clusterId = CreateIdentifier("ordering-persistence");
+        GrainId grainId = GrainId.Create(
+            "test-inventory",
+            CreateIdentifier("product"));
+
+        try {
+            InProcessTestCluster firstCluster = await StartClusterAsync(
+                connectionString,
+                firstServiceId,
+                clusterId);
+
+            try {
+                IGrainStorage firstStorage = GetStorage(firstCluster);
+                var firstState = new GrainState<InventoryItemState>(
+                    new InventoryItemState {
+                        AvailableQuantity = 10,
+                    });
+
+                await firstStorage.WriteStateAsync(
+                    InventoryStateName,
+                    grainId,
+                    firstState);
+            }
+            finally {
+                await firstCluster.DisposeAsync();
+            }
+
+            InProcessTestCluster secondCluster = await StartClusterAsync(
+                connectionString,
+                secondServiceId,
+                clusterId);
+
+            try {
+                IGrainStorage secondStorage = GetStorage(secondCluster);
+                var secondState = new GrainState<InventoryItemState>(
+                    new InventoryItemState());
+
+                await secondStorage.ReadStateAsync(
+                    InventoryStateName,
+                    grainId,
+                    secondState);
+
+                secondState.RecordExists.ShouldBeFalse();
+                secondState.State.AvailableQuantity.ShouldBe(0);
+            }
+            finally {
+                await secondCluster.DisposeAsync();
+            }
+        }
+        finally {
+            DeleteDatabaseFiles(databasePath);
+        }
+    }
+
+    /// <summary>
+    /// Verifies that identical grain state remains isolated across storage providers.
+    /// </summary>
+    [Fact]
+    public async Task SameGrainStateAcrossDifferentProvidersRemainsIsolated() {
+        await using PersistenceTestContext context = await CreateContextAsync(
+            registerSecondaryProvider: true);
+        IGrainStorage primaryStorage = GetStorage(context);
+        IGrainStorage secondaryStorage = GetStorage(
+            context,
+            SecondaryStorageProviderName);
+        GrainId grainId = GrainId.Create(
+            "test-inventory",
+            context.CreateProductId());
+        var primaryState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 10,
+            });
+        var secondaryState = new GrainState<InventoryItemState>(
+            new InventoryItemState {
+                AvailableQuantity = 20,
+            });
+
+        await primaryStorage.WriteStateAsync(
+            InventoryStateName,
+            grainId,
+            primaryState);
+        await secondaryStorage.WriteStateAsync(
+            InventoryStateName,
+            grainId,
+            secondaryState);
+
+        var restoredPrimaryState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+        var restoredSecondaryState = new GrainState<InventoryItemState>(
+            new InventoryItemState());
+
+        await primaryStorage.ReadStateAsync(
+            InventoryStateName,
+            grainId,
+            restoredPrimaryState);
+        await secondaryStorage.ReadStateAsync(
+            InventoryStateName,
+            grainId,
+            restoredSecondaryState);
+
+        restoredPrimaryState.State.AvailableQuantity.ShouldBe(10);
+        restoredSecondaryState.State.AvailableQuantity.ShouldBe(20);
+    }
+
+    /// <summary>
     /// Verifies that persisted inventory state is restored after restarting the cluster.
     /// </summary>
     [Fact]
@@ -356,15 +556,23 @@ public sealed class SqliteGrainPersistenceTests {
     }
 
     private static IGrainStorage GetStorage(
-        PersistenceTestContext context) {
-        IServiceProvider serviceProvider =
-            context.Cluster.GetSiloServiceProvider();
-
-        return serviceProvider.GetRequiredKeyedService<IGrainStorage>(
-            StorageProviderName);
+        PersistenceTestContext context,
+        string storageProviderName = StorageProviderName) {
+        return GetStorage(context.Cluster, storageProviderName);
     }
 
-    private static async Task<PersistenceTestContext> CreateContextAsync() {
+    private static IGrainStorage GetStorage(
+        InProcessTestCluster cluster,
+        string storageProviderName = StorageProviderName) {
+        IServiceProvider serviceProvider =
+            cluster.GetSiloServiceProvider();
+
+        return serviceProvider.GetRequiredKeyedService<IGrainStorage>(
+            storageProviderName);
+    }
+
+    private static async Task<PersistenceTestContext> CreateContextAsync(
+        bool registerSecondaryProvider = false) {
         string databasePath = CreateDatabasePath();
         string connectionString = $"Data Source={databasePath}";
         string serviceId = CreateIdentifier("ordering-persistence");
@@ -374,7 +582,8 @@ public sealed class SqliteGrainPersistenceTests {
             InProcessTestCluster cluster = await StartClusterAsync(
                 connectionString,
                 serviceId,
-                clusterId);
+                clusterId,
+                registerSecondaryProvider);
 
             return new PersistenceTestContext(
                 cluster,
@@ -401,7 +610,8 @@ public sealed class SqliteGrainPersistenceTests {
     private static async Task<InProcessTestCluster> StartClusterAsync(
         string connectionString,
         string serviceId,
-        string clusterId) {
+        string clusterId,
+        bool registerSecondaryProvider = false) {
         var builder = new InProcessTestClusterBuilder();
 
         builder.Options.ServiceId = serviceId;
@@ -411,6 +621,12 @@ public sealed class SqliteGrainPersistenceTests {
             siloBuilder.AddSqliteGrainStorage(
                 StorageProviderName,
                 connectionString);
+
+            if (registerSecondaryProvider) {
+                siloBuilder.AddSqliteGrainStorage(
+                    SecondaryStorageProviderName,
+                    connectionString);
+            }
         });
 
         InProcessTestCluster cluster = builder.Build();
