@@ -1,5 +1,6 @@
 namespace VirtualActors.Tests;
 
+using System.Globalization;
 using Microsoft.Data.Sqlite;
 using Ordering.Grains.Interfaces;
 using Ordering.Persistence.Sqlite.Extensions;
@@ -8,76 +9,198 @@ using Shouldly;
 using Xunit;
 
 /// <summary>
-/// Verifies that grain state survives an Orleans cluster restart.
+/// Verifies SQLite-backed grain persistence.
 /// </summary>
 public sealed class SqliteGrainPersistenceTests {
+    private const string InventoryStateName = "inventory";
     private const string StorageProviderName = "OrderingStorage";
+
+    /// <summary>
+    /// Verifies that reading missing inventory state returns its default value.
+    /// </summary>
+    [Fact]
+    public async Task MissingInventoryStateReturnsDefaultValue() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+
+        IInventoryItemGrain inventory = context.Cluster.Client
+            .GetGrain<IInventoryItemGrain>(context.CreateProductId());
+
+        int availableQuantity = (await inventory.GetAsync()).AvailableQuantity;
+
+        availableQuantity.ShouldBe(0);
+    }
+
+    /// <summary>
+    /// Verifies that writing previously missing inventory state inserts a new record.
+    /// </summary>
+    [Fact]
+    public async Task WritingMissingInventoryStateInsertsNewRecord() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        string productId = context.CreateProductId();
+
+        IInventoryItemGrain inventory = context.Cluster.Client
+            .GetGrain<IInventoryItemGrain>(productId);
+
+        await inventory.ResetAsync(10);
+
+        long recordCount = await CountInventoryRecordsAsync(context, productId);
+        long version = await ReadInventoryVersionAsync(context, productId);
+
+        recordCount.ShouldBe(1);
+        version.ShouldBe(1);
+    }
+
+    /// <summary>
+    /// Verifies that writing existing inventory state updates its persisted record.
+    /// </summary>
+    [Fact]
+    public async Task UpdatingExistingInventoryStateUpdatesRecord() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        string productId = context.CreateProductId();
+
+        IInventoryItemGrain inventory = context.Cluster.Client
+            .GetGrain<IInventoryItemGrain>(productId);
+
+        await inventory.ResetAsync(10);
+        await inventory.ResetAsync(15);
+
+        int availableQuantity = (await inventory.GetAsync()).AvailableQuantity;
+        long recordCount = await CountInventoryRecordsAsync(context, productId);
+        long version = await ReadInventoryVersionAsync(context, productId);
+
+        availableQuantity.ShouldBe(15);
+        recordCount.ShouldBe(1);
+        version.ShouldBe(2);
+    }
+
+    /// <summary>
+    /// Verifies that stale persisted versions reject subsequent grain-state writes.
+    /// </summary>
+    [Fact]
+    public async Task StaleVersionRejectsWrite() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        string productId = context.CreateProductId();
+
+        IInventoryItemGrain inventory = context.Cluster.Client
+            .GetGrain<IInventoryItemGrain>(productId);
+
+        await inventory.ResetAsync(10);
+        await SetInventoryVersionAsync(context, productId, version: 2);
+
+        Exception exception = await Should.ThrowAsync<Exception>(
+            async () => await inventory.ResetAsync(15));
+
+        exception.ToString().ShouldContain("state");
+        (await inventory.GetAsync()).AvailableQuantity.ShouldBe(15);
+        (await ReadInventoryVersionAsync(context, productId)).ShouldBe(2);
+    }
+
+    /// <summary>
+    /// Verifies that separate grain identities persist isolated state records.
+    /// </summary>
+    [Fact]
+    public async Task DifferentGrainIdsPersistIsolatedState() {
+        await using PersistenceTestContext context = await CreateContextAsync();
+        string firstProductId = context.CreateProductId();
+        string secondProductId = context.CreateProductId();
+
+        IInventoryItemGrain firstInventory = context.Cluster.Client
+            .GetGrain<IInventoryItemGrain>(firstProductId);
+        IInventoryItemGrain secondInventory = context.Cluster.Client
+            .GetGrain<IInventoryItemGrain>(secondProductId);
+
+        await firstInventory.ResetAsync(10);
+        await secondInventory.ResetAsync(20);
+
+        (await firstInventory.GetAsync()).AvailableQuantity.ShouldBe(10);
+        (await secondInventory.GetAsync()).AvailableQuantity.ShouldBe(20);
+        (await CountInventoryRecordsAsync(context, firstProductId)).ShouldBe(1);
+        (await CountInventoryRecordsAsync(context, secondProductId)).ShouldBe(1);
+    }
 
     /// <summary>
     /// Verifies that persisted inventory state is restored after restarting the cluster.
     /// </summary>
     [Fact]
     public async Task InventoryStateSurvivesClusterRestart() {
-        string databasePath = Path.Combine(
-            Path.GetTempPath(),
-            $"ordering-grain-state-{Guid.NewGuid():N}.db");
+        string databasePath = CreateDatabasePath();
         string connectionString = $"Data Source={databasePath}";
-        string productId = $"product-{Guid.NewGuid():N}";
-        string serviceId = $"ordering-persistence-{Guid.NewGuid():N}";
-        string clusterId = $"ordering-persistence-{Guid.NewGuid():N}";
+        string productId = CreateIdentifier("product");
+        string serviceId = CreateIdentifier("ordering-persistence");
+        string clusterId = CreateIdentifier("ordering-persistence");
 
         try {
             InProcessTestCluster firstCluster = await StartClusterAsync(
                 connectionString,
                 serviceId,
-                clusterId).ConfigureAwait(false);
+                clusterId);
 
             try {
-                IInventoryItemGrain inventory =
-                    firstCluster.Client.GetGrain<IInventoryItemGrain>(productId);
+                IInventoryItemGrain inventory = firstCluster.Client
+                    .GetGrain<IInventoryItemGrain>(productId);
 
-                await inventory
-                    .ResetAsync(10)
-                    .ConfigureAwait(false);
-
-                await inventory
-                    .ReserveAsync(
-                        Guid.NewGuid(),
-                        Guid.NewGuid(),
-                        quantity: 3)
-                    .ConfigureAwait(false);
+                await inventory.ResetAsync(10);
+                await inventory.ReserveAsync(
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    quantity: 3);
             }
             finally {
-                await firstCluster
-                    .DisposeAsync()
-                    .ConfigureAwait(false);
+                await firstCluster.DisposeAsync();
             }
 
             InProcessTestCluster secondCluster = await StartClusterAsync(
                 connectionString,
                 serviceId,
-                clusterId).ConfigureAwait(false);
+                clusterId);
 
             try {
-                IInventoryItemGrain inventory =
-                    secondCluster.Client.GetGrain<IInventoryItemGrain>(productId);
+                IInventoryItemGrain inventory = secondCluster.Client
+                    .GetGrain<IInventoryItemGrain>(productId);
 
-                int availableQuantity = (await inventory
-                    .GetAsync()
-                    .ConfigureAwait(false))
-                    .AvailableQuantity;
-
-                availableQuantity.ShouldBe(7);
+                (await inventory.GetAsync()).AvailableQuantity.ShouldBe(7);
             }
             finally {
-                await secondCluster
-                    .DisposeAsync()
-                    .ConfigureAwait(false);
+                await secondCluster.DisposeAsync();
             }
         }
         finally {
             DeleteDatabaseFiles(databasePath);
         }
+    }
+
+    private static async Task<PersistenceTestContext> CreateContextAsync() {
+        string databasePath = CreateDatabasePath();
+        string connectionString = $"Data Source={databasePath}";
+        string serviceId = CreateIdentifier("ordering-persistence");
+        string clusterId = CreateIdentifier("ordering-persistence");
+
+        try {
+            InProcessTestCluster cluster = await StartClusterAsync(
+                connectionString,
+                serviceId,
+                clusterId);
+
+            return new PersistenceTestContext(
+                cluster,
+                databasePath,
+                connectionString,
+                serviceId);
+        }
+        catch {
+            DeleteDatabaseFiles(databasePath);
+            throw;
+        }
+    }
+
+    private static string CreateDatabasePath() {
+        return Path.Combine(
+            Path.GetTempPath(),
+            $"ordering-grain-state-{Guid.NewGuid():N}.db");
+    }
+
+    private static string CreateIdentifier(string prefix) {
+        return $"{prefix}-{Guid.NewGuid():N}";
     }
 
     private static async Task<InProcessTestCluster> StartClusterAsync(
@@ -96,17 +219,84 @@ public sealed class SqliteGrainPersistenceTests {
         });
 
         InProcessTestCluster cluster = builder.Build();
-
-        await cluster
-            .DeployAsync()
-            .ConfigureAwait(false);
-
+        await cluster.DeployAsync();
         return cluster;
     }
 
+    private static Task<long> CountInventoryRecordsAsync(
+        PersistenceTestContext context,
+        string productId) {
+        return ExecuteScalarAsync(
+            context,
+            productId,
+            "COUNT(*)");
+    }
+
+    private static Task<long> ReadInventoryVersionAsync(
+        PersistenceTestContext context,
+        string productId) {
+        return ExecuteScalarAsync(
+            context,
+            productId,
+            "Version");
+    }
+
+    private static async Task<long> ExecuteScalarAsync(
+        PersistenceTestContext context,
+        string productId,
+        string selection) {
+        await using var connection = new SqliteConnection(context.ConnectionString);
+        await connection.OpenAsync();
+
+        await using SqliteCommand command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT {selection}
+            FROM GrainStates
+            WHERE ServiceId = $serviceId
+              AND ProviderName = $providerName
+              AND StateName = $stateName
+              AND GrainId = $grainId;
+            """;
+        AddInventoryParameters(command, context, productId);
+
+        object? result = await command.ExecuteScalarAsync();
+        return Convert.ToInt64(result, CultureInfo.InvariantCulture);
+    }
+
+    private static async Task SetInventoryVersionAsync(
+        PersistenceTestContext context,
+        string productId,
+        int version) {
+        await using var connection = new SqliteConnection(context.ConnectionString);
+        await connection.OpenAsync();
+
+        await using SqliteCommand command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE GrainStates
+            SET Version = $version
+            WHERE ServiceId = $serviceId
+              AND ProviderName = $providerName
+              AND StateName = $stateName
+              AND GrainId = $grainId;
+            """;
+        command.Parameters.AddWithValue("$version", version);
+        AddInventoryParameters(command, context, productId);
+
+        int affectedRows = await command.ExecuteNonQueryAsync();
+        affectedRows.ShouldBe(1);
+    }
+
+    private static void AddInventoryParameters(
+        SqliteCommand command,
+        PersistenceTestContext context,
+        string productId) {
+        command.Parameters.AddWithValue("$serviceId", context.ServiceId);
+        command.Parameters.AddWithValue("$providerName", StorageProviderName);
+        command.Parameters.AddWithValue("$stateName", InventoryStateName);
+        command.Parameters.AddWithValue("$grainId", productId);
+    }
+
     private static void DeleteDatabaseFiles(string databasePath) {
-        // EF Core uses pooled SQLite connections, which can retain the file handle
-        // after the test clusters and their service providers have been disposed.
         SqliteConnection.ClearAllPools();
 
         foreach (string path in new[] {
@@ -132,6 +322,28 @@ public sealed class SqliteGrainPersistenceTests {
             catch (IOException) when (attempt < MaxAttempts) {
                 Thread.Sleep(TimeSpan.FromMilliseconds(100 * attempt));
             }
+        }
+    }
+
+    private sealed class PersistenceTestContext(
+        InProcessTestCluster cluster,
+        string databasePath,
+        string connectionString,
+        string serviceId)
+        : IAsyncDisposable {
+        public InProcessTestCluster Cluster { get; } = cluster;
+
+        public string ConnectionString { get; } = connectionString;
+
+        public string ServiceId { get; } = serviceId;
+
+        public string CreateProductId() {
+            return CreateIdentifier("product");
+        }
+
+        public async ValueTask DisposeAsync() {
+            await Cluster.DisposeAsync();
+            DeleteDatabaseFiles(databasePath);
         }
     }
 }
