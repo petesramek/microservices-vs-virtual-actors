@@ -205,7 +205,7 @@ internal sealed class SqliteGrainStorage :
                 .ConfigureAwait(false);
 
             await context.Database
-                .EnsureCreatedAsync(cancellationToken)
+                .MigrateAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
         finally {
