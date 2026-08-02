@@ -41,13 +41,13 @@ public sealed record RunScenarioRequest {
     /// <summary>
     /// Gets or sets the requested order quantity.
     /// </summary>
-    [Range(1, 1000)]
+    [Range(1, 100_000)]
     public int Quantity { get; set; } = 1;
 
     /// <summary>
     /// Gets or sets the initial inventory quantity used to prepare the scenario.
     /// </summary>
-    [Range(0, 100000)]
+    [Range(0, 100_000)]
     public int InitialStock { get; set; } = 10;
 
     /// <summary>
