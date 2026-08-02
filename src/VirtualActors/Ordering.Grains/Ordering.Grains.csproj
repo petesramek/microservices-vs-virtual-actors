@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="Microsoft.Orleans.Analyzers" />
-    <PackageReference Include="Microsoft.Orleans.Runtime.Abstractions" />
+    <PackageReference Include="Microsoft.Orleans.Runtime" />
     <PackageReference Include="Microsoft.Orleans.Sdk" />
     <ProjectReference Include="../../Comparison/Comparison.Contracts/Comparison.Contracts.csproj" />
   </ItemGroup>

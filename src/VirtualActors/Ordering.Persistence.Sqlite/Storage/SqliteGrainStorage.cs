@@ -16,6 +16,10 @@ using Orleans.Storage;
 internal sealed class SqliteGrainStorage :
     IGrainStorage,
     ILifecycleParticipant<ISiloLifecycle> {
+    private static readonly SemaphoreSlim InitializationLock = new(
+        initialCount: 1,
+        maxCount: 1);
+
     private readonly string _storageName;
     private readonly string _serviceId;
     private readonly IDbContextFactory<GrainStateDbContext> _dbContextFactory;
@@ -191,13 +195,22 @@ internal sealed class SqliteGrainStorage :
     }
 
     private async Task InitializeAsync(CancellationToken cancellationToken) {
-        using GrainStateDbContext context = await _dbContextFactory
-            .CreateDbContextAsync(cancellationToken)
+        await InitializationLock
+            .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        await context.Database
-            .EnsureCreatedAsync(cancellationToken)
-            .ConfigureAwait(false);
+        try {
+            using GrainStateDbContext context = await _dbContextFactory
+                .CreateDbContextAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            await context.Database
+                .EnsureCreatedAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally {
+            InitializationLock.Release();
+        }
 
         _logger.LogInformation(
             "SQLite grain storage provider {StorageProviderName} initialized for service {ServiceId}.",

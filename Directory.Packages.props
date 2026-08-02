@@ -16,7 +16,6 @@
     <PackageVersion Include="Microsoft.Orleans.Persistence.AdoNet" Version="10.2.2" />
     <PackageVersion Include="Microsoft.Orleans.Persistence.Memory" Version="10.2.2" />
     <PackageVersion Include="Microsoft.Orleans.Runtime" Version="10.2.2" />
-    <PackageVersion Include="Microsoft.Orleans.Runtime.Abstractions" Version="3.8.1" />
     <PackageVersion Include="Microsoft.Orleans.Sdk" Version="10.2.2" />
     <PackageVersion Include="Microsoft.Orleans.Server" Version="10.2.2" />
     <PackageVersion Include="Microsoft.Orleans.TestingHost" Version="10.2.2" />

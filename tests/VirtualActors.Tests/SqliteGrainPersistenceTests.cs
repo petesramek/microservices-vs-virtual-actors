@@ -23,10 +23,14 @@ public sealed class SqliteGrainPersistenceTests {
             $"ordering-grain-state-{Guid.NewGuid():N}.db");
         string connectionString = $"Data Source={databasePath}";
         string productId = $"product-{Guid.NewGuid():N}";
+        string serviceId = $"ordering-persistence-{Guid.NewGuid():N}";
+        string clusterId = $"ordering-persistence-{Guid.NewGuid():N}";
 
         try {
             InProcessTestCluster firstCluster = await StartClusterAsync(
-                connectionString).ConfigureAwait(false);
+                connectionString,
+                serviceId,
+                clusterId).ConfigureAwait(false);
 
             try {
                 IInventoryItemGrain inventory =
@@ -50,7 +54,9 @@ public sealed class SqliteGrainPersistenceTests {
             }
 
             InProcessTestCluster secondCluster = await StartClusterAsync(
-                connectionString).ConfigureAwait(false);
+                connectionString,
+                serviceId,
+                clusterId).ConfigureAwait(false);
 
             try {
                 IInventoryItemGrain inventory =
@@ -75,8 +81,13 @@ public sealed class SqliteGrainPersistenceTests {
     }
 
     private static async Task<InProcessTestCluster> StartClusterAsync(
-        string connectionString) {
+        string connectionString,
+        string serviceId,
+        string clusterId) {
         var builder = new InProcessTestClusterBuilder();
+
+        builder.Options.ServiceId = serviceId;
+        builder.Options.ClusterId = clusterId;
 
         builder.ConfigureSilo((_, siloBuilder) => {
             siloBuilder.AddSqliteGrainStorage(
