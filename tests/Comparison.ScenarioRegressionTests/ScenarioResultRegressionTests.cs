@@ -127,6 +127,198 @@ public sealed class ScenarioResultRegressionTests {
         result.Reason.ShouldBe("IdempotentResultReturned");
     }
 
+    /// <summary>
+    /// Verifies that repeating a successful scenario reuses the persisted result for the same customer and idempotency key.
+    /// </summary>
+    [Fact]
+    public async Task RepeatedSuccessfulOrderReusesPersistedResult() {
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        RunScenarioRequest firstRequest = CreateRequest(
+            ScenarioKind.SuccessfulOrder,
+            initialStock: 10,
+            quantity: 2,
+            concurrentRequests: 10);
+        RunScenarioRequest secondRequest = firstRequest with {
+            OrderId = Guid.NewGuid(),
+        };
+
+        ScenarioExecutionResult firstResult = await runner.RunAsync(
+            client,
+            firstRequest,
+            CancellationToken.None);
+        ScenarioExecutionResult secondResult = await runner.RunAsync(
+            client,
+            secondRequest,
+            CancellationToken.None);
+
+        firstResult.Status.ShouldBe(OrderStatus.Completed);
+        firstResult.RemainingInventory.ShouldBe(8);
+        secondResult.Status.ShouldBe(OrderStatus.Completed);
+        secondResult.RemainingInventory.ShouldBe(10);
+    }
+
+    /// <summary>
+    /// Verifies that repeating a failed-payment scenario reuses the persisted rejection.
+    /// </summary>
+    [Fact]
+    public async Task RepeatedPaymentFailureReusesPersistedRejection() {
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        RunScenarioRequest firstRequest = CreateRequest(
+            ScenarioKind.PaymentFailureCompensation,
+            initialStock: 10,
+            quantity: 2,
+            concurrentRequests: 10);
+        RunScenarioRequest secondRequest = firstRequest with {
+            OrderId = Guid.NewGuid(),
+        };
+
+        ScenarioExecutionResult firstResult = await runner.RunAsync(
+            client,
+            firstRequest,
+            CancellationToken.None);
+        ScenarioExecutionResult secondResult = await runner.RunAsync(
+            client,
+            secondRequest,
+            CancellationToken.None);
+
+        firstResult.Status.ShouldBe(OrderStatus.Rejected);
+        firstResult.Reason.ShouldBe("PaymentFailed");
+        firstResult.RemainingInventory.ShouldBe(10);
+        secondResult.Status.ShouldBe(OrderStatus.Rejected);
+        secondResult.Reason.ShouldBe("PaymentFailed");
+        secondResult.RemainingInventory.ShouldBe(10);
+    }
+
+    /// <summary>
+    /// Verifies that a persisted successful result remains authoritative when a later request simulates payment failure.
+    /// </summary>
+    [Fact]
+    public async Task SuccessfulPaymentRemainsAuthoritativeForRepeatedKey() {
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        RunScenarioRequest successfulRequest = CreateRequest(
+            ScenarioKind.SuccessfulOrder,
+            initialStock: 10,
+            quantity: 2,
+            concurrentRequests: 10);
+        RunScenarioRequest failureRequest = successfulRequest with {
+            Scenario = ScenarioKind.PaymentFailureCompensation,
+            OrderId = Guid.NewGuid(),
+            SimulatePaymentFailure = true,
+        };
+
+        ScenarioExecutionResult successfulResult = await runner.RunAsync(
+            client,
+            successfulRequest,
+            CancellationToken.None);
+        ScenarioExecutionResult repeatedResult = await runner.RunAsync(
+            client,
+            failureRequest,
+            CancellationToken.None);
+
+        successfulResult.Status.ShouldBe(OrderStatus.Completed);
+        successfulResult.RemainingInventory.ShouldBe(8);
+        repeatedResult.Status.ShouldBe(OrderStatus.Completed);
+        repeatedResult.Reason.ShouldBeNull();
+        repeatedResult.RemainingInventory.ShouldBe(10);
+    }
+
+    /// <summary>
+    /// Verifies that a persisted failed result remains authoritative when a later request would otherwise succeed.
+    /// </summary>
+    [Fact]
+    public async Task FailedPaymentRemainsAuthoritativeForRepeatedKey() {
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        RunScenarioRequest failureRequest = CreateRequest(
+            ScenarioKind.PaymentFailureCompensation,
+            initialStock: 10,
+            quantity: 2,
+            concurrentRequests: 10);
+        RunScenarioRequest successfulRequest = failureRequest with {
+            Scenario = ScenarioKind.SuccessfulOrder,
+            OrderId = Guid.NewGuid(),
+            SimulatePaymentFailure = false,
+        };
+
+        ScenarioExecutionResult failureResult = await runner.RunAsync(
+            client,
+            failureRequest,
+            CancellationToken.None);
+        ScenarioExecutionResult repeatedResult = await runner.RunAsync(
+            client,
+            successfulRequest,
+            CancellationToken.None);
+
+        failureResult.Status.ShouldBe(OrderStatus.Rejected);
+        failureResult.Reason.ShouldBe("PaymentFailed");
+        failureResult.RemainingInventory.ShouldBe(10);
+        repeatedResult.Status.ShouldBe(OrderStatus.Rejected);
+        repeatedResult.Reason.ShouldBe("PaymentFailed");
+        repeatedResult.RemainingInventory.ShouldBe(10);
+    }
+
+    /// <summary>
+    /// Verifies that the same idempotency key remains isolated across customers.
+    /// </summary>
+    [Fact]
+    public async Task RepeatedIdempotencyKeyRemainsIsolatedAcrossCustomers() {
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        RunScenarioRequest firstRequest = CreateRequest(
+            ScenarioKind.SuccessfulOrder,
+            initialStock: 10,
+            quantity: 2,
+            concurrentRequests: 10);
+        RunScenarioRequest secondRequest = firstRequest with {
+            CustomerId = "customer-002",
+            OrderId = Guid.NewGuid(),
+        };
+
+        ScenarioExecutionResult firstResult = await runner.RunAsync(
+            client,
+            firstRequest,
+            CancellationToken.None);
+        ScenarioExecutionResult secondResult = await runner.RunAsync(
+            client,
+            secondRequest,
+            CancellationToken.None);
+
+        firstResult.Status.ShouldBe(OrderStatus.Completed);
+        firstResult.RemainingInventory.ShouldBe(8);
+        secondResult.Status.ShouldBe(OrderStatus.Completed);
+        secondResult.RemainingInventory.ShouldBe(8);
+    }
+
+    /// <summary>
+    /// Verifies that a duplicate-request scenario can be repeated with persisted idempotency state.
+    /// </summary>
+    [Fact]
+    public async Task DuplicateRequestCanBeRepeatedWithPersistedResult() {
+        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        RunScenarioRequest firstRequest = CreateRequest(
+            ScenarioKind.DuplicateRequest,
+            initialStock: 10,
+            quantity: 2,
+            concurrentRequests: 20);
+        RunScenarioRequest secondRequest = firstRequest with {
+            OrderId = Guid.NewGuid(),
+        };
+
+        ScenarioExecutionResult firstResult = await runner.RunAsync(
+            client,
+            firstRequest,
+            CancellationToken.None);
+        ScenarioExecutionResult secondResult = await runner.RunAsync(
+            client,
+            secondRequest,
+            CancellationToken.None);
+
+        firstResult.CompletedOrders.ShouldBe(1);
+        firstResult.IdempotentResponses.ShouldBe(19);
+        firstResult.RemainingInventory.ShouldBe(8);
+        secondResult.CompletedOrders.ShouldBe(1);
+        secondResult.IdempotentResponses.ShouldBe(19);
+        secondResult.RemainingInventory.ShouldBe(10);
+    }
+
     private static (ScenarioRunner Runner, IServiceClient Client) CreateRunner() {
         var handler = new ScenarioRegressionHttpMessageHandler();
         var httpClient = new HttpClient(handler) {
@@ -180,7 +372,6 @@ public sealed class ScenarioResultRegressionTests {
             if (request.Method == HttpMethod.Post && path.Equals("/api/scenarios/reset", StringComparison.OrdinalIgnoreCase)) {
                 ResetInventoryRequest reset = await ReadJsonAsync<ResetInventoryRequest>(request, cancellationToken).ConfigureAwait(false);
                 inventoryByProductId[reset.ProductId] = reset.Quantity;
-                ordersByIdempotencyKey.Clear();
                 return Json(new { ok = true });
             }
 
@@ -203,14 +394,17 @@ public sealed class ScenarioResultRegressionTests {
         private async Task<HttpResponseMessage> PlaceOrderAsync(RunScenarioRequest request, CancellationToken cancellationToken) {
             await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try {
-                if (ordersByIdempotencyKey.TryGetValue(request.IdempotencyKey, out StoredOrder? existing)) {
+                string idempotencyIdentity = CreateIdempotencyIdentity(request);
+                if (ordersByIdempotencyKey.TryGetValue(
+                    idempotencyIdentity,
+                    out StoredOrder? existing)) {
                     return Json(ToOrderResponse(existing));
                 }
 
                 var currentInventory = inventoryByProductId.GetValueOrDefault(request.ProductId);
                 if (currentInventory < request.Quantity) {
                     var rejected = new StoredOrder(request.OrderId, OrderStatus.Rejected, "InsufficientInventory");
-                    ordersByIdempotencyKey.TryAdd(request.IdempotencyKey, rejected);
+                    ordersByIdempotencyKey.TryAdd(idempotencyIdentity, rejected);
                     return Json(ToOrderResponse(rejected));
                 }
 
@@ -219,16 +413,21 @@ public sealed class ScenarioResultRegressionTests {
                 if (request.SimulatePaymentFailure) {
                     inventoryByProductId[request.ProductId] += request.Quantity;
                     var paymentRejected = new StoredOrder(request.OrderId, OrderStatus.Rejected, "PaymentFailed");
-                    ordersByIdempotencyKey.TryAdd(request.IdempotencyKey, paymentRejected);
+                    ordersByIdempotencyKey.TryAdd(idempotencyIdentity, paymentRejected);
                     return Json(ToOrderResponse(paymentRejected));
                 }
 
                 var completed = new StoredOrder(request.OrderId, OrderStatus.Completed, Reason: null);
-                ordersByIdempotencyKey.TryAdd(request.IdempotencyKey, completed);
+                ordersByIdempotencyKey.TryAdd(idempotencyIdentity, completed);
                 return Json(ToOrderResponse(completed));
             } finally {
                 gate.Release();
             }
+        }
+
+        private static string CreateIdempotencyIdentity(
+            RunScenarioRequest request) {
+            return $"{request.CustomerId}:{request.IdempotencyKey}";
         }
 
         private static OrderResponse ToOrderResponse(StoredOrder order) {
