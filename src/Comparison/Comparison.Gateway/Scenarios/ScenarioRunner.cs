@@ -181,30 +181,34 @@ public sealed class ScenarioRunner {
             idempotentResponses);
     }
 
-    private static RunScenarioRequest PrepareScenarioRequest(RunScenarioRequest request) {
-        RunScenarioRequest isolatedRequest = request with {
-            OrderId = Guid.NewGuid(),
-            IdempotencyKey = $"{request.Scenario}-{Guid.NewGuid():N}",
-        };
-
-        return isolatedRequest.Scenario switch {
-            ScenarioKind.InsufficientInventory => isolatedRequest with {
-                InitialStock = Math.Min(isolatedRequest.InitialStock, Math.Max(0, isolatedRequest.Quantity - 1)),
+    private static RunScenarioRequest PrepareScenarioRequest(
+        RunScenarioRequest request) {
+        return request.Scenario switch {
+            ScenarioKind.InsufficientInventory => request with {
+                InitialStock = Math.Min(
+                    request.InitialStock,
+                    Math.Max(0, request.Quantity - 1)),
                 SimulatePaymentFailure = false,
             },
-            ScenarioKind.PaymentFailureCompensation => isolatedRequest with {
-                InitialStock = Math.Max(isolatedRequest.InitialStock, isolatedRequest.Quantity),
+            ScenarioKind.PaymentFailureCompensation => request with {
+                InitialStock = Math.Max(
+                    request.InitialStock,
+                    request.Quantity),
                 SimulatePaymentFailure = true,
             },
-            ScenarioKind.PaymentTimeoutAfterReservation => isolatedRequest with {
-                InitialStock = Math.Max(isolatedRequest.InitialStock, isolatedRequest.Quantity),
+            ScenarioKind.PaymentTimeoutAfterReservation => request with {
+                InitialStock = Math.Max(
+                    request.InitialStock,
+                    request.Quantity),
                 SimulatePaymentFailure = true,
             },
-            ScenarioKind.SuccessfulOrder => isolatedRequest with {
-                InitialStock = Math.Max(isolatedRequest.InitialStock, isolatedRequest.Quantity),
+            ScenarioKind.SuccessfulOrder => request with {
+                InitialStock = Math.Max(
+                    request.InitialStock,
+                    request.Quantity),
                 SimulatePaymentFailure = false,
             },
-            _ => isolatedRequest,
+            _ => request,
         };
     }
 
