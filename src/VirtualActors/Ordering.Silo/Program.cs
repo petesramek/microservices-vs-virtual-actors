@@ -1,13 +1,28 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Ordering.Persistence.Sqlite.Extensions;
 
-HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+const string ConnectionName = "Default";
+const string StorageProviderName = "OrderingStorage";
 
-// Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
-builder.AddServiceDefaults();
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-builder.UseOrleans(siloBuilder => {
+string connectionString =
+    builder.Configuration.GetConnectionString(ConnectionName)
+    ?? throw new InvalidOperationException(
+        "The Default database connection string is not configured.");
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
+builder.Host.UseOrleans(siloBuilder => {
     siloBuilder.UseLocalhostClustering();
+
+    siloBuilder.AddSqliteGrainStorage(
+        StorageProviderName,
+        connectionString);
 });
 
-IHost host = builder.Build();
-await host.RunAsync().ConfigureAwait(false);
+public partial class Program;

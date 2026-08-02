@@ -2,20 +2,39 @@ namespace Ordering.Grains.Grains;
 
 using Ordering.Grains.Contracts;
 using Ordering.Grains.Interfaces;
+using Ordering.Grains.State;
 using Orleans;
+using Orleans.Runtime;
 
 /// <summary>
 /// Grain that owns inventory state for one product.
 /// </summary>
 public sealed class InventoryItemGrain : Grain, IInventoryItemGrain {
-    private readonly Dictionary<Guid, int> _reservations = [];
-    private int _availableQuantity;
+    private const string StateName = "inventory";
+    private const string StorageProviderName = "OrderingStorage";
+
+    private readonly IPersistentState<InventoryItemState> _state;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InventoryItemGrain"/> class.
+    /// </summary>
+    /// <param name="state">The persistent inventory state.</param>
+    public InventoryItemGrain(
+        [PersistentState(StateName, StorageProviderName)]
+        IPersistentState<InventoryItemState> state) {
+        _state = state;
+    }
 
     /// <inheritdoc />
-    public Task<InventorySnapshot> ResetAsync(int quantity) {
-        _availableQuantity = quantity;
-        _reservations.Clear();
-        return Task.FromResult(CreateSnapshot());
+    public async Task<InventorySnapshot> ResetAsync(int quantity) {
+        _state.State.AvailableQuantity = quantity;
+        _state.State.Reservations.Clear();
+
+        await _state
+            .WriteStateAsync()
+            .ConfigureAwait(true);
+
+        return CreateSnapshot();
     }
 
     /// <inheritdoc />
@@ -24,31 +43,55 @@ public sealed class InventoryItemGrain : Grain, IInventoryItemGrain {
     }
 
     /// <inheritdoc />
-    public Task<InventoryReservationResult> ReserveAsync(Guid reservationId, Guid orderId, int quantity) {
-        if (_reservations.ContainsKey(reservationId)) {
-            return Task.FromResult(new InventoryReservationResult(Reserved: true, Reason: null, _availableQuantity));
+    public async Task<InventoryReservationResult> ReserveAsync(
+        Guid reservationId,
+        Guid orderId,
+        int quantity) {
+        if (_state.State.Reservations.ContainsKey(reservationId)) {
+            return new InventoryReservationResult(
+                Reserved: true,
+                Reason: null,
+                _state.State.AvailableQuantity);
         }
 
-        if (_availableQuantity < quantity) {
-            return Task.FromResult(new InventoryReservationResult(Reserved: false, $"InsufficientInventory", _availableQuantity));
+        if (_state.State.AvailableQuantity < quantity) {
+            return new InventoryReservationResult(
+                Reserved: false,
+                "InsufficientInventory",
+                _state.State.AvailableQuantity);
         }
 
-        _availableQuantity -= quantity;
-        _reservations[reservationId] = quantity;
+        _state.State.AvailableQuantity -= quantity;
+        _state.State.Reservations[reservationId] = quantity;
 
-        return Task.FromResult(new InventoryReservationResult(Reserved: true, Reason: null, _availableQuantity));
+        await _state
+            .WriteStateAsync()
+            .ConfigureAwait(true);
+
+        return new InventoryReservationResult(
+            Reserved: true,
+            Reason: null,
+            _state.State.AvailableQuantity);
     }
 
     /// <inheritdoc />
-    public Task<InventorySnapshot> ReleaseAsync(Guid reservationId) {
-        if (_reservations.Remove(reservationId, out var quantity)) {
-            _availableQuantity += quantity;
+    public async Task<InventorySnapshot> ReleaseAsync(Guid reservationId) {
+        if (_state.State.Reservations.Remove(
+            reservationId,
+            out int quantity)) {
+            _state.State.AvailableQuantity += quantity;
+
+            await _state
+                .WriteStateAsync()
+                .ConfigureAwait(true);
         }
 
-        return Task.FromResult(CreateSnapshot());
+        return CreateSnapshot();
     }
 
     private InventorySnapshot CreateSnapshot() {
-        return new InventorySnapshot(this.GetPrimaryKeyString(), _availableQuantity);
+        return new InventorySnapshot(
+            this.GetPrimaryKeyString(),
+            _state.State.AvailableQuantity);
     }
 }

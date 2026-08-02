@@ -38,9 +38,7 @@ internal static class Program {
             // Override ServiceEndpoints:VirtualActorsBaseUrl with Ordering.Api.
             .WithEnvironment(
                 "ServiceEndpoints__VirtualActorsBaseUrl",
-                orderingApi.GetEndpoint("http"))
-            .WaitFor(ordersApi)
-            .WaitFor(orderingApi);
+                orderingApi.GetEndpoint("http"));
 
         builder
             .AddProject<Projects.Comparison_Ui>("comparison-ui")

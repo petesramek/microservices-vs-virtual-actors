@@ -32,6 +32,9 @@
   <Folder Name="/src/VirtualActors/Ordering.Grains/">
     <Project Path="src\VirtualActors\Ordering.Grains\Ordering.Grains.csproj" />
   </Folder>
+  <Folder Name="/src/VirtualActors/Ordering.Persistence.Sqlite/">
+    <Project Path="src/VirtualActors/Ordering.Persistence.Sqlite/Ordering.Persistence.Sqlite.csproj" />
+  </Folder>
   <Folder Name="/src/VirtualActors/Ordering.Silo/">
     <Project Path="src\VirtualActors\Ordering.Silo\Ordering.Silo.csproj" />
   </Folder>

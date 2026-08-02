@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.Orleans.Persistence.Memory" />
     <PackageReference Include="Microsoft.Orleans.TestingHost" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="xunit" />
@@ -19,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Comparison/Comparison.Contracts/Comparison.Contracts.csproj" />
     <ProjectReference Include="../../src/VirtualActors/Ordering.Grains/Ordering.Grains.csproj" />
+    <ProjectReference Include="..\..\src\VirtualActors\Ordering.Persistence.Sqlite\Ordering.Persistence.Sqlite.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="Meziantou.Analyzer">
