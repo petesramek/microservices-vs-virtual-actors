@@ -76,9 +76,9 @@ public sealed class ScenarioFormModel : IValidatableObject {
 
     /// <inheritdoc />
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) {
-        if (UsesConcurrentRequests && ConcurrentRequests is < 1 or > 100) {
+        if (UsesConcurrentRequests && ConcurrentRequests is < 1 or > 50) {
             yield return new ValidationResult(
-$"Concurrent requests must be between 1 and 100 for local demo safety.",
+$"Concurrent requests must be between 1 and 50 for local demo safety.",
                 [nameof(ConcurrentRequests)]);
         }
     }

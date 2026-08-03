@@ -420,8 +420,8 @@
     {
         return scenario switch
         {
-            ScenarioKind.ConcurrentOrders => "Used by this scenario. Must be between 1 and 100 for local demo safety.",
-            ScenarioKind.HotProductContention => "Used by this scenario. All requests target the same product. Must be between 1 and 100 for local demo safety.",
+            ScenarioKind.ConcurrentOrders => "Used by this scenario. Must be between 1 and 50 for local demo safety.",
+            ScenarioKind.HotProductContention => "Used by this scenario. All requests target the same product. Must be between 1 and 50 for local demo safety.",
             ScenarioKind.DuplicateRequest => "Used by this scenario. All submissions reuse the same order identity and idempotency key. Must be between 1 and 100 for local demo safety.",
             _ => "Not used by this scenario. This value is ignored when the scenario runs."
         };

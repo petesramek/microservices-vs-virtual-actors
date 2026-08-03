@@ -53,7 +53,7 @@ public sealed record RunScenarioRequest {
     /// <summary>
     /// Gets or sets the number of concurrent order requests used by concurrency scenarios.
     /// </summary>
-    [Range(1, 100)]
+    [Range(1, 50)]
     public int ConcurrentRequests { get; set; } = 10;
 
     /// <summary>
