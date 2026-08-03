@@ -110,7 +110,8 @@ public static class ServiceDefaultsExtensions {
                             ShouldTraceClientRequest(
                                 request,
                                 observabilityOptions.TraceMode);
-                    });
+                    })
+                    .AddEntityFrameworkCoreInstrumentation();
             });
 
         builder.AddOpenTelemetryExporters();
