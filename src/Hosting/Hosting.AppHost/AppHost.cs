@@ -4,13 +4,22 @@ internal static class Program {
             DistributedApplication.CreateBuilder(args);
 
         IResourceBuilder<ProjectResource> inventoryApi = builder
-            .AddProject<Projects.Inventory_Api>("inventory-api");
+            .AddProject<Projects.Inventory_Api>("inventory-api")
+            .WithUrlForEndpoint(
+                "http",
+                url => url.DisplayText = "Inventory API");
 
         IResourceBuilder<ProjectResource> paymentsApi = builder
-            .AddProject<Projects.Payments_Api>("payments-api");
+            .AddProject<Projects.Payments_Api>("payments-api")
+            .WithUrlForEndpoint(
+                "http",
+                url => url.DisplayText = "Payments API");
 
         IResourceBuilder<ProjectResource> ordersApi = builder
             .AddProject<Projects.Orders_Api>("orders-api")
+            .WithUrlForEndpoint(
+                "http",
+                url => url.DisplayText = "Orders API")
             // Override Services:InventoryBaseUrl with the Aspire-managed endpoint.
             .WithEnvironment(
                 "Services__InventoryBaseUrl",
@@ -23,14 +32,26 @@ internal static class Program {
             .WaitFor(paymentsApi);
 
         IResourceBuilder<ProjectResource> orderingSilo = builder
-            .AddProject<Projects.Ordering_Silo>("ordering-silo");
+            .AddProject<Projects.Ordering_Silo>("ordering-silo")
+            .WithUrlForEndpoint(
+                "http",
+                url => {
+                    url.Url = "/dashboard";
+                    url.DisplayText = "Orleans Dashboard";
+                });
 
         IResourceBuilder<ProjectResource> orderingApi = builder
             .AddProject<Projects.Ordering_Api>("ordering-api")
+            .WithUrlForEndpoint(
+                "http",
+                url => url.DisplayText = "Ordering API")
             .WaitFor(orderingSilo);
 
         IResourceBuilder<ProjectResource> comparisonGateway = builder
             .AddProject<Projects.Comparison_Gateway>("comparison-gateway")
+            .WithUrlForEndpoint(
+                "http",
+                url => url.DisplayText = "Comparison Gateway")
             // Override ServiceEndpoints:MicroservicesBaseUrl with Orders.Api.
             .WithEnvironment(
                 "ServiceEndpoints__MicroservicesBaseUrl",
@@ -42,6 +63,9 @@ internal static class Program {
 
         builder
             .AddProject<Projects.Comparison_Ui>("comparison-ui")
+            .WithUrlForEndpoint(
+                "http",
+                url => url.DisplayText = "Comparison UI")
             // Override Gateway:BaseUrl with the Aspire-managed Gateway endpoint.
             .WithEnvironment(
                 "Gateway__BaseUrl",
