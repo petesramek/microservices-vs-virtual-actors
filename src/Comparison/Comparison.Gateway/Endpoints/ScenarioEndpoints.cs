@@ -4,7 +4,9 @@ using Comparison.Contracts;
 using Comparison.Gateway.Clients;
 using Comparison.Gateway.Logging;
 using Comparison.Gateway.Scenarios;
+using Hosting.ServiceDefaults.Observability;
 using Hosting.ServiceDefaults.Telemetry;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Diagnostics;
 
@@ -40,6 +42,7 @@ internal static class ScenarioEndpoints {
     /// <param name="microservicesClient">The Microservices service client.</param>
     /// <param name="virtualActorsClient">The Virtual Actors service client.</param>
     /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="observabilityOptions">The observability configuration.</param>
     /// <param name="cancellationToken">The token used to cancel scenario execution.</param>
     /// <returns>The scenario result or an error response.</returns>
     private static async Task<IResult> RunScenarioAsync(
@@ -49,6 +52,7 @@ internal static class ScenarioEndpoints {
         MicroservicesServiceClient microservicesClient,
         VirtualActorsServiceClient virtualActorsClient,
         ILoggerFactory loggerFactory,
+        IOptions<ObservabilityOptions> observabilityOptions,
         CancellationToken cancellationToken) {
         string architecture = httpRequest.Headers.TryGetValue(
             ArchitectureHeader,
@@ -80,13 +84,25 @@ internal static class ScenarioEndpoints {
             });
         }
 
-        using Activity? activity = StartScenarioActivity(
+        bool createScenarioRoot = observabilityOptions.Value.TraceMode
+            == TraceCollectionMode.ScenarioOnly;
+
+        Activity? parentActivity = Activity.Current;
+
+        if (createScenarioRoot) {
+            Activity.Current = null;
+        }
+
+        Activity? activity = StartScenarioActivity(
             request,
             architecture);
 
-        logger.StartingScenario(request.Scenario, architecture);
+        if (createScenarioRoot && activity is null) {
+            Activity.Current = parentActivity;
+        }
 
         try {
+            logger.StartingScenario(request.Scenario, architecture);
             ScenarioExecutionResult? microservices = null;
             ScenarioExecutionResult? virtualActors = null;
 
@@ -147,37 +163,32 @@ internal static class ScenarioEndpoints {
 
             return Results.Problem(
                 statusCode: StatusCodes.Status500InternalServerError);
+        } finally {
+            activity?.Dispose();
+
+            if (createScenarioRoot) {
+                Activity.Current = parentActivity;
+            }
         }
     }
 
     private static Activity? StartScenarioActivity(
         RunScenarioRequest request,
         string architecture) {
-        Activity? activity = ScenarioTelemetry.ActivitySource.StartActivity(
+        ActivityTagsCollection tags = new() {
+            [ScenarioTelemetry.ScenarioRunTagName] = true,
+            [ScenarioTelemetry.ScenarioKindTagName] =
+                request.Scenario.ToString(),
+            [ScenarioTelemetry.ArchitectureTagName] = architecture,
+            [ScenarioTelemetry.ProductIdTagName] = request.ProductId,
+            [ScenarioTelemetry.ConcurrentRequestsTagName] =
+                request.ConcurrentRequests,
+        };
+
+        return ScenarioTelemetry.ActivitySource.StartActivity(
             ScenarioTelemetry.RunScenarioActivityName,
             ActivityKind.Internal,
-            default(ActivityContext));
-
-        activity?.SetTag(
-            ScenarioTelemetry.ScenarioRunTagName,
-            true);
-
-        activity?.SetTag(
-            ScenarioTelemetry.ScenarioKindTagName,
-            request.Scenario.ToString());
-
-        activity?.SetTag(
-            ScenarioTelemetry.ArchitectureTagName,
-            architecture);
-
-        activity?.SetTag(
-            ScenarioTelemetry.ProductIdTagName,
-            request.ProductId);
-
-        activity?.SetTag(
-            ScenarioTelemetry.ConcurrentRequestsTagName,
-            request.ConcurrentRequests);
-
-        return activity;
+            default(ActivityContext),
+            tags);
     }
 }
