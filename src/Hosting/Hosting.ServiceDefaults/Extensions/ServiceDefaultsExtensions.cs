@@ -88,6 +88,13 @@ public static class ServiceDefaultsExtensions {
                     .AddMeter(OrleansMeterName);
             })
             .WithTracing(tracing => {
+                if (observabilityOptions.TraceMode
+                    == TraceCollectionMode.ScenarioOnly) {
+                    tracing.SetSampler(
+                        new ParentBasedSampler(
+                            new ScenarioTraceSampler()));
+                }
+
                 tracing
                     .AddSource(builder.Environment.ApplicationName)
                     .AddSource(ScenarioTelemetry.ActivitySourceName)
