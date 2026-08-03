@@ -107,30 +107,38 @@ internal static class ScenarioEndpoints {
             ScenarioExecutionResult? virtualActors = null;
 
             if (runMicroservices && runVirtualActors) {
-                Task<ScenarioExecutionResult> microservicesTask = scenarioRunner.RunAsync(
-                    microservicesClient,
-                    request,
-                    cancellationToken);
+                Task<ScenarioExecutionResult> microservicesTask =
+                    RunArchitectureAsync(
+                        scenarioRunner,
+                        microservicesClient,
+                        request,
+                        cancellationToken);
 
-                Task<ScenarioExecutionResult> virtualActorsTask = scenarioRunner.RunAsync(
-                    virtualActorsClient,
-                    request,
-                    cancellationToken);
+                Task<ScenarioExecutionResult> virtualActorsTask =
+                    RunArchitectureAsync(
+                        scenarioRunner,
+                        virtualActorsClient,
+                        request,
+                        cancellationToken);
 
-                await Task.WhenAll(
+                ScenarioExecutionResult[] results = await Task.WhenAll(
                     microservicesTask,
                     virtualActorsTask).ConfigureAwait(false);
 
                 microservices = await microservicesTask.ConfigureAwait(false);
                 virtualActors = await virtualActorsTask.ConfigureAwait(false);
             } else if (runMicroservices) {
-                microservices = await scenarioRunner
-                    .RunAsync(microservicesClient, request, cancellationToken)
-                    .ConfigureAwait(false);
+                microservices = await RunArchitectureAsync(
+                    scenarioRunner,
+                    microservicesClient,
+                    request,
+                    cancellationToken).ConfigureAwait(false);
             } else {
-                virtualActors = await scenarioRunner
-                    .RunAsync(virtualActorsClient, request, cancellationToken)
-                    .ConfigureAwait(false);
+                virtualActors = await RunArchitectureAsync(
+                    scenarioRunner,
+                    virtualActorsClient,
+                    request,
+                    cancellationToken).ConfigureAwait(false);
             }
 
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -169,6 +177,38 @@ internal static class ScenarioEndpoints {
             if (createScenarioRoot) {
                 Activity.Current = parentActivity;
             }
+        }
+    }
+
+    private static async Task<ScenarioExecutionResult> RunArchitectureAsync(
+        ScenarioRunner scenarioRunner,
+        IServiceClient serviceClient,
+        RunScenarioRequest request,
+        CancellationToken cancellationToken) {
+        using Activity? activity = ScenarioTelemetry.ActivitySource.StartActivity(
+            $"Run {serviceClient.Name}",
+            ActivityKind.Internal);
+
+        try {
+            ScenarioExecutionResult result = await scenarioRunner
+                .RunAsync(serviceClient, request, cancellationToken)
+                .ConfigureAwait(false);
+
+            activity?.SetStatus(ActivityStatusCode.Ok);
+
+            return result;
+        } catch (OperationCanceledException) {
+            activity?.SetStatus(
+                ActivityStatusCode.Error,
+                $"{serviceClient.Name} execution was canceled.");
+
+            throw;
+        } catch (Exception exception) {
+            activity?.SetStatus(
+                ActivityStatusCode.Error,
+                exception.Message);
+
+            throw;
         }
     }
 
