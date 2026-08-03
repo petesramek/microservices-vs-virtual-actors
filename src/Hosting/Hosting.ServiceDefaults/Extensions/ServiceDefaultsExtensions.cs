@@ -3,6 +3,8 @@ namespace Hosting.ServiceDefaults.Extensions;
 using Hosting.ServiceDefaults.Observability;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -17,6 +19,8 @@ using OpenTelemetry.Trace;
 public static class ServiceDefaultsExtensions {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
+    private const string ScenarioEndpointPath = "/api/scenarios/run";
+    private const string ScenarioHeaderName = "X-Scenario-Run";
     private const string OrleansMeterName = "Microsoft.Orleans";
     private const string OrleansActivitySourceName = "Microsoft.Orleans.*";
 
@@ -63,6 +67,12 @@ public static class ServiceDefaultsExtensions {
         where TBuilder : IHostApplicationBuilder {
         ArgumentNullException.ThrowIfNull(builder);
 
+        ObservabilityOptions observabilityOptions =
+            builder.Configuration
+                .GetSection(ObservabilityOptions.SectionName)
+                .Get<ObservabilityOptions>()
+            ?? new ObservabilityOptions();
+
         builder.Logging.AddOpenTelemetry(logging => {
             logging.IncludeFormattedMessage = true;
             logging.IncludeScopes = true;
@@ -83,10 +93,9 @@ public static class ServiceDefaultsExtensions {
                     .AddSource(OrleansActivitySourceName)
                     .AddAspNetCoreInstrumentation(options => {
                         options.Filter = context =>
-                            !context.Request.Path.StartsWithSegments(
-                                HealthEndpointPath)
-                            && !context.Request.Path.StartsWithSegments(
-                                AlivenessEndpointPath);
+                            ShouldTraceServerRequest(
+                                context,
+                                observabilityOptions.TraceMode);
                     })
                     .AddHttpClientInstrumentation();
             });
@@ -151,5 +160,27 @@ public static class ServiceDefaultsExtensions {
         }
 
         return builder;
+    }
+
+    private static bool ShouldTraceServerRequest(
+        HttpContext context,
+        TraceCollectionMode traceMode) {
+        if (IsHealthRequest(context.Request.Path)) {
+            return false;
+        }
+
+        if (traceMode == TraceCollectionMode.Full) {
+            return true;
+        }
+
+        return context.Request.Path.StartsWithSegments(
+                ScenarioEndpointPath)
+            || context.Request.Headers.ContainsKey(
+                ScenarioHeaderName);
+    }
+
+    private static bool IsHealthRequest(PathString requestPath) {
+        return requestPath.StartsWithSegments(HealthEndpointPath)
+            || requestPath.StartsWithSegments(AlivenessEndpointPath);
     }
 }
