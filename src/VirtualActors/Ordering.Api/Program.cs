@@ -9,7 +9,9 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.UseOrleansClient(clientBuilder => {
-    clientBuilder.UseLocalhostClustering();
+    clientBuilder
+        .UseLocalhostClustering()
+        .AddActivityPropagation();
 });
 
 WebApplication app = builder.Build();

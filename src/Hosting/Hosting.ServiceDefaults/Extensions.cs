@@ -16,6 +16,8 @@ using OpenTelemetry.Trace;
 public static class Extensions {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
+    private const string OrleansMeterName = "Microsoft.Orleans";
+    private const string OrleansActivitySourceName = "Microsoft.Orleans.*";
 
     /// <summary>
     /// Adds shared service discovery, resilience, health checks, and OpenTelemetry configuration.
@@ -26,10 +28,11 @@ public static class Extensions {
     public static TBuilder AddServiceDefaults<TBuilder>(
         this TBuilder builder)
         where TBuilder : IHostApplicationBuilder {
+        ArgumentNullException.ThrowIfNull(builder);
+
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();
         builder.Services.AddServiceDiscovery();
-
         builder.Services.ConfigureHttpClientDefaults(httpClientBuilder => {
             httpClientBuilder.AddStandardResilienceHandler();
             httpClientBuilder.AddServiceDiscovery();
@@ -47,6 +50,8 @@ public static class Extensions {
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(
         this TBuilder builder)
         where TBuilder : IHostApplicationBuilder {
+        ArgumentNullException.ThrowIfNull(builder);
+
         builder.Logging.AddOpenTelemetry(logging => {
             logging.IncludeFormattedMessage = true;
             logging.IncludeScopes = true;
@@ -58,11 +63,13 @@ public static class Extensions {
                 metrics
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
+                    .AddRuntimeInstrumentation()
+                    .AddMeter(OrleansMeterName);
             })
             .WithTracing(tracing => {
                 tracing
                     .AddSource(builder.Environment.ApplicationName)
+                    .AddSource(OrleansActivitySourceName)
                     .AddAspNetCoreInstrumentation(options => {
                         options.Filter = context =>
                             !context.Request.Path.StartsWithSegments(HealthEndpointPath)
@@ -85,6 +92,8 @@ public static class Extensions {
     public static TBuilder AddDefaultHealthChecks<TBuilder>(
         this TBuilder builder)
         where TBuilder : IHostApplicationBuilder {
+        ArgumentNullException.ThrowIfNull(builder);
+
         builder.Services
             .AddHealthChecks()
             .AddCheck(
@@ -102,9 +111,10 @@ public static class Extensions {
     /// <returns>The web application.</returns>
     public static WebApplication MapDefaultEndpoints(
         this WebApplication app) {
+        ArgumentNullException.ThrowIfNull(app);
+
         if (app.Environment.IsDevelopment()) {
             app.MapHealthChecks(HealthEndpointPath);
-
             app.MapHealthChecks(
                 AlivenessEndpointPath,
                 new HealthCheckOptions {

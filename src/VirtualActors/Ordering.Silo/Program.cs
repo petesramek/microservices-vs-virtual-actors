@@ -9,6 +9,8 @@ const string StorageProviderName = "OrderingStorage";
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
+builder.AddServiceDefaults();
+
 string connectionString =
     builder.Configuration.GetConnectionString(ConnectionName)
     ?? throw new InvalidOperationException(
