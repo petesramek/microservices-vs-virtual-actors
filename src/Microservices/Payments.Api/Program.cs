@@ -43,61 +43,59 @@ app.MapPost($"/api/payments/authorize", async (
     PaymentsDbContext db,
     ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) => {
-    ILogger logger = loggerFactory.CreateLogger("Payments.Authorize");
+        ILogger logger = loggerFactory.CreateLogger("Payments.Authorize");
 
-    logger.AuthorizingPayment(
-        request.PaymentId,
-        request.OrderId,
-        request.CustomerId);
-
-    try {
-        PaymentAttempt? existing = await db.PaymentAttempts.AsNoTracking().SingleOrDefaultAsync(
-            paymentAttempt => paymentAttempt.IdempotencyKey == request.IdempotencyKey,
-            cancellationToken).ConfigureAwait(false);
-
-        if (existing is not null) {
-            logger.PaymentAuthorizationCompleted(
-                existing.PaymentId,
-                existing.OrderId,
-                existing.Authorized);
-
-            return Results.Ok(new AuthorizePaymentResponse(existing.Authorized, existing.Reason));
-        }
-
-        var authorized = !request.SimulateFailure;
-        var reason = authorized ? null : $"PaymentFailed";
-
-        db.PaymentAttempts.Add(new PaymentAttempt {
-            PaymentId = request.PaymentId,
-            OrderId = request.OrderId,
-            CustomerId = request.CustomerId,
-            IdempotencyKey = request.IdempotencyKey,
-            Authorized = authorized,
-            Reason = reason,
-        });
-
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        logger.PaymentAuthorizationCompleted(
-            request.PaymentId,
-            request.OrderId,
-            authorized);
-
-        return Results.Ok(new AuthorizePaymentResponse(authorized, reason));
-    }
-    catch (OperationCanceledException) {
-        throw;
-    }
-    catch (Exception exception) {
-        logger.PaymentAuthorizationFailed(
-            exception,
+        logger.AuthorizingPayment(
             request.PaymentId,
             request.OrderId,
             request.CustomerId);
 
-        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
-    }
-});
+        try {
+            PaymentAttempt? existing = await db.PaymentAttempts.AsNoTracking().SingleOrDefaultAsync(
+                paymentAttempt => paymentAttempt.IdempotencyKey == request.IdempotencyKey,
+                cancellationToken).ConfigureAwait(false);
+
+            if (existing is not null) {
+                logger.PaymentAuthorizationCompleted(
+                    existing.PaymentId,
+                    existing.OrderId,
+                    existing.Authorized);
+
+                return Results.Ok(new AuthorizePaymentResponse(existing.Authorized, existing.Reason));
+            }
+
+            var authorized = !request.SimulateFailure;
+            var reason = authorized ? null : $"PaymentFailed";
+
+            db.PaymentAttempts.Add(new PaymentAttempt {
+                PaymentId = request.PaymentId,
+                OrderId = request.OrderId,
+                CustomerId = request.CustomerId,
+                IdempotencyKey = request.IdempotencyKey,
+                Authorized = authorized,
+                Reason = reason,
+            });
+
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            logger.PaymentAuthorizationCompleted(
+                request.PaymentId,
+                request.OrderId,
+                authorized);
+
+            return Results.Ok(new AuthorizePaymentResponse(authorized, reason));
+        } catch (OperationCanceledException) {
+            throw;
+        } catch (Exception exception) {
+            logger.PaymentAuthorizationFailed(
+                exception,
+                request.PaymentId,
+                request.OrderId,
+                request.CustomerId);
+
+            return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+        }
+    });
 
 // Map the shared health and aliveness endpoints.
 app.MapDefaultEndpoints();

@@ -1,6 +1,7 @@
 namespace Hosting.ServiceDefaults.Extensions;
 
 using Hosting.ServiceDefaults.Observability;
+using Hosting.ServiceDefaults.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
@@ -20,7 +21,6 @@ public static class ServiceDefaultsExtensions {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
     private const string ScenarioEndpointPath = "/api/scenarios/run";
-    private const string ScenarioHeaderName = "X-Scenario-Run";
     private const string OrleansMeterName = "Microsoft.Orleans";
     private const string OrleansActivitySourceName = "Microsoft.Orleans.*";
 
@@ -90,6 +90,7 @@ public static class ServiceDefaultsExtensions {
             .WithTracing(tracing => {
                 tracing
                     .AddSource(builder.Environment.ApplicationName)
+                    .AddSource(ScenarioTelemetry.ActivitySourceName)
                     .AddSource(OrleansActivitySourceName)
                     .AddAspNetCoreInstrumentation(options => {
                         options.Filter = context =>
@@ -97,7 +98,12 @@ public static class ServiceDefaultsExtensions {
                                 context,
                                 observabilityOptions.TraceMode);
                     })
-                    .AddHttpClientInstrumentation();
+                    .AddHttpClientInstrumentation(options => {
+                        options.FilterHttpRequestMessage = request =>
+                            ShouldTraceClientRequest(
+                                request,
+                                observabilityOptions.TraceMode);
+                    });
             });
 
         builder.AddOpenTelemetryExporters();
@@ -176,7 +182,15 @@ public static class ServiceDefaultsExtensions {
         return context.Request.Path.StartsWithSegments(
                 ScenarioEndpointPath)
             || context.Request.Headers.ContainsKey(
-                ScenarioHeaderName);
+                ScenarioTelemetry.ScenarioHeaderName);
+    }
+
+    private static bool ShouldTraceClientRequest(
+        HttpRequestMessage request,
+        TraceCollectionMode traceMode) {
+        return traceMode == TraceCollectionMode.Full
+            || request.Headers.Contains(
+                ScenarioTelemetry.ScenarioHeaderName);
     }
 
     private static bool IsHealthRequest(PathString requestPath) {

@@ -36,11 +36,9 @@ internal sealed class ServiceStatusClient(IHttpClientFactory httpClientFactory) 
                 response.IsSuccessStatusCode
                     ? null
                     : "Health endpoint returned a non-success status code.");
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             return new ServiceStatus(
                 name,
                 healthUrl.ToString(),

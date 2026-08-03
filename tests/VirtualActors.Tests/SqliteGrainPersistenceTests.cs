@@ -1,6 +1,5 @@
 namespace VirtualActors.Tests;
 
-using System.Globalization;
 using Comparison.Contracts;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +12,7 @@ using Orleans.Runtime;
 using Orleans.Storage;
 using Orleans.TestingHost;
 using Shouldly;
+using System.Globalization;
 using Xunit;
 
 /// <summary>
@@ -155,8 +155,7 @@ public sealed class SqliteGrainPersistenceTests {
                     simulateFailure: false);
 
                 result.Authorized.ShouldBeTrue();
-            }
-            finally {
+            } finally {
                 await firstCluster.DisposeAsync();
             }
 
@@ -177,12 +176,10 @@ public sealed class SqliteGrainPersistenceTests {
 
                 result.Authorized.ShouldBeTrue();
                 result.Reason.ShouldBeNull();
-            }
-            finally {
+            } finally {
                 await secondCluster.DisposeAsync();
             }
-        }
-        finally {
+        } finally {
             DeleteDatabaseFiles(databasePath);
         }
     }
@@ -224,8 +221,7 @@ public sealed class SqliteGrainPersistenceTests {
                     simulatePaymentFailure: false);
 
                 firstResult.Status.ShouldBe(OrderStatus.Completed.ToString());
-            }
-            finally {
+            } finally {
                 await firstCluster.DisposeAsync();
             }
 
@@ -249,12 +245,10 @@ public sealed class SqliteGrainPersistenceTests {
                 restoredResult.ShouldNotBeNull();
                 restoredResult.ShouldBe(firstResult);
                 repeatedResult.ShouldBe(firstResult);
-            }
-            finally {
+            } finally {
                 await secondCluster.DisposeAsync();
             }
-        }
-        finally {
+        } finally {
             DeleteDatabaseFiles(databasePath);
         }
     }
@@ -462,8 +456,7 @@ public sealed class SqliteGrainPersistenceTests {
                     simulatePaymentFailure: false);
 
                 result.Status.ShouldBe(OrderStatus.Completed.ToString());
-            }
-            finally {
+            } finally {
                 await firstCluster.DisposeAsync();
             }
 
@@ -490,12 +483,10 @@ public sealed class SqliteGrainPersistenceTests {
                 result.Status.ShouldBe(OrderStatus.Completed.ToString());
                 result.Reason.ShouldBeNull();
                 inventoryAfterOrder.AvailableQuantity.ShouldBe(8);
-            }
-            finally {
+            } finally {
                 await secondCluster.DisposeAsync();
             }
-        }
-        finally {
+        } finally {
             DeleteDatabaseFiles(databasePath);
         }
     }
@@ -663,8 +654,7 @@ public sealed class SqliteGrainPersistenceTests {
                     InventoryStateName,
                     grainId,
                     firstState);
-            }
-            finally {
+            } finally {
                 await firstCluster.DisposeAsync();
             }
 
@@ -685,12 +675,10 @@ public sealed class SqliteGrainPersistenceTests {
 
                 secondState.RecordExists.ShouldBeFalse();
                 secondState.State.AvailableQuantity.ShouldBe(0);
-            }
-            finally {
+            } finally {
                 await secondCluster.DisposeAsync();
             }
-        }
-        finally {
+        } finally {
             DeleteDatabaseFiles(databasePath);
         }
     }
@@ -982,8 +970,7 @@ public sealed class SqliteGrainPersistenceTests {
                         InventoryStateName,
                         grainId,
                         staleState));
-            }
-            finally {
+            } finally {
                 await firstCluster.DisposeAsync();
             }
 
@@ -1005,12 +992,10 @@ public sealed class SqliteGrainPersistenceTests {
                 restoredState.RecordExists.ShouldBeTrue();
                 restoredState.ETag.ShouldBe("2");
                 restoredState.State.AvailableQuantity.ShouldBe(20);
-            }
-            finally {
+            } finally {
                 await secondCluster.DisposeAsync();
             }
-        }
-        finally {
+        } finally {
             DeleteDatabaseFiles(databasePath);
         }
     }
@@ -1088,8 +1073,7 @@ public sealed class SqliteGrainPersistenceTests {
                     InventoryStateName,
                     grainId,
                     state);
-            }
-            finally {
+            } finally {
                 await firstCluster.DisposeAsync();
             }
 
@@ -1112,12 +1096,10 @@ public sealed class SqliteGrainPersistenceTests {
                 restoredState.State.Reservations.Count.ShouldBe(2);
                 restoredState.State.Reservations[firstReservationId].ShouldBe(3);
                 restoredState.State.Reservations[secondReservationId].ShouldBe(5);
-            }
-            finally {
+            } finally {
                 await secondCluster.DisposeAsync();
             }
-        }
-        finally {
+        } finally {
             DeleteDatabaseFiles(databasePath);
         }
     }
@@ -1148,12 +1130,10 @@ public sealed class SqliteGrainPersistenceTests {
             try {
                 (await CountTableAsync(connectionString, "GrainStates"))
                     .ShouldBe(1);
-            }
-            finally {
+            } finally {
                 await cluster.DisposeAsync();
             }
-        }
-        finally {
+        } finally {
             DeleteDatabaseFiles(databasePath);
         }
     }
@@ -1184,8 +1164,7 @@ public sealed class SqliteGrainPersistenceTests {
                     Guid.NewGuid(),
                     Guid.NewGuid(),
                     quantity: 3);
-            }
-            finally {
+            } finally {
                 await firstCluster.DisposeAsync();
             }
 
@@ -1199,12 +1178,10 @@ public sealed class SqliteGrainPersistenceTests {
                     .GetGrain<IInventoryItemGrain>(productId);
 
                 (await inventory.GetAsync()).AvailableQuantity.ShouldBe(7);
-            }
-            finally {
+            } finally {
                 await secondCluster.DisposeAsync();
             }
-        }
-        finally {
+        } finally {
             DeleteDatabaseFiles(databasePath);
         }
     }
@@ -1233,8 +1210,7 @@ public sealed class SqliteGrainPersistenceTests {
         try {
             await action();
             return null;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             return exception;
         }
     }
@@ -1274,8 +1250,7 @@ public sealed class SqliteGrainPersistenceTests {
                 databasePath,
                 connectionString,
                 serviceId);
-        }
-        catch {
+        } catch {
             DeleteDatabaseFiles(databasePath);
             throw;
         }
@@ -1413,8 +1388,7 @@ public sealed class SqliteGrainPersistenceTests {
                 }
 
                 return;
-            }
-            catch (IOException) when (attempt < MaxAttempts) {
+            } catch (IOException) when (attempt < MaxAttempts) {
                 Thread.Sleep(TimeSpan.FromMilliseconds(100 * attempt));
             }
         }

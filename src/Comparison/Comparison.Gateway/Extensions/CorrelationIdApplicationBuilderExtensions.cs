@@ -35,8 +35,7 @@ internal static class CorrelationIdApplicationBuilderExtensions {
 
             try {
                 await next(context).ConfigureAwait(false);
-            }
-            finally {
+            } finally {
                 CorrelationIdContext.CurrentId = null;
             }
         });

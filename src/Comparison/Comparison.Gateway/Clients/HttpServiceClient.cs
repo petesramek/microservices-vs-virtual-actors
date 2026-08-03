@@ -2,6 +2,7 @@ namespace Comparison.Gateway.Clients;
 
 using Comparison.Contracts;
 using Comparison.Gateway.Correlation;
+using Hosting.ServiceDefaults.Telemetry;
 using System.Net.Http.Json;
 
 /// <summary>
@@ -9,7 +10,8 @@ using System.Net.Http.Json;
 /// </summary>
 /// <param name="httpClient">The HTTP client configured for the service.</param>
 /// <param name="name">The service name used in scenario results.</param>
-public abstract class HttpServiceClient(HttpClient httpClient, string name) : IServiceClient {
+public abstract class HttpServiceClient(HttpClient httpClient, string name)
+    : IServiceClient {
     private const string CorrelationIdHeader = "X-Correlation-ID";
 
     /// <inheritdoc />
@@ -20,11 +22,14 @@ public abstract class HttpServiceClient(HttpClient httpClient, string name) : IS
         string productId,
         int quantity,
         CancellationToken cancellationToken) {
-        using var message = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/reset") {
-            Content = JsonContent.Create(new ResetInventoryRequest(productId, quantity)),
+        using var message = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/api/scenarios/reset") {
+            Content = JsonContent.Create(
+                new ResetInventoryRequest(productId, quantity)),
         };
 
-        AddCorrelationHeader(message);
+        AddRequestHeaders(message);
 
         using HttpResponseMessage response = await httpClient
             .SendAsync(message, cancellationToken)
@@ -37,11 +42,13 @@ public abstract class HttpServiceClient(HttpClient httpClient, string name) : IS
     public async Task<OrderResponse> PlaceOrderAsync(
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
-        using var message = new HttpRequestMessage(HttpMethod.Post, "/api/orders") {
+        using var message = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/api/orders") {
             Content = JsonContent.Create(request),
         };
 
-        AddCorrelationHeader(message);
+        AddRequestHeaders(message);
 
         using HttpResponseMessage response = await httpClient
             .SendAsync(message, cancellationToken)
@@ -52,7 +59,8 @@ public abstract class HttpServiceClient(HttpClient httpClient, string name) : IS
         return await response.Content
             .ReadFromJsonAsync<OrderResponse>(cancellationToken)
             .ConfigureAwait(false)
-            ?? throw new InvalidOperationException("The order response did not contain a body.");
+            ?? throw new InvalidOperationException(
+                "The order response did not contain a body.");
     }
 
     /// <inheritdoc />
@@ -63,7 +71,7 @@ public abstract class HttpServiceClient(HttpClient httpClient, string name) : IS
             HttpMethod.Get,
             $"/api/inventory/{Uri.EscapeDataString(productId)}");
 
-        AddCorrelationHeader(message);
+        AddRequestHeaders(message);
 
         using HttpResponseMessage response = await httpClient
             .SendAsync(message, cancellationToken)
@@ -74,7 +82,8 @@ public abstract class HttpServiceClient(HttpClient httpClient, string name) : IS
         return await response.Content
             .ReadFromJsonAsync<InventoryResponse>(cancellationToken)
             .ConfigureAwait(false)
-            ?? throw new InvalidOperationException("The inventory response did not contain a body.");
+            ?? throw new InvalidOperationException(
+                "The inventory response did not contain a body.");
     }
 
     /// <inheritdoc />
@@ -83,10 +92,17 @@ public abstract class HttpServiceClient(HttpClient httpClient, string name) : IS
         OrderResponse order,
         InventoryResponse inventory);
 
-    private static void AddCorrelationHeader(HttpRequestMessage message) {
+    private static void AddRequestHeaders(HttpRequestMessage message) {
+        message.Headers.TryAddWithoutValidation(
+            ScenarioTelemetry.ScenarioHeaderName,
+            ScenarioTelemetry.ScenarioHeaderValue);
+
         string? correlationId = CorrelationIdContext.CurrentId;
+
         if (!string.IsNullOrWhiteSpace(correlationId)) {
-            message.Headers.TryAddWithoutValidation(CorrelationIdHeader, correlationId);
+            message.Headers.TryAddWithoutValidation(
+                CorrelationIdHeader,
+                correlationId);
         }
     }
 }

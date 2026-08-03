@@ -94,53 +94,49 @@ app.MapPost($"/api/scenarios/reset", async (
     OrdersDbContext db,
     ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) => {
-    ILogger logger = loggerFactory.CreateLogger("Orders.ResetInventory");
+        ILogger logger = loggerFactory.CreateLogger("Orders.ResetInventory");
 
-    logger.ResettingInventory(request.ProductId, request.Quantity);
+        logger.ResettingInventory(request.ProductId, request.Quantity);
 
-    try {
-        db.Orders.RemoveRange(await db.Orders.ToListAsync(cancellationToken).ConfigureAwait(false));
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            db.Orders.RemoveRange(await db.Orders.ToListAsync(cancellationToken).ConfigureAwait(false));
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        InventoryResponse inventory = await inventoryClient.ResetAsync(request, cancellationToken).ConfigureAwait(false);
+            InventoryResponse inventory = await inventoryClient.ResetAsync(request, cancellationToken).ConfigureAwait(false);
 
-        logger.InventoryReset(inventory.ProductId, inventory.AvailableQuantity);
+            logger.InventoryReset(inventory.ProductId, inventory.AvailableQuantity);
 
-        return Results.Ok(inventory);
-    }
-    catch (OperationCanceledException) {
-        throw;
-    }
-    catch (Exception exception) {
-        logger.InventoryResetFailed(exception, request.ProductId, request.Quantity);
+            return Results.Ok(inventory);
+        } catch (OperationCanceledException) {
+            throw;
+        } catch (Exception exception) {
+            logger.InventoryResetFailed(exception, request.ProductId, request.Quantity);
 
-        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
-    }
-});
+            return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+        }
+    });
 
 app.MapGet("/api/inventory/{productId}", async (
     string productId,
     IInventoryClient inventoryClient,
     ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) => {
-    ILogger logger = loggerFactory.CreateLogger("Orders.GetInventory");
+        ILogger logger = loggerFactory.CreateLogger("Orders.GetInventory");
 
-    try {
-        InventoryResponse inventory = await inventoryClient.GetAsync(productId, cancellationToken).ConfigureAwait(false);
+        try {
+            InventoryResponse inventory = await inventoryClient.GetAsync(productId, cancellationToken).ConfigureAwait(false);
 
-        logger.InventoryRetrieved(inventory.ProductId, inventory.AvailableQuantity);
+            logger.InventoryRetrieved(inventory.ProductId, inventory.AvailableQuantity);
 
-        return Results.Ok(inventory);
-    }
-    catch (OperationCanceledException) {
-        throw;
-    }
-    catch (Exception exception) {
-        logger.InventoryRetrievalFailed(exception, productId);
+            return Results.Ok(inventory);
+        } catch (OperationCanceledException) {
+            throw;
+        } catch (Exception exception) {
+            logger.InventoryRetrievalFailed(exception, productId);
 
-        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
-    }
-});
+            return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+        }
+    });
 
 app.MapPost($"/api/orders", async (
     RunScenarioRequest request,
@@ -149,133 +145,129 @@ app.MapPost($"/api/orders", async (
     IPaymentsClient paymentsClient,
     ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) => {
-    ILogger logger = loggerFactory.CreateLogger("Orders.PlaceOrder");
+        ILogger logger = loggerFactory.CreateLogger("Orders.PlaceOrder");
 
-    logger.PlacingOrder(
-        request.OrderId,
-        request.CustomerId,
-        request.ProductId,
-        request.Quantity);
-
-    try {
-        OrderRecord? existing = await db.Orders.AsNoTracking().SingleOrDefaultAsync(
-            order => order.IdempotencyKey == request.IdempotencyKey,
-            cancellationToken).ConfigureAwait(false);
-        if (existing is not null) {
-            logger.OrderCompletedWithStatus(existing.OrderId, existing.Status);
-
-            return Results.Ok(ToResponse(existing));
-        }
-
-        var reservationId = Guid.NewGuid();
-        var order = new OrderRecord {
-            OrderId = request.OrderId,
-            IdempotencyKey = request.IdempotencyKey,
-            CustomerId = request.CustomerId,
-            ProductId = request.ProductId,
-            Quantity = request.Quantity,
-            ReservationId = reservationId,
-            Status = OrderStatus.Created.ToString(),
-        };
-
-        db.Orders.Add(order);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        ReserveInventoryResponse reservation = await inventoryClient.ReserveAsync(
-            request.ProductId,
-            new ReserveInventoryRequest(reservationId, request.OrderId, request.Quantity),
-            cancellationToken).ConfigureAwait(false);
-
-        if (!reservation.Reserved) {
-            order.Status = OrderStatus.Rejected.ToString();
-            order.Reason = reservation.Reason;
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-            logger.OrderCompletedWithStatus(order.OrderId, order.Status);
-
-            return Results.Ok(ToResponse(order));
-        }
-
-        order.Status = OrderStatus.InventoryReserved.ToString();
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        AuthorizePaymentResponse payment = await paymentsClient.AuthorizeAsync(
-            new AuthorizePaymentRequest(
-                Guid.NewGuid(),
-                request.OrderId,
-                request.CustomerId,
-                request.IdempotencyKey,
-                request.SimulatePaymentFailure),
-            cancellationToken).ConfigureAwait(false);
-
-        if (!payment.Authorized) {
-            await inventoryClient.ReleaseAsync(
-                request.ProductId,
-                new ReleaseInventoryRequest(reservationId),
-                cancellationToken).ConfigureAwait(false);
-
-            order.Status = OrderStatus.Rejected.ToString();
-            order.Reason = payment.Reason;
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-            logger.OrderCompletedWithStatus(order.OrderId, order.Status);
-
-            return Results.Ok(ToResponse(order));
-        }
-
-        order.Status = OrderStatus.Completed.ToString();
-        order.Reason = null;
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        logger.OrderCompletedWithStatus(order.OrderId, order.Status);
-
-        return Results.Ok(ToResponse(order));
-    }
-    catch (OperationCanceledException) {
-        throw;
-    }
-    catch (Exception exception) {
-        logger.OrderPlacementFailed(
-            exception,
+        logger.PlacingOrder(
             request.OrderId,
+            request.CustomerId,
             request.ProductId,
             request.Quantity);
 
-        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
-    }
-});
+        try {
+            OrderRecord? existing = await db.Orders.AsNoTracking().SingleOrDefaultAsync(
+                order => order.IdempotencyKey == request.IdempotencyKey,
+                cancellationToken).ConfigureAwait(false);
+            if (existing is not null) {
+                logger.OrderCompletedWithStatus(existing.OrderId, existing.Status);
+
+                return Results.Ok(ToResponse(existing));
+            }
+
+            var reservationId = Guid.NewGuid();
+            var order = new OrderRecord {
+                OrderId = request.OrderId,
+                IdempotencyKey = request.IdempotencyKey,
+                CustomerId = request.CustomerId,
+                ProductId = request.ProductId,
+                Quantity = request.Quantity,
+                ReservationId = reservationId,
+                Status = OrderStatus.Created.ToString(),
+            };
+
+            db.Orders.Add(order);
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            ReserveInventoryResponse reservation = await inventoryClient.ReserveAsync(
+                request.ProductId,
+                new ReserveInventoryRequest(reservationId, request.OrderId, request.Quantity),
+                cancellationToken).ConfigureAwait(false);
+
+            if (!reservation.Reserved) {
+                order.Status = OrderStatus.Rejected.ToString();
+                order.Reason = reservation.Reason;
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                logger.OrderCompletedWithStatus(order.OrderId, order.Status);
+
+                return Results.Ok(ToResponse(order));
+            }
+
+            order.Status = OrderStatus.InventoryReserved.ToString();
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            AuthorizePaymentResponse payment = await paymentsClient.AuthorizeAsync(
+                new AuthorizePaymentRequest(
+                    Guid.NewGuid(),
+                    request.OrderId,
+                    request.CustomerId,
+                    request.IdempotencyKey,
+                    request.SimulatePaymentFailure),
+                cancellationToken).ConfigureAwait(false);
+
+            if (!payment.Authorized) {
+                await inventoryClient.ReleaseAsync(
+                    request.ProductId,
+                    new ReleaseInventoryRequest(reservationId),
+                    cancellationToken).ConfigureAwait(false);
+
+                order.Status = OrderStatus.Rejected.ToString();
+                order.Reason = payment.Reason;
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                logger.OrderCompletedWithStatus(order.OrderId, order.Status);
+
+                return Results.Ok(ToResponse(order));
+            }
+
+            order.Status = OrderStatus.Completed.ToString();
+            order.Reason = null;
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            logger.OrderCompletedWithStatus(order.OrderId, order.Status);
+
+            return Results.Ok(ToResponse(order));
+        } catch (OperationCanceledException) {
+            throw;
+        } catch (Exception exception) {
+            logger.OrderPlacementFailed(
+                exception,
+                request.OrderId,
+                request.ProductId,
+                request.Quantity);
+
+            return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+        }
+    });
 
 app.MapGet("/api/orders/{orderId:guid}", async (
     Guid orderId,
     OrdersDbContext db,
     ILoggerFactory loggerFactory,
     CancellationToken cancellationToken) => {
-    ILogger logger = loggerFactory.CreateLogger("Orders.GetOrder");
+        ILogger logger = loggerFactory.CreateLogger("Orders.GetOrder");
 
-    try {
-        OrderRecord? order = await db.Orders.AsNoTracking().SingleOrDefaultAsync(
-            order => order.OrderId == orderId,
-            cancellationToken).ConfigureAwait(false);
+        try {
+            OrderRecord? order = await db.Orders.AsNoTracking().SingleOrDefaultAsync(
+                order => order.OrderId == orderId,
+                cancellationToken).ConfigureAwait(false);
 
-        if (order is null) {
-            logger.OrderNotFound(orderId);
+            if (order is null) {
+                logger.OrderNotFound(orderId);
 
-            return Results.NotFound();
+                return Results.NotFound();
+            }
+
+            logger.OrderRetrievedWithStatus(order.OrderId, order.Status);
+
+            return Results.Ok(ToResponse(order));
+        } catch (OperationCanceledException) {
+            throw;
+        } catch (Exception exception) {
+            logger.OrderRetrievalFailed(exception, orderId);
+
+            return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
         }
-
-        logger.OrderRetrievedWithStatus(order.OrderId, order.Status);
-
-        return Results.Ok(ToResponse(order));
-    }
-    catch (OperationCanceledException) {
-        throw;
-    }
-    catch (Exception exception) {
-        logger.OrderRetrievalFailed(exception, orderId);
-
-        return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
-    }
-});
+    });
 
 // Map the shared health and aliveness endpoints.
 app.MapDefaultEndpoints();

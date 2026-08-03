@@ -1,8 +1,8 @@
 namespace Ordering.Grains.State;
 
-using System.Diagnostics.CodeAnalysis;
 using Ordering.Grains.Contracts;
 using Orleans;
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Represents the persisted state of one payment account grain.

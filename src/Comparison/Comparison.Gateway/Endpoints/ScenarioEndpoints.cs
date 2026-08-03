@@ -1,12 +1,12 @@
 namespace Comparison.Gateway.Endpoints;
 
-using System.Diagnostics;
 using Comparison.Contracts;
 using Comparison.Gateway.Clients;
 using Comparison.Gateway.Logging;
 using Comparison.Gateway.Scenarios;
-using Comparison.Gateway.Telemetry;
+using Hosting.ServiceDefaults.Telemetry;
 using Microsoft.Extensions.Primitives;
+using System.Diagnostics;
 
 /// <summary>
 /// Provides endpoint mappings for running architecture comparison scenarios.
@@ -107,13 +107,11 @@ internal static class ScenarioEndpoints {
 
                 microservices = await microservicesTask.ConfigureAwait(false);
                 virtualActors = await virtualActorsTask.ConfigureAwait(false);
-            }
-            else if (runMicroservices) {
+            } else if (runMicroservices) {
                 microservices = await scenarioRunner
                     .RunAsync(microservicesClient, request, cancellationToken)
                     .ConfigureAwait(false);
-            }
-            else {
+            } else {
                 virtualActors = await scenarioRunner
                     .RunAsync(virtualActorsClient, request, cancellationToken)
                     .ConfigureAwait(false);
@@ -131,15 +129,13 @@ internal static class ScenarioEndpoints {
                 request.Scenario,
                 microservices,
                 virtualActors));
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             activity?.SetStatus(
                 ActivityStatusCode.Error,
                 "Scenario execution was canceled.");
 
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             activity?.SetStatus(
                 ActivityStatusCode.Error,
                 exception.Message);
