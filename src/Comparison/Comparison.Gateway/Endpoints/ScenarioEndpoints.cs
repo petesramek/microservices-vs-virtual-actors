@@ -177,12 +177,10 @@ internal static class ScenarioEndpoints {
         string architecture) {
         ActivityTagsCollection tags = new() {
             [ScenarioTelemetry.ScenarioRunTagName] = true,
-            [ScenarioTelemetry.ScenarioKindTagName] =
-                request.Scenario.ToString(),
+            [ScenarioTelemetry.ScenarioKindTagName] = request.Scenario.ToString(),
             [ScenarioTelemetry.ArchitectureTagName] = architecture,
             [ScenarioTelemetry.ProductIdTagName] = request.ProductId,
-            [ScenarioTelemetry.ConcurrentRequestsTagName] =
-                request.ConcurrentRequests,
+            [ScenarioTelemetry.ConcurrentRequestsTagName] = request.ConcurrentRequests,
         };
 
         return ScenarioTelemetry.ActivitySource.StartActivity(
