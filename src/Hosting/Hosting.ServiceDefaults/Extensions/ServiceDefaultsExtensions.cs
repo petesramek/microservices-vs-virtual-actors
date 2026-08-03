@@ -1,11 +1,12 @@
-namespace Microsoft.Extensions.Hosting;
+namespace Hosting.ServiceDefaults.Extensions;
 
+using Hosting.ServiceDefaults.Observability;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -13,7 +14,7 @@ using OpenTelemetry.Trace;
 /// <summary>
 /// Provides shared hosting defaults for application services.
 /// </summary>
-public static class Extensions {
+public static class ServiceDefaultsExtensions {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
     private const string OrleansMeterName = "Microsoft.Orleans";
@@ -30,9 +31,19 @@ public static class Extensions {
         where TBuilder : IHostApplicationBuilder {
         ArgumentNullException.ThrowIfNull(builder);
 
+        builder.Services
+            .AddOptions<ObservabilityOptions>()
+            .Bind(builder.Configuration.GetSection(
+                ObservabilityOptions.SectionName))
+            .Validate(
+                options => Enum.IsDefined(options.TraceMode),
+                "The configured observability trace mode is not supported.")
+            .ValidateOnStart();
+
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();
         builder.Services.AddServiceDiscovery();
+
         builder.Services.ConfigureHttpClientDefaults(httpClientBuilder => {
             httpClientBuilder.AddStandardResilienceHandler();
             httpClientBuilder.AddServiceDiscovery();
@@ -72,8 +83,10 @@ public static class Extensions {
                     .AddSource(OrleansActivitySourceName)
                     .AddAspNetCoreInstrumentation(options => {
                         options.Filter = context =>
-                            !context.Request.Path.StartsWithSegments(HealthEndpointPath)
-                            && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath);
+                            !context.Request.Path.StartsWithSegments(
+                                HealthEndpointPath)
+                            && !context.Request.Path.StartsWithSegments(
+                                AlivenessEndpointPath);
                     })
                     .AddHttpClientInstrumentation();
             });
@@ -115,6 +128,7 @@ public static class Extensions {
 
         if (app.Environment.IsDevelopment()) {
             app.MapHealthChecks(HealthEndpointPath);
+
             app.MapHealthChecks(
                 AlivenessEndpointPath,
                 new HealthCheckOptions {
