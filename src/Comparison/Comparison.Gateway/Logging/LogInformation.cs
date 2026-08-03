@@ -3,33 +3,20 @@ namespace Comparison.Gateway.Logging;
 using Comparison.Contracts;
 
 internal static partial class LogInformation {
-    const LogLevel Level = LogLevel.Information;
-    const int EventIdBase = (int)Level * 100;
+    private const LogLevel Level = LogLevel.Information;
+    private const int EventIdBase = (int)Level * 100;
 
     /// <summary>
-    /// Logs that a request with a correlation identifier is being handled.
-    /// </summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="correlationId">The correlation identifier.</param>
-    [LoggerMessage(
-        EventId = EventIdBase + 1,
-        Level = Level,
-        Message = "Handling request with correlation id {CorrelationId}.")]
-    public static partial void HandlingRequestWithCorrelationId(
-        this ILogger logger,
-        string? correlationId);
-
-    /// <summary>
-    /// Logs that a scenario is being run.
+    /// Logs that a scenario is starting.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="scenarioKind">The scenario kind.</param>
     /// <param name="architecture">The selected architecture.</param>
     [LoggerMessage(
-        EventId = EventIdBase + 2,
+        EventId = EventIdBase + 1,
         Level = Level,
-        Message = "Running scenario {ScenarioKind} for architecture selection {Architecture}.")]
-    public static partial void RunningScenario(
+        Message = "Starting scenario {ScenarioKind} for architecture {Architecture}.")]
+    public static partial void StartingScenario(
         this ILogger logger,
         ScenarioKind scenarioKind,
         string? architecture);
@@ -40,16 +27,16 @@ internal static partial class LogInformation {
     /// <param name="logger">The logger.</param>
     /// <param name="scenarioKind">The scenario kind.</param>
     /// <param name="architecture">The selected architecture.</param>
-    /// <param name="microservicesCompleted">Whether the Microservices architecture completed.</param>
-    /// <param name="virtualActorsCompleted">Whether the Virtual Actors architecture completed.</param>
+    /// <param name="microservicesExecuted">Whether the Microservices architecture was executed.</param>
+    /// <param name="virtualActorsExecuted">Whether the Virtual Actors architecture was executed.</param>
     [LoggerMessage(
-        EventId = EventIdBase + 3,
+        EventId = EventIdBase + 2,
         Level = Level,
-        Message = "Scenario {ScenarioKind} completed for architecture selection {Architecture} with microservices completed {MicroservicesCompleted} and virtual actors completed {VirtualActorsCompleted}.")]
+        Message = "Completed scenario {ScenarioKind} for architecture {Architecture}. Microservices executed: {MicroservicesExecuted}; virtual actors executed: {VirtualActorsExecuted}.")]
     public static partial void ScenarioCompleted(
         this ILogger logger,
         ScenarioKind scenarioKind,
         string? architecture,
-        bool microservicesCompleted,
-        bool virtualActorsCompleted);
+        bool microservicesExecuted,
+        bool virtualActorsExecuted);
 }

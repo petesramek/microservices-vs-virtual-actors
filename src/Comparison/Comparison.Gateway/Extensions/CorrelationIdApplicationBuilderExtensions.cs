@@ -1,7 +1,6 @@
 namespace Comparison.Gateway.Extensions;
 
 using Comparison.Gateway.Correlation;
-using Comparison.Gateway.Logging;
 
 /// <summary>
 /// Provides extensions for configuring correlation identifier handling.
@@ -33,8 +32,6 @@ internal static class CorrelationIdApplicationBuilderExtensions {
             using IDisposable? scope = logger.BeginScope(new Dictionary<string, object>(StringComparer.Ordinal) {
                 ["CorrelationId"] = correlationId,
             });
-
-            logger.HandlingRequestWithCorrelationId(correlationId);
 
             try {
                 await next(context).ConfigureAwait(false);

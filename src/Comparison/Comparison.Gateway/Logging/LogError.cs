@@ -3,8 +3,8 @@ namespace Comparison.Gateway.Logging;
 using Comparison.Contracts;
 
 internal static partial class LogError {
-    const LogLevel Level = LogLevel.Error;
-    const int EventIdBase = (int)Level * 100;
+    private const LogLevel Level = LogLevel.Error;
+    private const int EventIdBase = (int)Level * 100;
 
     /// <summary>
     /// Logs that scenario execution failed.
@@ -16,7 +16,7 @@ internal static partial class LogError {
     [LoggerMessage(
         EventId = EventIdBase + 1,
         Level = Level,
-        Message = "Scenario {ScenarioKind} execution failed for architecture selection {Architecture}.")]
+        Message = "Failed to execute scenario {ScenarioKind} for architecture {Architecture}.")]
     public static partial void ScenarioExecutionFailed(
         this ILogger logger,
         Exception exception,

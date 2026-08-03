@@ -66,7 +66,7 @@ internal static class ScenarioEndpoints {
             });
         }
 
-        logger.RunningScenario(request.Scenario, architecture);
+        logger.StartingScenario(request.Scenario, architecture);
 
         try {
             ScenarioExecutionResult? microservices = null;
@@ -101,10 +101,10 @@ internal static class ScenarioEndpoints {
             }
 
             logger.ScenarioCompleted(
-                request.Scenario,
-                architecture,
-                microservices is not null,
-                virtualActors is not null);
+                scenarioKind: request.Scenario,
+                architecture: architecture,
+                microservicesExecuted: microservices is not null,
+                virtualActorsExecuted: virtualActors is not null);
 
             return Results.Ok(new RunScenarioResponse(
                 request.Scenario,
