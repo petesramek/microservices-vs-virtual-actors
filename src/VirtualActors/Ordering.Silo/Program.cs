@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Ordering.Persistence.Sqlite.Extensions;
+using Orleans.Dashboard;
 
 const string ConnectionName = "Default";
 const string StorageProviderName = "OrderingStorage";
 
-HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
@@ -17,15 +17,23 @@ string connectionString =
         "The Default database connection string is not configured.");
 
 builder.UseOrleans(siloBuilder => {
-    siloBuilder.UseLocalhostClustering();
+    siloBuilder
+        .UseLocalhostClustering()
+        .AddActivityPropagation()
+        .AddDashboard();
 
     siloBuilder.AddSqliteGrainStorage(
         StorageProviderName,
         connectionString);
 });
 
-await builder
-    .Build()
+WebApplication app = builder.Build();
+
+
+app.MapOrleansDashboard("/dashboard");
+app.MapDefaultEndpoints();
+
+await app
     .RunAsync()
     .ConfigureAwait(false);
 
