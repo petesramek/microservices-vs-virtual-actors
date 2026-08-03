@@ -10,9 +10,6 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
 builder.AddServiceDefaults();
 
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-
 builder.Services.AddDbContext<InventoryDbContext>(options => {
     var connectionString = builder.Configuration.GetConnectionString($"Default") ?? $"Data Source=inventory.db";
     options.UseSqlite(connectionString);

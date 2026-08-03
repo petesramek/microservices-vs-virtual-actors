@@ -14,9 +14,6 @@ string connectionString =
     ?? throw new InvalidOperationException(
         "The Default database connection string is not configured.");
 
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-
 builder.UseOrleans(siloBuilder => {
     siloBuilder.UseLocalhostClustering();
 

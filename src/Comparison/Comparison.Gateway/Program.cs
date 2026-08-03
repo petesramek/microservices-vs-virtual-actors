@@ -10,10 +10,6 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
 builder.AddServiceDefaults();
 
-// Configure logging.
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-
 // Configure standardized error responses.
 builder.Services.AddProblemDetails();
 

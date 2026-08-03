@@ -8,9 +8,6 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
 builder.AddServiceDefaults();
 
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-
 builder.UseOrleansClient(clientBuilder => {
     clientBuilder.UseLocalhostClustering();
 });

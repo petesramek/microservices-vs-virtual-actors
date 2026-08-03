@@ -9,9 +9,6 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
 builder.AddServiceDefaults();
 
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-
 builder.Services.AddDbContext<PaymentsDbContext>(options => {
     var connectionString = builder.Configuration.GetConnectionString($"Default") ?? $"Data Source=payments.db";
     options.UseSqlite(connectionString);
