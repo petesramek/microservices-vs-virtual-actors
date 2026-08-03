@@ -1,9 +1,11 @@
 namespace Comparison.Gateway.Endpoints;
 
+using System.Diagnostics;
 using Comparison.Contracts;
 using Comparison.Gateway.Clients;
 using Comparison.Gateway.Logging;
 using Comparison.Gateway.Scenarios;
+using Comparison.Gateway.Telemetry;
 using Microsoft.Extensions.Primitives;
 
 /// <summary>
@@ -20,7 +22,8 @@ internal static class ScenarioEndpoints {
     /// </summary>
     /// <param name="endpoints">The endpoint route builder.</param>
     /// <returns>The endpoint route builder.</returns>
-    public static IEndpointRouteBuilder MapScenarioEndpoints(this IEndpointRouteBuilder endpoints) {
+    public static IEndpointRouteBuilder MapScenarioEndpoints(
+        this IEndpointRouteBuilder endpoints) {
         ArgumentNullException.ThrowIfNull(endpoints);
 
         endpoints.MapPost("/api/scenarios/run", RunScenarioAsync);
@@ -47,14 +50,25 @@ internal static class ScenarioEndpoints {
         VirtualActorsServiceClient virtualActorsClient,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken) {
-        string architecture = httpRequest.Headers.TryGetValue(ArchitectureHeader, out StringValues values)
+        string architecture = httpRequest.Headers.TryGetValue(
+            ArchitectureHeader,
+            out StringValues values)
             ? values.FirstOrDefault() ?? BothArchitectures
             : BothArchitectures;
 
-        bool runMicroservices = architecture.Equals(MicroservicesArchitecture, StringComparison.OrdinalIgnoreCase)
-            || architecture.Equals(BothArchitectures, StringComparison.OrdinalIgnoreCase);
-        bool runVirtualActors = architecture.Equals(VirtualActorsArchitecture, StringComparison.OrdinalIgnoreCase)
-            || architecture.Equals(BothArchitectures, StringComparison.OrdinalIgnoreCase);
+        bool runMicroservices = architecture.Equals(
+                MicroservicesArchitecture,
+                StringComparison.OrdinalIgnoreCase)
+            || architecture.Equals(
+                BothArchitectures,
+                StringComparison.OrdinalIgnoreCase);
+
+        bool runVirtualActors = architecture.Equals(
+                VirtualActorsArchitecture,
+                StringComparison.OrdinalIgnoreCase)
+            || architecture.Equals(
+                BothArchitectures,
+                StringComparison.OrdinalIgnoreCase);
 
         ILogger logger = loggerFactory.CreateLogger("Comparison.Gateway");
 
@@ -65,6 +79,10 @@ internal static class ScenarioEndpoints {
                 Error = "Unsupported X-Architecture value. Use microservices, virtual-actors, or both.",
             });
         }
+
+        using Activity? activity = StartScenarioActivity(
+            request,
+            architecture);
 
         logger.StartingScenario(request.Scenario, architecture);
 
@@ -77,6 +95,7 @@ internal static class ScenarioEndpoints {
                     microservicesClient,
                     request,
                     cancellationToken);
+
                 Task<ScenarioExecutionResult> virtualActorsTask = scenarioRunner.RunAsync(
                     virtualActorsClient,
                     request,
@@ -100,6 +119,8 @@ internal static class ScenarioEndpoints {
                     .ConfigureAwait(false);
             }
 
+            activity?.SetStatus(ActivityStatusCode.Ok);
+
             logger.ScenarioCompleted(
                 scenarioKind: request.Scenario,
                 architecture: architecture,
@@ -112,12 +133,55 @@ internal static class ScenarioEndpoints {
                 virtualActors));
         }
         catch (OperationCanceledException) {
+            activity?.SetStatus(
+                ActivityStatusCode.Error,
+                "Scenario execution was canceled.");
+
             throw;
         }
         catch (Exception exception) {
-            logger.ScenarioExecutionFailed(exception, request.Scenario, architecture);
+            activity?.SetStatus(
+                ActivityStatusCode.Error,
+                exception.Message);
 
-            return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+            logger.ScenarioExecutionFailed(
+                exception,
+                request.Scenario,
+                architecture);
+
+            return Results.Problem(
+                statusCode: StatusCodes.Status500InternalServerError);
         }
+    }
+
+    private static Activity? StartScenarioActivity(
+        RunScenarioRequest request,
+        string architecture) {
+        Activity? activity = ScenarioTelemetry.ActivitySource.StartActivity(
+            ScenarioTelemetry.RunScenarioActivityName,
+            ActivityKind.Internal,
+            default(ActivityContext));
+
+        activity?.SetTag(
+            ScenarioTelemetry.ScenarioRunTagName,
+            true);
+
+        activity?.SetTag(
+            ScenarioTelemetry.ScenarioKindTagName,
+            request.Scenario.ToString());
+
+        activity?.SetTag(
+            ScenarioTelemetry.ArchitectureTagName,
+            architecture);
+
+        activity?.SetTag(
+            ScenarioTelemetry.ProductIdTagName,
+            request.ProductId);
+
+        activity?.SetTag(
+            ScenarioTelemetry.ConcurrentRequestsTagName,
+            request.ConcurrentRequests);
+
+        return activity;
     }
 }
