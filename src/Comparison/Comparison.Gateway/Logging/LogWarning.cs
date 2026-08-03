@@ -12,7 +12,7 @@ internal static partial class LogWarning {
     [LoggerMessage(
         EventId = EventIdBase + 1,
         Level = Level,
-        Message = "Unsupported architecture {Architecture} was requested.")]
+        Message = "Requested unsupported architecture {Architecture}.")]
     public static partial void UnsupportedArchitectureRequested(
         this ILogger logger,
         string? architecture);
