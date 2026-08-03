@@ -1,4 +1,5 @@
 using Comparison.Contracts;
+using Hosting.ServiceDefaults.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Payments.Api.Data;
 using Payments.Api.Logging;

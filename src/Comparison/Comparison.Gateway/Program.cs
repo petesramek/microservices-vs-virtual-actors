@@ -3,6 +3,7 @@ using Comparison.Gateway.Configuration;
 using Comparison.Gateway.Endpoints;
 using Comparison.Gateway.Extensions;
 using Comparison.Gateway.Scenarios;
+using Hosting.ServiceDefaults.Extensions;
 using Microsoft.Extensions.Options;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);

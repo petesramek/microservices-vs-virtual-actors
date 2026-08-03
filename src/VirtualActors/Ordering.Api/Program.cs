@@ -1,4 +1,5 @@
 using Comparison.Contracts;
+using Hosting.ServiceDefaults.Extensions;
 using Ordering.Api.Logging;
 using Ordering.Grains.Contracts;
 using Ordering.Grains.Interfaces;

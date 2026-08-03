@@ -1,5 +1,6 @@
 using Comparison.Ui.Components;
 using Comparison.Ui.Services;
+using Hosting.ServiceDefaults.Extensions;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 

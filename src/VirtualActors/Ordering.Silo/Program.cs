@@ -1,3 +1,4 @@
+using Hosting.ServiceDefaults.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;

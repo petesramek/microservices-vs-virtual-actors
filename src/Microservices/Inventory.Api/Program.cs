@@ -1,4 +1,5 @@
 using Comparison.Contracts;
+using Hosting.ServiceDefaults.Extensions;
 using Inventory.Api.Data;
 using Inventory.Api.Logging;
 using Inventory.Api.Models;

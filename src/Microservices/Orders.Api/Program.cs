@@ -1,4 +1,5 @@
 using Comparison.Contracts;
+using Hosting.ServiceDefaults.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Orders.Api.Clients;
 using Orders.Api.Clients.Abstraction;
