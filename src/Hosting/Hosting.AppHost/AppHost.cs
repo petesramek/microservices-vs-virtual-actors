@@ -17,14 +17,20 @@ internal static class Program {
             .WithParentRelationship(microservices)
             .WithUrlForEndpoint(
                 "http",
-                url => url.DisplayText = "Inventory API");
+                url => url.DisplayText = "Inventory API")
+            .WithHttpHealthCheck(
+                path: "/health",
+                endpointName: "http");
 
         IResourceBuilder<ProjectResource> paymentsApi = builder
             .AddProject<Projects.Payments_Api>("payments-api")
             .WithParentRelationship(microservices)
             .WithUrlForEndpoint(
                 "http",
-                url => url.DisplayText = "Payments API");
+                url => url.DisplayText = "Payments API")
+            .WithHttpHealthCheck(
+                path: "/health",
+                endpointName: "http");
 
         IResourceBuilder<ProjectResource> ordersApi = builder
             .AddProject<Projects.Orders_Api>("orders-api")
@@ -32,6 +38,9 @@ internal static class Program {
             .WithUrlForEndpoint(
                 "http",
                 url => url.DisplayText = "Orders API")
+            .WithHttpHealthCheck(
+                path: "/health",
+                endpointName: "http")
             // Override Services:InventoryBaseUrl with the Aspire-managed endpoint.
             .WithEnvironment(
                 "Services__InventoryBaseUrl",
@@ -51,7 +60,10 @@ internal static class Program {
                 url => {
                     url.Url = "/dashboard";
                     url.DisplayText = "Orleans Dashboard";
-                });
+                })
+            .WithHttpHealthCheck(
+                path: "/health",
+                endpointName: "http");
 
         IResourceBuilder<ProjectResource> orderingApi = builder
             .AddProject<Projects.Ordering_Api>("ordering-api")
@@ -59,6 +71,9 @@ internal static class Program {
             .WithUrlForEndpoint(
                 "http",
                 url => url.DisplayText = "Ordering API")
+            .WithHttpHealthCheck(
+                path: "/health",
+                endpointName: "http")
             .WaitFor(orderingSilo);
 
         IResourceBuilder<ProjectResource> comparisonGateway = builder
@@ -67,6 +82,9 @@ internal static class Program {
             .WithUrlForEndpoint(
                 "http",
                 url => url.DisplayText = "Comparison Gateway")
+            .WithHttpHealthCheck(
+                path: "/health",
+                endpointName: "http")
             // Override ServiceEndpoints:MicroservicesBaseUrl with Orders.Api.
             .WithEnvironment(
                 "ServiceEndpoints__MicroservicesBaseUrl",
@@ -82,6 +100,9 @@ internal static class Program {
             .WithUrlForEndpoint(
                 "http",
                 url => url.DisplayText = "Comparison UI")
+            .WithHttpHealthCheck(
+                path: "/health",
+                endpointName: "http")
             // Override Gateway:BaseUrl with the Aspire-managed Gateway endpoint.
             .WithEnvironment(
                 "Gateway__BaseUrl",
