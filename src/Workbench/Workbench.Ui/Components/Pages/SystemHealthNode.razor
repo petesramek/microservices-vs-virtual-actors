@@ -1,7 +1,7 @@
 @using Workbench.Contracts.Observability.Health
 @using Workbench.Contracts.Observability.Topology
 
-<article class="@GetNodeClass()">
+<article class="@GetNodeClass()" data-node-id="@Node.Id">
     <header class="system-health-node-header">
         <div class="system-health-node-title">
             <span class="system-health-node-kind">@FormatKind(Node.Kind)</span>
