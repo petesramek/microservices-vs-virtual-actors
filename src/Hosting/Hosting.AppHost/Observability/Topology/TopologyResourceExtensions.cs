@@ -7,27 +7,33 @@ using System.Text.Json;
 using Workbench.Contracts.Observability.Topology;
 
 /// <summary>
-/// Provides registration methods for the observable workbench topology.
+/// Provides registration methods for observable application topologies.
 /// </summary>
 internal static class TopologyResourceExtensions {
     private const string TopologyConfigurationName =
         "Observability__TopologyDefinition";
 
     /// <summary>
-    /// Registers one topology definition for Aspire grouping and Workbench Gateway.
+    /// Registers one topology definition for Aspire grouping and runtime health processing.
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
-    /// <param name="root">The Workbench Gateway resource.</param>
-    /// <param name="configure">Configures the topology below the Gateway.</param>
+    /// <param name="displayName">The display name of the topology root.</param>
+    /// <param name="root">The visual root project resource.</param>
+    /// <param name="topologyProvider">
+    /// The project resource that receives and processes the topology definition.
+    /// </param>
+    /// <param name="configure">Configures the topology below the root resource.</param>
     /// <returns>The generated neutral topology definition.</returns>
     public static TopologyDefinition AddTopology(
         this IDistributedApplicationBuilder builder,
         string displayName,
         IResourceBuilder<ProjectResource> root,
+        IResourceBuilder<ProjectResource> topologyProvider,
         Action<TopologyBuilder> configure) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(root);
+        ArgumentNullException.ThrowIfNull(topologyProvider);
         ArgumentNullException.ThrowIfNull(configure);
 
         var topology = new TopologyBuilder();
@@ -35,7 +41,7 @@ internal static class TopologyResourceExtensions {
 
         if (topology.Children.Count == 0) {
             throw new InvalidOperationException(
-                "The workbench topology must contain at least one group.");
+                "The topology must contain at least one group.");
         }
 
         foreach (TopologyNodeBuilder group in topology.Children) {
@@ -61,7 +67,7 @@ internal static class TopologyResourceExtensions {
                     .Select(group => group.BuildDefinition())
                     .ToArray()));
 
-        root.WithEnvironment(
+        topologyProvider.WithEnvironment(
             TopologyConfigurationName,
             JsonSerializer.Serialize(definition));
 
