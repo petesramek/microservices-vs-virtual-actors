@@ -1,20 +1,12 @@
+using Hosting.AppHost.Resources;
+
 internal static class Program {
     private static void Main(string[] args) {
         IDistributedApplicationBuilder builder =
             DistributedApplication.CreateBuilder(args);
 
-        IResourceBuilder<DashboardGroupResource> comparison =
-            builder.AddResource(new DashboardGroupResource("comparison"));
-
-        IResourceBuilder<DashboardGroupResource> microservices =
-            builder.AddResource(new DashboardGroupResource("microservices"));
-
-        IResourceBuilder<DashboardGroupResource> virtualActors =
-            builder.AddResource(new DashboardGroupResource("virtual-actors"));
-
         IResourceBuilder<ProjectResource> inventoryApi = builder
             .AddProject<Projects.Inventory_Api>("inventory-api")
-            .WithParentRelationship(microservices)
             .WithUrlForEndpoint(
                 "http",
                 url => url.DisplayText = "Inventory API")
@@ -24,7 +16,6 @@ internal static class Program {
 
         IResourceBuilder<ProjectResource> paymentsApi = builder
             .AddProject<Projects.Payments_Api>("payments-api")
-            .WithParentRelationship(microservices)
             .WithUrlForEndpoint(
                 "http",
                 url => url.DisplayText = "Payments API")
@@ -34,7 +25,6 @@ internal static class Program {
 
         IResourceBuilder<ProjectResource> ordersApi = builder
             .AddProject<Projects.Orders_Api>("orders-api")
-            .WithParentRelationship(microservices)
             .WithUrlForEndpoint(
                 "http",
                 url => url.DisplayText = "Orders API")
@@ -54,7 +44,6 @@ internal static class Program {
 
         IResourceBuilder<ProjectResource> orderingSilo = builder
             .AddProject<Projects.Ordering_Silo>("ordering-silo")
-            .WithParentRelationship(virtualActors)
             .WithUrlForEndpoint(
                 "http",
                 url => {
@@ -67,7 +56,6 @@ internal static class Program {
 
         IResourceBuilder<ProjectResource> orderingApi = builder
             .AddProject<Projects.Ordering_Api>("ordering-api")
-            .WithParentRelationship(virtualActors)
             .WithUrlForEndpoint(
                 "http",
                 url => url.DisplayText = "Ordering API")
@@ -78,7 +66,6 @@ internal static class Program {
 
         IResourceBuilder<ProjectResource> comparisonGateway = builder
             .AddProject<Projects.Comparison_Gateway>("comparison-gateway")
-            .WithParentRelationship(comparison)
             .WithUrlForEndpoint(
                 "http",
                 url => url.DisplayText = "Comparison Gateway")
@@ -94,9 +81,8 @@ internal static class Program {
                 "ServiceEndpoints__VirtualActorsBaseUrl",
                 orderingApi.GetEndpoint("http"));
 
-        builder
+        IResourceBuilder<ProjectResource> comparisonUi = builder
             .AddProject<Projects.Comparison_Ui>("comparison-ui")
-            .WithParentRelationship(comparison)
             .WithUrlForEndpoint(
                 "http",
                 url => url.DisplayText = "Comparison UI")
@@ -109,9 +95,26 @@ internal static class Program {
                 comparisonGateway.GetEndpoint("http"))
             .WaitFor(comparisonGateway);
 
+        builder.AddHealthGroup(
+            "microservices",
+            "Microservices",
+            inventoryApi,
+            paymentsApi,
+            ordersApi);
+
+        builder.AddHealthGroup(
+            "virtual-actors",
+            "Virtual Actors",
+            orderingSilo,
+            orderingApi);
+
+        builder.AddHealthGroup(
+            "comparison",
+            "Comparison",
+            comparisonGateway,
+            comparisonUi);
+
         builder.Build().Run();
     }
 }
 
-internal sealed class DashboardGroupResource(string name)
-    : Resource(name);
