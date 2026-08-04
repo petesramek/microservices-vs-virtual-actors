@@ -1,5 +1,6 @@
 namespace Microsoft.Extensions.DependencyInjection;
 
+using Workbench.Gateway.Observability.Topology;
 using Workbench.Ui.Observability.Health;
 
 /// <summary>
@@ -31,6 +32,7 @@ internal static class SystemHealthServiceCollectionExtensions {
             .ValidateOnStart();
 
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<TopologyHealthCalculator>();
 
         services.AddHttpClient<SystemHealthService>(client => {
             client.Timeout = HealthRequestTimeout;
