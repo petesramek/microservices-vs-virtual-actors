@@ -1,8 +1,10 @@
 using Hosting.ServiceDefaults.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ordering.Persistence.Sqlite.Extensions;
+using Ordering.Silo.HealthChecks;
 using Orleans.Dashboard;
 
 const string ConnectionName = "Default";
@@ -17,6 +19,10 @@ string connectionString =
     ?? throw new InvalidOperationException(
         "The Default database connection string is not configured.");
 
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<OrderingDatabaseHealthCheck>("ordering-database");
+
 builder.UseOrleans(siloBuilder => {
     siloBuilder
         .UseLocalhostClustering()
@@ -29,7 +35,6 @@ builder.UseOrleans(siloBuilder => {
 });
 
 WebApplication app = builder.Build();
-
 
 app.MapOrleansDashboard("/dashboard");
 app.MapDefaultEndpoints();

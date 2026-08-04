@@ -1,4 +1,5 @@
 using Comparison.Ui.Components;
+using Comparison.Ui.HealthChecks;
 using Comparison.Ui.Services;
 using Hosting.ServiceDefaults.Extensions;
 
@@ -7,18 +8,33 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
 builder.AddServiceDefaults();
 
-builder.Services.AddRazorComponents()
+string gatewayBaseUrl =
+    builder.Configuration["Gateway:BaseUrl"]
+    ?? "http://localhost:5100";
+
+builder.Services
+    .AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddHttpClient<ScenarioRunnerClient>(client => {
-    var baseUrl = builder.Configuration[$"Gateway:BaseUrl"] ?? $"http://localhost:5100";
-    client.BaseAddress = new Uri(baseUrl);
+    client.BaseAddress = new Uri(gatewayBaseUrl);
 });
+
+builder.Services.AddHttpClient(
+    GatewayHealthCheck.HttpClientName,
+    client => {
+        client.BaseAddress = new Uri(
+            gatewayBaseUrl.TrimEnd('/') + "/");
+    });
+
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<GatewayHealthCheck>("comparison-gateway");
 
 WebApplication app = builder.Build();
 
 if (!app.Environment.IsDevelopment()) {
-    app.UseExceptionHandler($"/Error");
+    app.UseExceptionHandler("/Error");
 }
 
 app.UseStaticFiles();

@@ -2,6 +2,7 @@ using Comparison.Contracts;
 using Hosting.ServiceDefaults.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Payments.Api.Data;
+using Payments.Api.HealthChecks;
 using Payments.Api.Logging;
 using Payments.Api.Models;
 
@@ -11,22 +12,32 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.Services.AddDbContext<PaymentsDbContext>(options => {
-    var connectionString = builder.Configuration.GetConnectionString($"Default") ?? $"Data Source=payments.db";
+    var connectionString = builder.Configuration.GetConnectionString("Default")
+        ?? "Data Source=payments.db";
+
     options.UseSqlite(connectionString);
 });
 
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<PaymentsDatabaseHealthCheck>("payments-database");
+
 WebApplication app = builder.Build();
+
 // correlation-id-logging
 app.Use(async (context, next) => {
-    var correlationId = context.Request.Headers[$"X-Correlation-ID"].FirstOrDefault();
+    var correlationId = context.Request.Headers["X-Correlation-ID"]
+        .FirstOrDefault();
+
     if (string.IsNullOrWhiteSpace(correlationId)) {
         await next().ConfigureAwait(false);
         return;
     }
 
-    using IDisposable? scope = app.Logger.BeginScope(new Dictionary<string, object>(StringComparer.Ordinal) {
-        [$"CorrelationId"] = correlationId,
-    });
+    using IDisposable? scope = app.Logger.BeginScope(
+        new Dictionary<string, object>(StringComparer.Ordinal) {
+            ["CorrelationId"] = correlationId,
+        });
 
     app.Logger.HandlingRequestWithCorrelationId(correlationId);
 
@@ -35,10 +46,12 @@ app.Use(async (context, next) => {
 
 await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
 
-app.MapGet($"/", () => Results.Ok(new { Name = $"Payments API", Phase = $"Microservices" }));
-app.MapGet($"/health/live", () => Results.Ok($"Healthy"));
+app.MapGet("/", () => Results.Ok(new {
+    Name = "Payments API",
+    Phase = "Microservices",
+}));
 
-app.MapPost($"/api/payments/authorize", async (
+app.MapPost("/api/payments/authorize", async (
     AuthorizePaymentRequest request,
     PaymentsDbContext db,
     ILoggerFactory loggerFactory,
@@ -51,9 +64,13 @@ app.MapPost($"/api/payments/authorize", async (
             request.CustomerId);
 
         try {
-            PaymentAttempt? existing = await db.PaymentAttempts.AsNoTracking().SingleOrDefaultAsync(
-                paymentAttempt => paymentAttempt.IdempotencyKey == request.IdempotencyKey,
-                cancellationToken).ConfigureAwait(false);
+            PaymentAttempt? existing = await db.PaymentAttempts
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    paymentAttempt =>
+                        paymentAttempt.IdempotencyKey == request.IdempotencyKey,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
             if (existing is not null) {
                 logger.PaymentAuthorizationCompleted(
@@ -61,11 +78,13 @@ app.MapPost($"/api/payments/authorize", async (
                     existing.OrderId,
                     existing.Authorized);
 
-                return Results.Ok(new AuthorizePaymentResponse(existing.Authorized, existing.Reason));
+                return Results.Ok(new AuthorizePaymentResponse(
+                    existing.Authorized,
+                    existing.Reason));
             }
 
             var authorized = !request.SimulateFailure;
-            var reason = authorized ? null : $"PaymentFailed";
+            var reason = authorized ? null : "PaymentFailed";
 
             db.PaymentAttempts.Add(new PaymentAttempt {
                 PaymentId = request.PaymentId,
@@ -83,17 +102,22 @@ app.MapPost($"/api/payments/authorize", async (
                 request.OrderId,
                 authorized);
 
-            return Results.Ok(new AuthorizePaymentResponse(authorized, reason));
-        } catch (OperationCanceledException) {
+            return Results.Ok(new AuthorizePaymentResponse(
+                authorized,
+                reason));
+        }
+        catch (OperationCanceledException) {
             throw;
-        } catch (Exception exception) {
+        }
+        catch (Exception exception) {
             logger.PaymentAuthorizationFailed(
                 exception,
                 request.PaymentId,
                 request.OrderId,
                 request.CustomerId);
 
-            return Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+            return Results.Problem(
+                statusCode: StatusCodes.Status500InternalServerError);
         }
     });
 
@@ -104,7 +128,10 @@ await app.RunAsync().ConfigureAwait(false);
 
 static async Task EnsureDatabaseAsync(IServiceProvider services) {
     using IServiceScope scope = services.CreateScope();
-    PaymentsDbContext db = scope.ServiceProvider.GetRequiredService<PaymentsDbContext>();
+
+    PaymentsDbContext db = scope.ServiceProvider
+        .GetRequiredService<PaymentsDbContext>();
+
     await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
 }
 
