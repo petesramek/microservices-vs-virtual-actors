@@ -40,17 +40,14 @@ internal sealed class OrleansClusterHealthCheck(
                     "The Orleans cluster is available.")
                 : HealthCheckResult.Unhealthy(
                     "The Orleans cluster has no active silos.");
-        }
-        catch (OperationCanceledException)
-            when (cancellationToken.IsCancellationRequested) {
+        } catch (OperationCanceledException)
+              when (cancellationToken.IsCancellationRequested) {
             throw;
-        }
-        catch (OperationCanceledException exception) {
+        } catch (OperationCanceledException exception) {
             return HealthCheckResult.Unhealthy(
                 "The Orleans cluster health check timed out.",
                 exception);
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             return HealthCheckResult.Unhealthy(
                 "The Orleans cluster health check failed.",
                 exception);

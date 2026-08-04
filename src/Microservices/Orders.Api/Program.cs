@@ -86,8 +86,7 @@ app.Use(async (context, next) => {
             context.Request.Body,
             new JsonSerializerOptions(JsonSerializerDefaults.Web),
             context.RequestAborted).ConfigureAwait(false);
-    }
-    finally {
+    } finally {
         context.Request.Body.Position = 0;
     }
 
@@ -106,8 +105,7 @@ app.Use(async (context, next) => {
 
     try {
         await next().ConfigureAwait(false);
-    }
-    finally {
+    } finally {
         requestLock.Release();
 
         if (requestLock.CurrentCount == 1) {
@@ -151,11 +149,9 @@ app.MapPost("/api/scenarios/reset", async (
                 inventory.AvailableQuantity);
 
             return Results.Ok(inventory);
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.InventoryResetFailed(
                 exception,
                 request.ProductId,
@@ -183,11 +179,9 @@ app.MapGet("/api/inventory/{productId}", async (
                 inventory.AvailableQuantity);
 
             return Results.Ok(inventory);
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.InventoryRetrievalFailed(exception, productId);
 
             return Results.Problem(
@@ -305,11 +299,9 @@ app.MapPost("/api/orders", async (
             logger.OrderCompletedWithStatus(order.OrderId, order.Status);
 
             return Results.Ok(ToResponse(order));
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.OrderPlacementFailed(
                 exception,
                 request.OrderId,
@@ -344,11 +336,9 @@ app.MapGet("/api/orders/{orderId:guid}", async (
             logger.OrderRetrievedWithStatus(order.OrderId, order.Status);
 
             return Results.Ok(ToResponse(order));
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.OrderRetrievalFailed(exception, orderId);
 
             return Results.Problem(

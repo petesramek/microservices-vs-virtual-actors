@@ -83,11 +83,9 @@ app.MapPost("/api/inventory/reset", async (
             return Results.Ok(new InventoryResponse(
                 item.ProductId,
                 item.AvailableQuantity));
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.InventoryResetFailed(
                 exception,
                 request.ProductId,
@@ -124,11 +122,9 @@ app.MapGet("/api/inventory/{productId}", async (
                 response.AvailableQuantity);
 
             return Results.Ok(response);
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.InventoryRetrievalFailed(exception, productId);
 
             return Results.Problem(
@@ -231,11 +227,9 @@ app.MapPost("/api/inventory/{productId}/reserve", async (
                     Reason: null,
                     item.AvailableQuantity));
             }
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.InventoryReservationFailed(
                 exception,
                 productId,
@@ -303,11 +297,9 @@ app.MapPost("/api/inventory/{productId}/release", async (
             return Results.Ok(new InventoryResponse(
                 productId,
                 item.AvailableQuantity));
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.InventoryReleaseFailed(
                 exception,
                 productId,

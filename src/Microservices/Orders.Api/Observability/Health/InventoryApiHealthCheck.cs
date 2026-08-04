@@ -51,17 +51,14 @@ internal sealed class InventoryApiHealthCheck(
                     "The Inventory API is available.")
                 : HealthCheckResult.Unhealthy(
                     $"The Inventory API returned status code {(int)response.StatusCode}.");
-        }
-        catch (OperationCanceledException)
-            when (cancellationToken.IsCancellationRequested) {
+        } catch (OperationCanceledException)
+              when (cancellationToken.IsCancellationRequested) {
             throw;
-        }
-        catch (OperationCanceledException exception) {
+        } catch (OperationCanceledException exception) {
             return HealthCheckResult.Unhealthy(
                 "The Inventory API health check timed out.",
                 exception);
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             return HealthCheckResult.Unhealthy(
                 "The Inventory API health check failed.",
                 exception);

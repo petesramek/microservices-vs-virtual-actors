@@ -40,17 +40,14 @@ internal sealed class GatewayHealthCheck(
                     "The Comparison Gateway is available.")
                 : HealthCheckResult.Unhealthy(
                     $"The Comparison Gateway returned status code {(int)response.StatusCode}.");
-        }
-        catch (OperationCanceledException)
-            when (cancellationToken.IsCancellationRequested) {
+        } catch (OperationCanceledException)
+              when (cancellationToken.IsCancellationRequested) {
             throw;
-        }
-        catch (OperationCanceledException exception) {
+        } catch (OperationCanceledException exception) {
             return HealthCheckResult.Unhealthy(
                 "The Comparison Gateway health check timed out.",
                 exception);
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             return HealthCheckResult.Unhealthy(
                 "The Comparison Gateway health check failed.",
                 exception);

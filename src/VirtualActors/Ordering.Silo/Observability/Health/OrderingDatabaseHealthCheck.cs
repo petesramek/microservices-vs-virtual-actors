@@ -51,17 +51,14 @@ internal sealed class OrderingDatabaseHealthCheck(
 
             return HealthCheckResult.Healthy(
                 "The Ordering database is available.");
-        }
-        catch (OperationCanceledException)
-            when (cancellationToken.IsCancellationRequested) {
+        } catch (OperationCanceledException)
+              when (cancellationToken.IsCancellationRequested) {
             throw;
-        }
-        catch (OperationCanceledException exception) {
+        } catch (OperationCanceledException exception) {
             return HealthCheckResult.Unhealthy(
                 "The Ordering database health check timed out.",
                 exception);
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             return HealthCheckResult.Unhealthy(
                 "The Ordering database health check failed.",
                 exception);

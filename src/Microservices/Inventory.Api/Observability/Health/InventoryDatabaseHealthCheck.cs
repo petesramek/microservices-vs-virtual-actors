@@ -1,13 +1,12 @@
-namespace Orders.Api.HealthChecks;
+namespace Inventory.Api.HealthChecks;
 
-using Microsoft.EntityFrameworkCore;
+using Inventory.Api.Data;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Orders.Api.Data;
 
 /// <summary>
-/// Verifies that the Orders database can accept connections.
+/// Verifies that the Inventory database can accept connections.
 /// </summary>
-internal sealed class OrdersDatabaseHealthCheck(
+internal sealed class InventoryDatabaseHealthCheck(
     IServiceScopeFactory serviceScopeFactory)
     : IHealthCheck {
     /// <inheritdoc />
@@ -18,8 +17,8 @@ internal sealed class OrdersDatabaseHealthCheck(
 
         using IServiceScope scope = serviceScopeFactory.CreateScope();
 
-        OrdersDbContext dbContext = scope.ServiceProvider
-            .GetRequiredService<OrdersDbContext>();
+        InventoryDbContext dbContext = scope.ServiceProvider
+            .GetRequiredService<InventoryDbContext>();
 
         try {
             bool canConnect = await dbContext.Database
@@ -28,17 +27,15 @@ internal sealed class OrdersDatabaseHealthCheck(
 
             return canConnect
                 ? HealthCheckResult.Healthy(
-                    "The Orders database is available.")
+                    "The Inventory database is available.")
                 : HealthCheckResult.Unhealthy(
-                    "The Orders database is unavailable.");
-        }
-        catch (OperationCanceledException)
-            when (cancellationToken.IsCancellationRequested) {
+                    "The Inventory database is unavailable.");
+        } catch (OperationCanceledException)
+              when (cancellationToken.IsCancellationRequested) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             return HealthCheckResult.Unhealthy(
-                "The Orders database health check failed.",
+                "The Inventory database health check failed.",
                 exception);
         }
     }

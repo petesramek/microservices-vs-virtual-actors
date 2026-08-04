@@ -1,6 +1,5 @@
 namespace Payments.Api.HealthChecks;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Payments.Api.Data;
 
@@ -31,12 +30,10 @@ internal sealed class PaymentsDatabaseHealthCheck(
                     "The Payments database is available.")
                 : HealthCheckResult.Unhealthy(
                     "The Payments database is unavailable.");
-        }
-        catch (OperationCanceledException)
-            when (cancellationToken.IsCancellationRequested) {
+        } catch (OperationCanceledException)
+              when (cancellationToken.IsCancellationRequested) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             return HealthCheckResult.Unhealthy(
                 "The Payments database health check failed.",
                 exception);

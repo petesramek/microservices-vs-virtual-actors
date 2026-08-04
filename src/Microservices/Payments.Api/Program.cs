@@ -105,11 +105,9 @@ app.MapPost("/api/payments/authorize", async (
             return Results.Ok(new AuthorizePaymentResponse(
                 authorized,
                 reason));
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.PaymentAuthorizationFailed(
                 exception,
                 request.PaymentId,

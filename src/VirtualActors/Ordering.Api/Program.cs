@@ -65,11 +65,9 @@ app.MapPost("/api/scenarios/reset", async (
             return Results.Ok(new InventoryResponse(
                 snapshot.ProductId,
                 snapshot.AvailableQuantity));
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.InventoryResetFailed(
                 exception,
                 request.ProductId,
@@ -97,11 +95,9 @@ app.MapGet("/api/inventory/{productId}", async (
             return Results.Ok(new InventoryResponse(
                 snapshot.ProductId,
                 snapshot.AvailableQuantity));
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.InventoryRetrievalFailed(exception, productId);
 
             return Results.Problem(
@@ -135,11 +131,9 @@ app.MapPost("/api/orders", async (
             logger.OrderCompletedWithStatus(result.OrderId, result.Status);
 
             return Results.Ok(ToResponse(result));
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.OrderPlacementFailed(
                 exception,
                 request.OrderId,
@@ -171,11 +165,9 @@ app.MapGet("/api/orders/{orderId:guid}", async (
             logger.OrderRetrievedWithStatus(result.OrderId, result.Status);
 
             return Results.Ok(ToResponse(result));
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             throw;
-        }
-        catch (Exception exception) {
+        } catch (Exception exception) {
             logger.OrderRetrievalFailed(exception, orderId);
 
             return Results.Problem(
