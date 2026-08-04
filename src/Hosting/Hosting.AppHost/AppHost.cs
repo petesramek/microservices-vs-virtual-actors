@@ -99,7 +99,6 @@ internal static class Program {
         builder.AddTopology(
             "Workbench UI",
             workbenchUi,
-            workbenchGateway,
             topology => {
                 topology.AddGroup(
                     "microservices",

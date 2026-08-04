@@ -44,6 +44,12 @@ internal sealed class TopologyBuilder {
 
     internal IReadOnlyList<TopologyNodeBuilder> Children => children;
 
+    internal IReadOnlyList<IResourceBuilder<ProjectResource>> ProjectResources =>
+        children
+            .SelectMany(child => child.EnumerateProjectResources())
+            .DistinctBy(resource => resource.Resource.Name)
+            .ToArray();
+
     private void RegisterNodeId(string id) {
         if (!nodeIds.Add(id)) {
             throw new InvalidOperationException(
@@ -127,6 +133,7 @@ internal sealed class TopologyNodeBuilder {
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
         registerNodeId(id);
+
         children.Add(new TopologyNodeBuilder(
             id,
             displayName,
@@ -161,5 +168,19 @@ internal sealed class TopologyNodeBuilder {
             HealthSource,
             Requirement,
             children.Select(child => child.BuildDefinition()).ToArray());
+    }
+
+    internal IEnumerable<IResourceBuilder<ProjectResource>>
+        EnumerateProjectResources() {
+        if (Resource is not null) {
+            yield return Resource;
+        }
+
+        foreach (TopologyNodeBuilder child in children) {
+            foreach (IResourceBuilder<ProjectResource> resource in
+                child.EnumerateProjectResources()) {
+                yield return resource;
+            }
+        }
     }
 }

@@ -1,4 +1,5 @@
 using Hosting.ServiceDefaults.Extensions;
+using Workbench.Gateway.Observability.Topology;
 using Workbench.Ui.Components;
 using Workbench.Ui.HealthChecks;
 using Workbench.Ui.Services;
@@ -30,6 +31,15 @@ builder.Services.AddHttpClient(
 builder.Services
     .AddHealthChecks()
     .AddCheck<GatewayHealthCheck>("workbench-gateway");
+
+// Configure and validate the observable topology definition.
+builder.Services
+    .AddOptions<TopologyOptions>()
+    .Bind(builder.Configuration.GetSection(TopologyOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<TopologyDefinitionProvider>();
 
 WebApplication app = builder.Build();
 

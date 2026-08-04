@@ -41,7 +41,7 @@ internal sealed class TopologyHealthCalculator {
             definition,
             healthBySource);
 
-        ObservabilityHealthStatus compositeStatus = CalculateCompositeStatus(
+        HealthStatus compositeStatus = CalculateCompositeStatus(
             ownHealth.Status,
             definition.Children,
             children);
@@ -63,7 +63,7 @@ internal sealed class TopologyHealthCalculator {
         IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource) {
         if (definition.HealthSource is null) {
             return new TopologyNodeHealth(
-                ObservabilityHealthStatus.Healthy);
+                HealthStatus.Healthy);
         }
 
         return healthBySource.TryGetValue(
@@ -71,18 +71,18 @@ internal sealed class TopologyHealthCalculator {
             out TopologyNodeHealth? health)
                 ? health
                 : new TopologyNodeHealth(
-                    ObservabilityHealthStatus.Unknown,
+                    HealthStatus.Unknown,
                     Description: "No health observation is available.");
     }
 
-    private static ObservabilityHealthStatus CalculateCompositeStatus(
-        ObservabilityHealthStatus ownStatus,
+    private static HealthStatus CalculateCompositeStatus(
+        HealthStatus ownStatus,
         IReadOnlyList<TopologyNodeDefinition> childDefinitions,
         IReadOnlyList<TopologyNodeSnapshot> childSnapshots) {
-        ObservabilityHealthStatus compositeStatus = ownStatus;
+        HealthStatus compositeStatus = ownStatus;
 
         for (int index = 0; index < childSnapshots.Count; index++) {
-            ObservabilityHealthStatus childStatus = ApplyRequirement(
+            HealthStatus childStatus = ApplyRequirement(
                 childSnapshots[index].CompositeStatus,
                 childDefinitions[index].Requirement);
 
@@ -94,27 +94,27 @@ internal sealed class TopologyHealthCalculator {
         return compositeStatus;
     }
 
-    private static ObservabilityHealthStatus ApplyRequirement(
-        ObservabilityHealthStatus status,
+    private static HealthStatus ApplyRequirement(
+        HealthStatus status,
         TopologyDependencyRequirement requirement) {
         if (requirement != TopologyDependencyRequirement.Optional) {
             return status;
         }
 
         return status switch {
-            ObservabilityHealthStatus.Unhealthy =>
-                ObservabilityHealthStatus.Degraded,
+            HealthStatus.Unhealthy =>
+                HealthStatus.Degraded,
             _ => status,
         };
     }
 
-    private static int GetSeverity(ObservabilityHealthStatus status) {
+    private static int GetSeverity(HealthStatus status) {
         return status switch {
-            ObservabilityHealthStatus.Healthy => 0,
-            ObservabilityHealthStatus.Unknown => 1,
-            ObservabilityHealthStatus.Starting => 2,
-            ObservabilityHealthStatus.Degraded => 3,
-            ObservabilityHealthStatus.Unhealthy => 4,
+            HealthStatus.Healthy => 0,
+            HealthStatus.Unknown => 1,
+            HealthStatus.Starting => 2,
+            HealthStatus.Degraded => 3,
+            HealthStatus.Unhealthy => 4,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(status),
                 status,
