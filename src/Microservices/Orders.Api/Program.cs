@@ -1,4 +1,3 @@
-using Comparison.Contracts;
 using Hosting.ServiceDefaults.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Orders.Api.Clients;
@@ -9,6 +8,7 @@ using Orders.Api.Logging;
 using Orders.Api.Models;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Workbench.Contracts;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 

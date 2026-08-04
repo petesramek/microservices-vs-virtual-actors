@@ -1,9 +1,9 @@
-using Comparison.Contracts;
 using Hosting.ServiceDefaults.Extensions;
 using Ordering.Api.HealthChecks;
 using Ordering.Api.Logging;
 using Ordering.Grains.Contracts;
 using Ordering.Grains.Interfaces;
+using Workbench.Contracts;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 

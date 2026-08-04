@@ -3,18 +3,18 @@ namespace Hosting.ServiceDefaults.Telemetry;
 using System.Diagnostics;
 
 /// <summary>
-/// Defines shared tracing metadata for comparison scenario executions.
+/// Defines shared tracing metadata for workbench scenario executions.
 /// </summary>
 public static class ScenarioTelemetry {
     /// <summary>
-    /// The activity source name used for comparison scenario traces.
+    /// The activity source name used for workbench scenario traces.
     /// </summary>
-    public const string ActivitySourceName = "Comparison.Scenarios";
+    public const string ActivitySourceName = "Workbench.Scenarios";
 
     /// <summary>
     /// The activity name used for a scenario execution.
     /// </summary>
-    public const string RunScenarioActivityName = "Run comparison scenario";
+    public const string RunScenarioActivityName = "Run workbench scenario";
 
     /// <summary>
     /// The internal HTTP header used to identify scenario-related requests.

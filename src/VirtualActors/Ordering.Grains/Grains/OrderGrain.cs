@@ -1,11 +1,11 @@
 namespace Ordering.Grains.Grains;
 
-using Comparison.Contracts;
 using Ordering.Grains.Contracts;
 using Ordering.Grains.Interfaces;
 using Ordering.Grains.State;
 using Orleans;
 using Orleans.Runtime;
+using Workbench.Contracts;
 
 /// <summary>
 /// Grain that owns one order workflow.

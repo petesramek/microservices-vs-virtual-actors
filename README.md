@@ -1,6 +1,6 @@
 # Microservices vs Virtual Actors
 
-This repository is an architecture comparison case study for the same order workflow implemented in two styles:
+This repository is an architecture workbench case study for the same order workflow implemented in two styles:
 
 - a microservices-style implementation with explicit HTTP service boundaries
 - a virtual actor-style implementation with identity-based state ownership and serialized execution per actor identity
@@ -11,7 +11,7 @@ This project is not a benchmark. Local elapsed times are useful for understandin
 
 ## What this project demonstrates
 
-The comparison focuses on practical architecture questions:
+The workbench focuses on practical architecture questions:
 
 - Who owns inventory state?
 - Who protects inventory invariants?
@@ -31,8 +31,8 @@ The microservices-style path uses separate services for the main workflow respon
 - `Orders.Api` owns order workflow orchestration.
 - `Inventory.Api` owns inventory state and reservation invariants.
 - `Payments.Api` owns payment authorization behavior.
-- `Comparison.Gateway` runs the same scenario against each architecture path.
-- `Comparison.Ui` provides the interactive scenario dashboard.
+- `Workbench.Gateway` runs the same scenario against each architecture path.
+- `Workbench.Ui` provides the interactive scenario dashboard.
 
 This style makes service boundaries and independent deployment explicit. The trade-off is that every boundary introduces compatibility, reliability, observability, and operational concerns.
 
@@ -49,7 +49,7 @@ This style makes identity-based state ownership explicit. The trade-off is that 
 
 ## Scenario list
 
-The UI exposes the following comparison scenarios. See [docs/12-scenario-guide.md](docs/12-scenario-guide.md) for the full scenario guide, expected results, architecture interpretations, and operational notes.
+The UI exposes the following workbench scenarios. See [docs/12-scenario-guide.md](docs/12-scenario-guide.md) for the full scenario guide, expected results, architecture interpretations, and operational notes.
 
 ### Successful order
 
@@ -144,11 +144,11 @@ The UI result cards use request-submission terminology consistently:
 - **Remaining inventory**: the final inventory quantity after the scenario run.
 - **Elapsed**: local elapsed time for the architecture path in this sample topology.
 
-These values are semantic contracts for the comparison. For example, **unique successful orders** means unique successful logical orders, not raw successful HTTP responses.
+These values are semantic contracts for the workbench. For example, **unique successful orders** means unique successful logical orders, not raw successful HTTP responses.
 
 ## How to run locally
 
-Start the backend services and UI according to the project launch settings. At minimum, the comparison UI expects the comparison gateway and backend services to be running on their configured local ports.
+Start the backend services and UI according to the project launch settings. At minimum, the workbench UI expects the workbench gateway and backend services to be running on their configured local ports.
 
 ### Validate build and tests
 
@@ -168,8 +168,8 @@ Set these projects to start together:
 - `src/Microservices/Payments.Api`
 - `src/Microservices/Orders.Api`
 - `src/VirtualActors/Ordering.Api`
-- `src/Comparison/Comparison.Gateway`
-- `src/Comparison/Comparison.Ui`
+- `src/Workbench/Workbench.Gateway`
+- `src/Workbench/Workbench.Ui`
 
 Then start debugging/running from Visual Studio and open the UI at:
 
@@ -185,14 +185,14 @@ This is the most convenient local development flow when working inside Visual St
 ./scripts/run-all-local.ps1
 ```
 
-This starts the microservices backend, virtual actor backend, comparison gateway, and UI.
+This starts the microservices backend, virtual actor backend, workbench gateway, and UI.
 
 ### Option C — run the backend groups separately
 
 ```powershell
 ./scripts/run-microservices.ps1
 ./scripts/run-virtual-actors.ps1
-./scripts/run-comparison.ps1
+./scripts/run-workbench.ps1
 ```
 
 Open the UI at:
@@ -240,7 +240,7 @@ The gateway forwards the correlation ID to backend calls, and backend services a
 
 Use the correlation ID shown in the UI to find related logs across:
 
-- `Comparison.Gateway`
+- `Workbench.Gateway`
 - `Orders.Api`
 - `Inventory.Api`
 - `Payments.Api`
@@ -252,16 +252,16 @@ The project deliberately keeps correlation metadata out of scenario request and 
 
 Read the documentation in this order for the intended narrative:
 
-- [Problem](docs/01-problem.md) explains the comparison problem and the workflow being modeled.
+- [Problem](docs/01-problem.md) explains the workbench problem and the workflow being modeled.
 - [Microservices design](docs/02-microservices-design.md) explains the service-based implementation and ownership boundaries.
 - [Virtual actors design](docs/03-virtual-actors-design.md) explains the actor-based implementation and stateful identity boundaries.
-- [Development comparison](docs/04-development-comparison.md) compares day-to-day development concerns in both styles.
-- [Deployment comparison](docs/05-deployment-comparison.md) compares deployment shape and operational surface area.
-- [Scaling comparison](docs/06-scaling-comparison.md) compares service-boundary scaling with actor-runtime and identity-based scaling.
+- [Development workbench](docs/04-development-workbench.md) compares day-to-day development concerns in both styles.
+- [Deployment workbench](docs/05-deployment-workbench.md) compares deployment shape and operational surface area.
+- [Scaling workbench](docs/06-scaling-workbench.md) compares service-boundary scaling with actor-runtime and identity-based scaling.
 - [Trade-offs](docs/07-tradeoffs.md) summarizes the main architecture trade-offs.
 - [Organizational scaling and architecture fit](docs/08-organizational-scaling-and-architecture-fit.md) explains team ownership, architecture fit, evolution paths, and product-quality risks.
 - [Local validation](docs/09-local-validation.md) describes local validation expectations.
-- [UI dashboard](docs/10-ui-dashboard.md) explains the interactive comparison dashboard.
+- [UI dashboard](docs/10-ui-dashboard.md) explains the interactive workbench dashboard.
 - [End-to-end validation](docs/11-end-to-end-validation.md) explains end-to-end validation behavior.
 - [Scenario guide](docs/12-scenario-guide.md) explains each scenario, expected results, architecture interpretations, and operational notes.
 - [Correlation ID logging](docs/13-correlation-id-logging.md) explains the simplified correlation mechanism and the production OpenTelemetry direction.
@@ -299,15 +299,15 @@ This project intentionally simplifies several production concerns:
 - no multi-region or autoscaling design
 - simplified persistence and migration strategy
 - simplified timeout policy
-- no intentionally unsafe race-condition scenario in the main comparison
+- no intentionally unsafe race-condition scenario in the main workbench
 
 See [docs/17-known-limitations.md](docs/17-known-limitations.md) for the full interpretation guide and [docs/18-out-of-scope.md](docs/18-out-of-scope.md) for the explicit scope boundary.
 
 ## Key takeaway
 
-The central comparison is not whether microservices or virtual actors are universally better.
+The central workbench is not whether microservices or virtual actors are universally better.
 
-The central comparison is how each style expresses and maintains:
+The central workbench is how each style expresses and maintains:
 
 - state ownership
 - concurrency guarantees

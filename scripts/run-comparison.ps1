@@ -5,11 +5,11 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 
 $gatewayProject = Join-Path `
     $repositoryRoot `
-    "src/Comparison/Comparison.Gateway/Comparison.Gateway.csproj"
+    "src/Workbench/Workbench.Gateway/Workbench.Gateway.csproj"
 
 $uiProject = Join-Path `
     $repositoryRoot `
-    "src/Comparison/Comparison.Ui/Comparison.Ui.csproj"
+    "src/Workbench/Workbench.Ui/Workbench.Ui.csproj"
 
 $projects = @(
     $gatewayProject

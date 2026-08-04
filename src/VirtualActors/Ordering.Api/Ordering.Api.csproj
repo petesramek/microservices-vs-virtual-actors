@@ -2,7 +2,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Orleans.Analyzers" />
     <PackageReference Include="Microsoft.Orleans.Server" />
-    <ProjectReference Include="../../Comparison/Comparison.Contracts/Comparison.Contracts.csproj" />
+    <ProjectReference Include="../../Workbench/Workbench.Contracts/Workbench.Contracts.csproj" />
     <ProjectReference Include="../Ordering.Grains/Ordering.Grains.csproj" />
     <ProjectReference Include="..\..\Hosting\Hosting.ServiceDefaults\Hosting.ServiceDefaults.csproj" />
   </ItemGroup>

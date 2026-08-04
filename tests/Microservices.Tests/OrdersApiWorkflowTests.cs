@@ -1,9 +1,9 @@
 namespace Microservices.Tests;
 
-using Comparison.Contracts;
 using Microservices.Tests.Infrastructure;
 using Shouldly;
 using System.Net.Http.Json;
+using Workbench.Contracts;
 using Xunit;
 
 /// <summary>

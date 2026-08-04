@@ -2,7 +2,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
-    <ProjectReference Include="../../Comparison/Comparison.Contracts/Comparison.Contracts.csproj" />
+    <ProjectReference Include="../../Workbench/Workbench.Contracts/Workbench.Contracts.csproj" />
     <ProjectReference Include="..\..\Hosting\Hosting.ServiceDefaults\Hosting.ServiceDefaults.csproj" />
   </ItemGroup>
   <ItemGroup>

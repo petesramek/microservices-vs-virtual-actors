@@ -1,10 +1,10 @@
-using Comparison.Contracts;
 using Hosting.ServiceDefaults.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Payments.Api.Data;
 using Payments.Api.HealthChecks;
 using Payments.Api.Logging;
 using Payments.Api.Models;
+using Workbench.Contracts;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 

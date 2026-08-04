@@ -1,19 +1,19 @@
 services:
-  comparison-ui:
+  workbench-ui:
     build:
       context: ..
-      dockerfile: src/Comparison/Comparison.Ui/Dockerfile
+      dockerfile: src/Workbench/Workbench.Ui/Dockerfile
     ports:
       - "5000:8080"
     environment:
-      Gateway__BaseUrl: http://comparison-gateway:8080
+      Gateway__BaseUrl: http://workbench-gateway:8080
     depends_on:
-      - comparison-gateway
+      - workbench-gateway
 
-  comparison-gateway:
+  workbench-gateway:
     build:
       context: ..
-      dockerfile: src/Comparison/Comparison.Gateway/Dockerfile
+      dockerfile: src/Workbench/Workbench.Gateway/Dockerfile
     ports:
       - "5100:8080"
     environment:

@@ -23,8 +23,8 @@ $projects = @(
     "src/Microservices/Payments.Api/Payments.Api.csproj"
     "src/Microservices/Orders.Api/Orders.Api.csproj"
     "src/VirtualActors/Ordering.Api/Ordering.Api.csproj"
-    "src/Comparison/Comparison.Gateway/Comparison.Gateway.csproj"
-    "src/Comparison/Comparison.Ui/Comparison.Ui.csproj"
+    "src/Workbench/Workbench.Gateway/Workbench.Gateway.csproj"
+    "src/Workbench/Workbench.Ui/Workbench.Ui.csproj"
 )
 
 foreach ($project in $projects) {

@@ -64,11 +64,11 @@ internal static class Program {
                 endpointName: "http")
             .WaitFor(orderingSilo);
 
-        IResourceBuilder<ProjectResource> comparisonGateway = builder
-            .AddProject<Projects.Comparison_Gateway>("comparison-gateway")
+        IResourceBuilder<ProjectResource> workbenchGateway = builder
+            .AddProject<Projects.Workbench_Gateway>("workbench-gateway")
             .WithUrlForEndpoint(
                 "http",
-                url => url.DisplayText = "Comparison Gateway")
+                url => url.DisplayText = "Workbench Gateway")
             .WithHttpHealthCheck(
                 path: "/health",
                 endpointName: "http")
@@ -81,19 +81,19 @@ internal static class Program {
                 "ServiceEndpoints__VirtualActorsBaseUrl",
                 orderingApi.GetEndpoint("http"));
 
-        IResourceBuilder<ProjectResource> comparisonUi = builder
-            .AddProject<Projects.Comparison_Ui>("comparison-ui")
+        IResourceBuilder<ProjectResource> workbenchUi = builder
+            .AddProject<Projects.Workbench_Ui>("workbench-ui")
             .WithUrlForEndpoint(
                 "http",
-                url => url.DisplayText = "Comparison UI")
+                url => url.DisplayText = "Workbench UI")
             .WithHttpHealthCheck(
                 path: "/health",
                 endpointName: "http")
             // Override Gateway:BaseUrl with the Aspire-managed Gateway endpoint.
             .WithEnvironment(
                 "Gateway__BaseUrl",
-                comparisonGateway.GetEndpoint("http"))
-            .WaitFor(comparisonGateway);
+                workbenchGateway.GetEndpoint("http"))
+            .WaitFor(workbenchGateway);
 
         builder.AddHealthGroup(
             "microservices",
@@ -109,10 +109,10 @@ internal static class Program {
             orderingApi);
 
         builder.AddHealthGroup(
-            "comparison",
-            "Comparison",
-            comparisonGateway,
-            comparisonUi);
+            "workbench",
+            "Workbench",
+            workbenchGateway,
+            workbenchUi);
 
         builder.Build().Run();
     }

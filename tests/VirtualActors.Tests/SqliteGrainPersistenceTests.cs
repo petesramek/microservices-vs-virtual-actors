@@ -1,6 +1,5 @@
 namespace VirtualActors.Tests;
 
-using Comparison.Contracts;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Ordering.Grains.Contracts;
@@ -13,6 +12,7 @@ using Orleans.Storage;
 using Orleans.TestingHost;
 using Shouldly;
 using System.Globalization;
+using Workbench.Contracts;
 using Xunit;
 
 /// <summary>

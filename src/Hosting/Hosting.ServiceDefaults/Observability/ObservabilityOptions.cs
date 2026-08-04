@@ -10,7 +10,7 @@ public enum TraceCollectionMode {
     Full,
 
     /// <summary>
-    /// Collects only traces associated with comparison scenario runs.
+    /// Collects only traces associated with workbench scenario runs.
     /// </summary>
     ScenarioOnly,
 }

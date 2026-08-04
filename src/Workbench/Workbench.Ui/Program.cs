@@ -1,0 +1,49 @@
+using Hosting.ServiceDefaults.Extensions;
+using Workbench.Ui.Components;
+using Workbench.Ui.HealthChecks;
+using Workbench.Ui.Services;
+
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
+builder.AddServiceDefaults();
+
+string gatewayBaseUrl =
+    builder.Configuration["Gateway:BaseUrl"]
+    ?? "http://localhost:5100";
+
+builder.Services
+    .AddRazorComponents()
+    .AddInteractiveServerComponents();
+
+builder.Services.AddHttpClient<ScenarioRunnerClient>(client => {
+    client.BaseAddress = new Uri(gatewayBaseUrl);
+});
+
+builder.Services.AddHttpClient(
+    GatewayHealthCheck.HttpClientName,
+    client => {
+        client.BaseAddress = new Uri(
+            gatewayBaseUrl.TrimEnd('/') + "/");
+    });
+
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<GatewayHealthCheck>("workbench-gateway");
+
+WebApplication app = builder.Build();
+
+if (!app.Environment.IsDevelopment()) {
+    app.UseExceptionHandler("/Error");
+}
+
+app.UseStaticFiles();
+app.UseAntiforgery();
+
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
+
+// Map the shared health and aliveness endpoints.
+app.MapDefaultEndpoints();
+
+await app.RunAsync().ConfigureAwait(false);

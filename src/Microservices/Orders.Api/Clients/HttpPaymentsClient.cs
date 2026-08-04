@@ -1,9 +1,9 @@
 namespace Orders.Api.Clients;
 
-using Comparison.Contracts;
 using Hosting.ServiceDefaults.Telemetry;
 using Orders.Api.Clients.Abstraction;
 using System.Net.Http.Json;
+using Workbench.Contracts;
 
 /// <summary>
 /// HTTP implementation of the payments service client.

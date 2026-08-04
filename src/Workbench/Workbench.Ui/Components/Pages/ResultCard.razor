@@ -1,0 +1,156 @@
+@using Workbench.Contracts
+
+<article class="card result-card">
+    <header class="result-card-header">
+        <div>
+            <span class="state-kicker">@Title</span>
+            <h3>@GetOutcomeLabel()</h3>
+        </div>
+        <span class="status-badge @GetStatusClass()">@GetOutcomeLabel()</span>
+    </header>
+
+    <section class="metric-grid">
+        <div class="metric">
+            <span>Total request submissions</span>
+            <strong>@TotalRequestSubmissions</strong>
+        </div>
+
+        <div class="metric">
+            <span>Unique successful orders</span>
+            <strong>@Result.CompletedOrders</strong>
+        </div>
+
+        <div class="metric">
+            <span>Rejected submissions</span>
+            <strong>@Result.RejectedOrders</strong>
+        </div>
+
+        <div class="metric">
+            <span>Idempotent duplicate responses</span>
+            <strong>@Result.IdempotentResponses</strong>
+        </div>
+
+        <div class="metric">
+            <span>Remaining inventory</span>
+            <strong>@Result.RemainingInventory</strong>
+        </div>
+
+        <div class="metric">
+            <span>Elapsed</span>
+            <strong>@Result.ElapsedMilliseconds ms</strong>
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(Result.Reason))
+    {
+        <p class="reason"><strong>Reason:</strong> @GetReasonLabel()</p>
+    }
+
+    @if (Result.Events.Count > 0)
+    {
+        <h4>Timeline</h4>
+        <ol class="timeline">
+            @foreach (var scenarioEvent in Result.Events)
+            {
+                <li>
+                    <span>@GetEventTitle(scenarioEvent)</span>
+                    <p>@GetEventMessage(scenarioEvent)</p>
+                </li>
+            }
+        </ol>
+    }
+</article>
+
+@code {
+    [Parameter]
+    public required string Title { get; set; }
+
+    [Parameter]
+    public required ScenarioExecutionResult Result { get; set; }
+
+    private int TotalRequestSubmissions => Result.TotalRequestSubmissions > 0
+        ? Result.TotalRequestSubmissions
+        : Result.CompletedOrders + Result.RejectedOrders + Result.IdempotentResponses;
+
+    private bool HasMixedOutcome => Result.CompletedOrders > 0 && Result.RejectedOrders > 0;
+
+    private string GetOutcomeLabel()
+    {
+        if (HasMixedOutcome)
+        {
+            return "Partially fulfilled";
+        }
+
+        if (Result.CompletedOrders > 0)
+        {
+            return "Fulfilled";
+        }
+
+        if (Result.RejectedOrders > 0)
+        {
+            return "Rejected";
+        }
+
+        return Result.Status.ToString();
+    }
+
+    private string GetStatusClass()
+    {
+        if (HasMixedOutcome)
+        {
+            return "status-partial";
+        }
+
+        if (Result.CompletedOrders > 0)
+        {
+            return "status-completed";
+        }
+
+        if (Result.RejectedOrders > 0)
+        {
+            return "status-rejected";
+        }
+
+        return Result.Status switch
+        {
+            OrderStatus.Completed => "status-completed",
+            OrderStatus.Rejected => "status-rejected",
+            _ => "status-neutral"
+        };
+    }
+
+    private string GetReasonLabel()
+    {
+        return Result.Reason switch
+        {
+            "SomeOrdersRejected" => "Stock was exhausted for some request submissions.",
+            "IdempotentResultReturned" => "Duplicate request returned an existing order result.",
+            null => string.Empty,
+            _ => Result.Reason
+        };
+    }
+
+    private static string GetEventTitle(object scenarioEvent)
+    {
+        return GetStringProperty(scenarioEvent, "Source")
+            ?? GetStringProperty(scenarioEvent, "Actor")
+            ?? GetStringProperty(scenarioEvent, "Component")
+            ?? GetStringProperty(scenarioEvent, "Name")
+            ?? "Scenario";
+    }
+
+    private static string GetEventMessage(object scenarioEvent)
+    {
+        return GetStringProperty(scenarioEvent, "Message")
+            ?? GetStringProperty(scenarioEvent, "Description")
+            ?? GetStringProperty(scenarioEvent, "Text")
+            ?? scenarioEvent.ToString()
+            ?? string.Empty;
+    }
+
+    private static string? GetStringProperty(object source, string propertyName)
+    {
+        return source.GetType().GetProperty(propertyName)?.GetValue(source) as string;
+    }
+}
+

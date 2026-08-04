@@ -1,4 +1,3 @@
-using Comparison.Contracts;
 using Hosting.ServiceDefaults.Extensions;
 using Inventory.Api.Data;
 using Inventory.Api.HealthChecks;
@@ -6,6 +5,7 @@ using Inventory.Api.Logging;
 using Inventory.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Workbench.Contracts;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 

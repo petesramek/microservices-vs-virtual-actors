@@ -1,9 +1,9 @@
 namespace VirtualActors.Tests;
 
-using Comparison.Contracts;
 using Ordering.Grains.Contracts;
 using Ordering.Grains.Interfaces;
 using Shouldly;
+using Workbench.Contracts;
 using Xunit;
 
 /// <summary>
