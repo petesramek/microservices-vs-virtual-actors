@@ -19,9 +19,8 @@ internal sealed class ServiceStatusClient(IHttpClientFactory httpClientFactory) 
         CancellationToken cancellationToken) {
         HttpClient httpClient = httpClientFactory.CreateClient();
         var healthUrl = new Uri(
-            $"{baseUrl.TrimEnd('/')}/health/live",
-            UriKind.Absolute
-        );
+            $"{baseUrl.TrimEnd('/')}/health",
+            UriKind.Absolute);
 
         try {
             using HttpResponseMessage response = await httpClient
