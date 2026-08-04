@@ -4,6 +4,7 @@ using Workbench.Gateway.Clients;
 using Workbench.Gateway.Configuration;
 using Workbench.Gateway.Endpoints;
 using Workbench.Gateway.Extensions;
+using Workbench.Gateway.Observability.Topology;
 using Workbench.Gateway.Scenarios;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,13 @@ builder.Services.AddProblemDetails();
 builder.Services
     .AddOptions<ServiceEndpointOptions>()
     .Bind(builder.Configuration.GetSection(ServiceEndpointOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// Configure and validate the observable topology definition.
+builder.Services
+    .AddOptions<TopologyOptions>()
+    .Bind(builder.Configuration.GetSection(TopologyOptions.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
@@ -41,6 +49,7 @@ builder.Services.AddHttpClient<VirtualActorsServiceClient>((services, client) =>
 
 // Configure gateway services.
 builder.Services.AddSingleton<ServiceStatusClient>();
+builder.Services.AddSingleton<TopologyDefinitionProvider>();
 builder.Services.AddSingleton<ScenarioRunner>();
 
 WebApplication app = builder.Build();
