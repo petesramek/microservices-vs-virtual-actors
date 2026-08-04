@@ -9,7 +9,7 @@ using Workbench.Contracts.Observability.Topology;
 /// <summary>
 /// Provides registration methods for the observable workbench topology.
 /// </summary>
-internal static class WorkbenchTopologyResourceExtensions {
+internal static class TopologyResourceExtensions {
     private const string TopologyConfigurationName =
         "Observability__TopologyDefinition";
 
@@ -17,18 +17,20 @@ internal static class WorkbenchTopologyResourceExtensions {
     /// Registers one topology definition for Aspire grouping and Workbench Gateway.
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
-    /// <param name="gateway">The Workbench Gateway resource.</param>
+    /// <param name="root">The Workbench Gateway resource.</param>
     /// <param name="configure">Configures the topology below the Gateway.</param>
     /// <returns>The generated neutral topology definition.</returns>
-    public static TopologyDefinition AddWorkbenchTopology(
+    public static TopologyDefinition AddTopology(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<ProjectResource> gateway,
-        Action<WorkbenchTopologyBuilder> configure) {
+        string displayName,
+        IResourceBuilder<ProjectResource> root,
+        Action<TopologyBuilder> configure) {
         ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(gateway);
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(configure);
 
-        var topology = new WorkbenchTopologyBuilder();
+        var topology = new TopologyBuilder();
         configure(topology);
 
         if (topology.Children.Count == 0) {
@@ -36,7 +38,7 @@ internal static class WorkbenchTopologyResourceExtensions {
                 "The workbench topology must contain at least one group.");
         }
 
-        foreach (WorkbenchTopologyNodeBuilder group in topology.Children) {
+        foreach (TopologyNodeBuilder group in topology.Children) {
             IResourceBuilder<ProjectResource>[] groupResources = group.Children
                 .SelectMany(EnumerateProjectResources)
                 .DistinctBy(resource => resource.Resource.Name)
@@ -50,16 +52,16 @@ internal static class WorkbenchTopologyResourceExtensions {
 
         var definition = new TopologyDefinition(
             new TopologyNodeDefinition(
-                gateway.Resource.Name,
-                "Workbench Gateway",
+                root.Resource.Name,
+                displayName,
                 TopologyNodeKind.Service,
-                gateway.Resource.Name,
+                root.Resource.Name,
                 TopologyDependencyRequirement.Required,
                 topology.Children
                     .Select(group => group.BuildDefinition())
                     .ToArray()));
 
-        gateway.WithEnvironment(
+        root.WithEnvironment(
             TopologyConfigurationName,
             JsonSerializer.Serialize(definition));
 
@@ -67,12 +69,12 @@ internal static class WorkbenchTopologyResourceExtensions {
     }
 
     private static IEnumerable<IResourceBuilder<ProjectResource>>
-        EnumerateProjectResources(WorkbenchTopologyNodeBuilder node) {
+        EnumerateProjectResources(TopologyNodeBuilder node) {
         if (node.Resource is not null) {
             yield return node.Resource;
         }
 
-        foreach (WorkbenchTopologyNodeBuilder child in node.Children) {
+        foreach (TopologyNodeBuilder child in node.Children) {
             foreach (IResourceBuilder<ProjectResource> resource in
                 EnumerateProjectResources(child)) {
                 yield return resource;

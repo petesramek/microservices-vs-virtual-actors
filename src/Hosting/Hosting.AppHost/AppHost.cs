@@ -1,3 +1,4 @@
+using Hosting.AppHost.Observability.Topology;
 using Hosting.AppHost.Resources;
 
 internal static class Program {
@@ -95,24 +96,70 @@ internal static class Program {
                 workbenchGateway.GetEndpoint("http"))
             .WaitFor(workbenchGateway);
 
-        builder.AddHealthGroup(
-            "microservices",
-            "Microservices",
-            inventoryApi,
-            paymentsApi,
-            ordersApi);
+        builder.AddTopology(
+            "Workbench UI",
+            workbenchUi,
+            topology => {
+                topology.AddGroup(
+                    "microservices",
+                    "Microservices",
+                    group => {
+                        group.AddService(
+                            ordersApi,
+                            "Orders API",
+                            orders => {
+                                orders.AddStorage(
+                                    "orders-database",
+                                    "Orders Database");
 
-        builder.AddHealthGroup(
-            "virtual-actors",
-            "Virtual Actors",
-            orderingSilo,
-            orderingApi);
+                                orders.AddService(
+                                    inventoryApi,
+                                    "Inventory API",
+                                    inventory => {
+                                        inventory.AddStorage(
+                                            "inventory-database",
+                                            "Inventory Database");
+                                    });
 
-        builder.AddHealthGroup(
-            "workbench",
-            "Workbench",
-            workbenchGateway,
-            workbenchUi);
+                                orders.AddService(
+                                    paymentsApi,
+                                    "Payments API",
+                                    payments => {
+                                        payments.AddStorage(
+                                            "payments-database",
+                                            "Payments Database");
+                                    });
+                            });
+                    });
+
+                topology.AddGroup(
+                    "virtual-actors",
+                    "Virtual Actors",
+                    group => {
+                        group.AddService(
+                            orderingApi,
+                            "Ordering API",
+                            ordering => {
+                                ordering.AddService(
+                                    orderingSilo,
+                                    "Ordering Silo",
+                                    silo => {
+                                        silo.AddStorage(
+                                            "ordering-database",
+                                            "Ordering Database");
+                                    });
+                            });
+                    });
+
+                topology.AddGroup(
+                    "workbench-gateway",
+                    "Workbench Gateway",
+                    group => {
+                        group.AddService(
+                            workbenchGateway,
+                            "Workbench Gateway");
+                    });
+        });
 
         builder.Build().Run();
     }

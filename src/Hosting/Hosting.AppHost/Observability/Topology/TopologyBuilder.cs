@@ -6,8 +6,8 @@ using Workbench.Contracts.Observability.Topology;
 /// <summary>
 /// Builds the observable application topology from Aspire project resources.
 /// </summary>
-internal sealed class WorkbenchTopologyBuilder {
-    private readonly List<WorkbenchTopologyNodeBuilder> children = [];
+internal sealed class TopologyBuilder {
+    private readonly List<TopologyNodeBuilder> children = [];
     private readonly HashSet<string> nodeIds = new(StringComparer.Ordinal);
 
     /// <summary>
@@ -17,17 +17,17 @@ internal sealed class WorkbenchTopologyBuilder {
     /// <param name="displayName">The display name shown to users.</param>
     /// <param name="configure">Configures the nodes contained in the group.</param>
     /// <returns>The current topology builder.</returns>
-    public WorkbenchTopologyBuilder AddGroup(
+    public TopologyBuilder AddGroup(
         string id,
         string displayName,
-        Action<WorkbenchTopologyNodeBuilder> configure) {
+        Action<TopologyNodeBuilder> configure) {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(configure);
 
         RegisterNodeId(id);
 
-        var group = new WorkbenchTopologyNodeBuilder(
+        var group = new TopologyNodeBuilder(
             id,
             displayName,
             TopologyNodeKind.Group,
@@ -42,7 +42,7 @@ internal sealed class WorkbenchTopologyBuilder {
         return this;
     }
 
-    internal IReadOnlyList<WorkbenchTopologyNodeBuilder> Children => children;
+    internal IReadOnlyList<TopologyNodeBuilder> Children => children;
 
     private void RegisterNodeId(string id) {
         if (!nodeIds.Add(id)) {
@@ -55,11 +55,11 @@ internal sealed class WorkbenchTopologyBuilder {
 /// <summary>
 /// Builds a node and its direct dependencies in the observable topology.
 /// </summary>
-internal sealed class WorkbenchTopologyNodeBuilder {
-    private readonly List<WorkbenchTopologyNodeBuilder> children = [];
+internal sealed class TopologyNodeBuilder {
+    private readonly List<TopologyNodeBuilder> children = [];
     private readonly Action<string> registerNodeId;
 
-    internal WorkbenchTopologyNodeBuilder(
+    internal TopologyNodeBuilder(
         string id,
         string displayName,
         TopologyNodeKind kind,
@@ -84,10 +84,10 @@ internal sealed class WorkbenchTopologyNodeBuilder {
     /// <param name="configure">Optionally configures dependencies owned by the service.</param>
     /// <param name="requirement">How the service affects its parent composite health.</param>
     /// <returns>The current node builder.</returns>
-    public WorkbenchTopologyNodeBuilder AddService(
+    public TopologyNodeBuilder AddService(
         IResourceBuilder<ProjectResource> resource,
         string displayName,
-        Action<WorkbenchTopologyNodeBuilder>? configure = null,
+        Action<TopologyNodeBuilder>? configure = null,
         TopologyDependencyRequirement requirement =
             TopologyDependencyRequirement.Required) {
         ArgumentNullException.ThrowIfNull(resource);
@@ -96,7 +96,7 @@ internal sealed class WorkbenchTopologyNodeBuilder {
         string id = resource.Resource.Name;
         registerNodeId(id);
 
-        var service = new WorkbenchTopologyNodeBuilder(
+        var service = new TopologyNodeBuilder(
             id,
             displayName,
             TopologyNodeKind.Service,
@@ -118,7 +118,7 @@ internal sealed class WorkbenchTopologyNodeBuilder {
     /// <param name="displayName">The display name shown to users.</param>
     /// <param name="requirement">How the storage affects its parent composite health.</param>
     /// <returns>The current node builder.</returns>
-    public WorkbenchTopologyNodeBuilder AddStorage(
+    public TopologyNodeBuilder AddStorage(
         string id,
         string displayName,
         TopologyDependencyRequirement requirement =
@@ -127,7 +127,7 @@ internal sealed class WorkbenchTopologyNodeBuilder {
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
         registerNodeId(id);
-        children.Add(new WorkbenchTopologyNodeBuilder(
+        children.Add(new TopologyNodeBuilder(
             id,
             displayName,
             TopologyNodeKind.Storage,
@@ -151,7 +151,7 @@ internal sealed class WorkbenchTopologyNodeBuilder {
 
     internal TopologyDependencyRequirement Requirement { get; }
 
-    internal IReadOnlyList<WorkbenchTopologyNodeBuilder> Children => children;
+    internal IReadOnlyList<TopologyNodeBuilder> Children => children;
 
     internal TopologyNodeDefinition BuildDefinition() {
         return new TopologyNodeDefinition(
