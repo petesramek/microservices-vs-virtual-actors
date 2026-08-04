@@ -17,4 +17,8 @@
 		<PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <ProjectReference Include="..\..\Workbench\Workbench.Contracts\Workbench.Contracts.csproj" />
+	</ItemGroup>
+
 </Project>
