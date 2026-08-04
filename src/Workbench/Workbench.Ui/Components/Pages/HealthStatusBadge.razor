@@ -1,0 +1,35 @@
+@using Workbench.Contracts.Observability.Health
+
+<span class="health-status-badge @GetStatusClass(Status)">
+    <span class="health-status-indicator" aria-hidden="true"></span>
+    <span>@GetStatusLabel(Status)</span>
+</span>
+
+@code {
+    [Parameter]
+    public HealthStatus Status { get; set; }
+
+    private static string GetStatusClass(HealthStatus status)
+    {
+        return status switch
+        {
+            HealthStatus.Healthy => "health-status-healthy",
+            HealthStatus.Degraded => "health-status-degraded",
+            HealthStatus.Unhealthy => "health-status-unhealthy",
+            HealthStatus.Starting => "health-status-starting",
+            _ => "health-status-unknown"
+        };
+    }
+
+    private static string GetStatusLabel(HealthStatus status)
+    {
+        return status switch
+        {
+            HealthStatus.Healthy => "Healthy",
+            HealthStatus.Degraded => "Degraded",
+            HealthStatus.Unhealthy => "Unhealthy",
+            HealthStatus.Starting => "Starting",
+            _ => "Unknown"
+        };
+    }
+}

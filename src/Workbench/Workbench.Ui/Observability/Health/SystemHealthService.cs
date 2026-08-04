@@ -1,12 +1,12 @@
 namespace Workbench.Ui.Observability.Health;
 
+using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Options;
 using Workbench.Contracts.Observability.Health;
 using Workbench.Contracts.Observability.Topology;
-using Workbench.Ui.Observability.Topology;
+using Workbench.Gateway.Observability.Topology;
 
 /// <summary>
 /// Collects application health reports and builds the composite system health snapshot.
@@ -17,7 +17,8 @@ internal sealed class SystemHealthService(
     TopologyHealthCalculator topologyHealthCalculator,
     IOptions<HealthEndpointOptions> healthEndpointOptions,
     TimeProvider timeProvider) {
-    private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
+    private static readonly JsonSerializerOptions SerializerOptions =
+        CreateSerializerOptions();
 
     private readonly IReadOnlyDictionary<string, string> healthEndpoints =
         healthEndpointOptions.Value;
@@ -29,9 +30,7 @@ internal sealed class SystemHealthService(
     /// <returns>The latest system health snapshot.</returns>
     public async Task<TopologySnapshot> GetSnapshotAsync(
         CancellationToken cancellationToken = default) {
-        TopologyDefinition definition =
-            topologyDefinitionProvider.GetDefinition();
-
+        TopologyDefinition definition = topologyDefinitionProvider.Definition;
         DateTimeOffset checkedAtUtc = timeProvider.GetUtcNow();
 
         Task<KeyValuePair<string, CollectedHealth>>[] tasks = healthEndpoints
@@ -51,9 +50,9 @@ internal sealed class SystemHealthService(
         if (!string.IsNullOrWhiteSpace(definition.Root.HealthSource)) {
             observations[definition.Root.HealthSource] = new TopologyNodeHealth(
                 HealthStatus.Healthy,
-                "The Workbench UI is available.",
-                durationMilliseconds: null,
-                checkedAtUtc);
+                checkedAtUtc,
+                null,
+                "The Workbench UI is available.");
         }
 
         foreach ((string source, CollectedHealth collected) in reports) {
@@ -98,18 +97,19 @@ internal sealed class SystemHealthService(
                 entry => entry.Key,
                 entry => new TopologyNodeHealth(
                     entry.Value.Status,
-                    entry.Value.Description,
-                    entry.Value.DurationMilliseconds,
-                    checkedAtUtc),
+                    checkedAtUtc,
+                    TimeSpan.FromMilliseconds(
+                        entry.Value.DurationMilliseconds),
+                    entry.Value.Description),
                 StringComparer.Ordinal);
 
             var serviceHealth = new TopologyNodeHealth(
                 report.Status,
+                checkedAtUtc,
+                TimeSpan.FromMilliseconds(report.DurationMilliseconds),
                 response.IsSuccessStatusCode
                     ? null
-                    : $"The health endpoint returned HTTP {(int)response.StatusCode}.",
-                report.DurationMilliseconds,
-                checkedAtUtc);
+                    : $"The health endpoint returned HTTP {(int)response.StatusCode}.");
 
             return new KeyValuePair<string, CollectedHealth>(
                 healthSource,
@@ -143,9 +143,9 @@ internal sealed class SystemHealthService(
             DateTimeOffset checkedAtUtc) {
         var health = new TopologyNodeHealth(
             HealthStatus.Unhealthy,
-            description,
-            durationMilliseconds: null,
-            checkedAtUtc);
+            checkedAtUtc,
+            null,
+            description);
 
         return new KeyValuePair<string, CollectedHealth>(
             healthSource,
@@ -158,6 +158,7 @@ internal sealed class SystemHealthService(
     private static JsonSerializerOptions CreateSerializerOptions() {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         options.Converters.Add(new JsonStringEnumConverter());
+
         return options;
     }
 

@@ -1,0 +1,94 @@
+@using Workbench.Contracts.Observability.Topology
+@using Workbench.Ui.Observability.Health
+@inject SystemHealthService HealthService
+
+<section class="system-health" aria-labelledby="system-health-title">
+    <header class="system-health-header">
+        <div>
+            <span class="state-kicker">System health</span>
+            <h2 id="system-health-title">Live dependency health</h2>
+        </div>
+
+        <button type="button"
+                class="status-refresh"
+                @onclick="RefreshAsync"
+                disabled="@isLoading">
+            @(isLoading ? "Refreshing..." : "Refresh health")
+        </button>
+    </header>
+
+    @if (isLoading && snapshot is null)
+    {
+        <section class="card state-card running-state" role="status">
+            <strong>Checking system health...</strong>
+            <p>Reading service and storage health across the Workbench topology.</p>
+        </section>
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage) && snapshot is null)
+    {
+        <section class="card status-error-card" role="alert">
+            <strong>System health unavailable.</strong>
+            <span>@errorMessage</span>
+        </section>
+    }
+    else if (snapshot is null)
+    {
+        <section class="card state-card empty-state">
+            <strong>No health snapshot is available.</strong>
+            <p>Refresh health to inspect the current service and storage state.</p>
+        </section>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <section class="card status-error-card" role="alert">
+                <strong>Showing the last available health snapshot.</strong>
+                <span>@errorMessage</span>
+            </section>
+        }
+
+        <div class="system-health-tree">
+            <SystemHealthNode Node="snapshot.Root" IsRoot="true" />
+        </div>
+
+        <p class="system-health-updated">
+            Updated @snapshot.GeneratedAtUtc.ToLocalTime().ToString("HH:mm:ss")
+        </p>
+    }
+</section>
+
+@code {
+    private TopologySnapshot? snapshot;
+    private string? errorMessage;
+    private bool isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (isLoading)
+        {
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            snapshot = await HealthService.GetSnapshotAsync();
+        }
+        catch (Exception exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

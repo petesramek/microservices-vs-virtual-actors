@@ -1,5 +1,4 @@
 using Hosting.AppHost.Observability.Topology;
-using Hosting.AppHost.Resources;
 
 internal static class Program {
     private static void Main(string[] args) {
@@ -101,6 +100,15 @@ internal static class Program {
             workbenchUi,
             topology => {
                 topology.AddGroup(
+                    "workbench",
+                    "Workbench",
+                    group => {
+                        group.AddService(
+                            workbenchGateway,
+                            "Workbench Gateway");
+                    });
+
+                topology.AddGroup(
                     "microservices",
                     "Microservices",
                     group => {
@@ -149,15 +157,6 @@ internal static class Program {
                                             "Ordering Database");
                                     });
                             });
-                    });
-
-                topology.AddGroup(
-                    "workbench-gateway",
-                    "Workbench Gateway",
-                    group => {
-                        group.AddService(
-                            workbenchGateway,
-                            "Workbench Gateway");
                     });
         });
 

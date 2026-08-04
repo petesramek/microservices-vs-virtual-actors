@@ -1,4 +1,3 @@
-
 @page "/"
 @rendermode InteractiveServer
 @inject ScenarioRunnerClient Client
@@ -11,37 +10,7 @@
     </div>
 </section>
 
-<section class="status-strip" aria-label="Backend status">
-    @if (serviceStatus is null && !isLoadingStatus)   {
-        <article class="status-pill status-offline">
-            <span>Gateway</span>
-            <strong>Unknown</strong>
-        </article>
-    } else if (serviceStatus is not null)  {
-        <StatusPill Status="serviceStatus.Gateway" />
-        <StatusPill Status="serviceStatus.Microservices" />
-        <StatusPill Status="serviceStatus.VirtualActors" />
-    }
-    else
-    {
-        <article class="status-pill status-neutral">
-            <span>Backends</span>
-            <strong>Checking...</strong>
-        </article>
-    }
-
-    <button type="button" class="status-refresh" @onclick="LoadStatusAsync" disabled="@isLoadingStatus">
-        @(isLoadingStatus ? "Refreshing..." : "Refresh status")
-    </button>
-</section>
-
-@if (!string.IsNullOrWhiteSpace(statusErrorMessage))
-{
-    <section class="card status-error-card">
-        <strong>Backend status unavailable.</strong>
-        <span>@statusErrorMessage</span>
-    </section>
-}
+<SystemHealthView />
 
 <section class="scenario-dashboard">
     <aside class="scenario-controls">
@@ -213,11 +182,8 @@
     private string architecture = "both";
     private ScenarioFormModel model = ScenarioFormModel.Create(ScenarioKind.SuccessfulOrder);
     private RunScenarioResponse? response;
-    private ServiceStatusResponse? serviceStatus;
     private string? errorMessage;
-    private string? statusErrorMessage;
     private bool isRunning;
-    private bool isLoadingStatus;
     private bool showAdvancedSettings;
     private int currentProgressStep;
     private IReadOnlyList<string> progressSteps = Array.Empty<string>();
@@ -236,31 +202,6 @@
 
             model.Scenario = value;
             model.ResetAdvancedSettings();
-        }
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadStatusAsync();
-    }
-
-    private async Task LoadStatusAsync()
-    {
-        isLoadingStatus = true;
-        statusErrorMessage = null;
-
-        try
-        {
-            serviceStatus = await Client.GetStatusAsync();
-        }
-        catch (Exception exception)
-        {
-            serviceStatus = null;
-            statusErrorMessage = exception.Message;
-        }
-        finally
-        {
-            isLoadingStatus = false;
         }
     }
 
@@ -302,7 +243,6 @@
             lastUiElapsedMilliseconds = stopwatch.ElapsedMilliseconds;
             lastRunCompletedAt = DateTimeOffset.Now;
             currentProgressStep = Math.Max(0, progressSteps.Count - 1);
-            await LoadStatusAsync();
         }
         catch (Exception exception)
         {
@@ -476,7 +416,3 @@
         };
     }
 }
-
-
-
-

@@ -1,0 +1,95 @@
+@using Workbench.Contracts.Observability.Health
+@using Workbench.Contracts.Observability.Topology
+
+<article class="@GetNodeClass()">
+    <header class="system-health-node-header">
+        <div class="system-health-node-title">
+            <span class="system-health-node-kind">@FormatKind(Node.Kind)</span>
+            <strong>@Node.DisplayName</strong>
+        </div>
+
+        <span class="system-health-status" aria-label="Status: @FormatStatus(Node.CompositeStatus)">
+            <span class="system-health-status-indicator" aria-hidden="true"></span>
+            @FormatStatus(Node.CompositeStatus)
+        </span>
+    </header>
+
+    @if (Node.OwnStatus != Node.CompositeStatus)
+    {
+        <p class="system-health-node-own-status">
+            Own status: <strong>@FormatStatus(Node.OwnStatus)</strong>
+        </p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Node.Description))
+    {
+        <p class="system-health-node-description">@Node.Description</p>
+    }
+
+    @if (Node.Children.Count > 0)
+    {
+        <div class="system-health-node-children">
+            @foreach (TopologyNodeSnapshot child in Node.Children)
+            {
+                <div class="system-health-node-branch">
+                    <span class="system-health-node-connector" aria-hidden="true"></span>
+                    <SystemHealthNode Node="child" />
+                </div>
+            }
+        </div>
+    }
+</article>
+
+@code {
+    [Parameter]
+    public required TopologyNodeSnapshot Node { get; set; }
+
+    [Parameter]
+    public bool IsRoot { get; set; }
+
+    private string GetNodeClass()
+    {
+        string rootClass = IsRoot
+            ? " system-health-node-root"
+            : string.Empty;
+
+        return $"system-health-node system-health-node-{GetStatusClass(Node.CompositeStatus)}{rootClass}";
+    }
+
+    private static string FormatKind(TopologyNodeKind kind)
+    {
+        return kind switch
+        {
+            TopologyNodeKind.Group => "Group",
+            TopologyNodeKind.Service => "Service",
+            TopologyNodeKind.Storage => "Storage",
+            _ => kind.ToString()
+        };
+    }
+
+    private static string FormatStatus(HealthStatus status)
+    {
+        return status switch
+        {
+            HealthStatus.Unknown => "Unknown",
+            HealthStatus.Starting => "Starting",
+            HealthStatus.Healthy => "Healthy",
+            HealthStatus.Degraded => "Degraded",
+            HealthStatus.Unhealthy => "Unhealthy",
+            _ => status.ToString()
+        };
+    }
+
+    private static string GetStatusClass(HealthStatus status)
+    {
+        return status switch
+        {
+            HealthStatus.Unknown => "unknown",
+            HealthStatus.Starting => "starting",
+            HealthStatus.Healthy => "healthy",
+            HealthStatus.Degraded => "degraded",
+            HealthStatus.Unhealthy => "unhealthy",
+            _ => "unknown"
+        };
+    }
+}
