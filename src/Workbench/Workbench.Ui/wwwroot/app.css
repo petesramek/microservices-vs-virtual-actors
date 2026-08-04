@@ -644,3 +644,320 @@ select:disabled {
     background: #fef3c7;
     color: #92400e;
 }
+
+/* System health */
+
+.system-health {
+    margin-bottom: 1.5rem;
+}
+
+.system-health-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+    .system-health-header h2 {
+        margin: 0;
+    }
+
+.system-health-tree {
+    min-width: 0;
+}
+
+.system-health-updated {
+    margin: .75rem 0 0;
+    color: #6b7280;
+    font-size: .8rem;
+    text-align: right;
+}
+
+/* Health nodes */
+
+.system-health-node {
+    position: relative;
+    min-width: 0;
+    padding: .85rem;
+    border: 1px solid #e5e7eb;
+    border-left-width: 4px;
+    border-radius: .75rem;
+    background: white;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+}
+
+.system-health-node-root {
+    padding: 1rem;
+    border-left-width: 1px;
+    background: #f8fafc;
+    box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+}
+
+.system-health-node-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+.system-health-node-title {
+    display: grid;
+    gap: .15rem;
+    min-width: 0;
+}
+
+    .system-health-node-title strong {
+        overflow-wrap: anywhere;
+    }
+
+.system-health-node-kind {
+    color: #6b7280;
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.system-health-node-own-status {
+    margin: .55rem 0 0;
+    color: #4b5563;
+    font-size: .78rem;
+}
+
+.system-health-node-description {
+    margin: .55rem 0 0;
+    color: #4b5563;
+    font-size: .82rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+/* Health hierarchy */
+
+.system-health-node-children {
+    display: grid;
+    grid-template-columns: repeat( auto-fit, minmax(min(100%, 230px), 1fr) );
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.system-health-node-branch {
+    position: relative;
+    min-width: 0;
+}
+
+.system-health-node-connector {
+    position: absolute;
+    top: -.65rem;
+    left: 1.25rem;
+    width: 1px;
+    height: .65rem;
+    background: #cbd5e1;
+}
+
+.system-health-node-children .system-health-node {
+    box-shadow: none;
+}
+
+.system-health-node-children .system-health-node-children {
+    grid-template-columns: 1fr;
+}
+
+/* Status shown by SystemHealthNode */
+
+.system-health-status {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    flex: 0 0 auto;
+    padding: .3rem .55rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.system-health-status-indicator {
+    width: .5rem;
+    height: .5rem;
+    border-radius: 999px;
+    background: currentcolor;
+}
+
+/* Healthy */
+
+.system-health-node-healthy {
+    border-left-color: #22c55e;
+}
+
+    .system-health-node-healthy > .system-health-node-header
+    .system-health-status {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+        color: #166534;
+    }
+
+/* Degraded */
+
+.system-health-node-degraded {
+    border-left-color: #f59e0b;
+}
+
+    .system-health-node-degraded > .system-health-node-header
+    .system-health-status {
+        border-color: #fde68a;
+        background: #fffbeb;
+        color: #92400e;
+    }
+
+/* Unhealthy */
+
+.system-health-node-unhealthy {
+    border-left-color: #ef4444;
+}
+
+    .system-health-node-unhealthy > .system-health-node-header
+    .system-health-status {
+        border-color: #fecaca;
+        background: #fef2f2;
+        color: #991b1b;
+    }
+
+/* Starting */
+
+.system-health-node-starting {
+    border-left-color: #3b82f6;
+}
+
+    .system-health-node-starting > .system-health-node-header
+    .system-health-status {
+        border-color: #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    .system-health-node-starting > .system-health-node-header
+    .system-health-status-indicator {
+        animation: system-health-pulse 1.5s ease-in-out infinite;
+    }
+
+/* Unknown */
+
+.system-health-node-unknown {
+    border-left-color: #9ca3af;
+}
+
+    .system-health-node-unknown > .system-health-node-header
+    .system-health-status {
+        border-color: #e5e7eb;
+        background: #f9fafb;
+        color: #4b5563;
+    }
+
+@keyframes system-health-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: .45;
+        transform: scale(.75);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .system-health-node-starting > .system-health-node-header
+    .system-health-status-indicator {
+        animation: none;
+    }
+}
+
+/* Standalone HealthStatusBadge component */
+
+.health-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .55rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.health-status-indicator {
+    width: .5rem;
+    height: .5rem;
+    border-radius: 999px;
+    background: currentcolor;
+}
+
+.health-status-healthy {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.health-status-degraded {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.health-status-unhealthy {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.health-status-starting {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.health-status-unknown {
+    border-color: #e5e7eb;
+    background: #f9fafb;
+    color: #4b5563;
+}
+
+/* Responsive health hierarchy */
+
+@media (max-width: 980px) {
+    .system-health-node-children {
+        grid-template-columns: 1fr;
+    }
+
+    .system-health-node-connector {
+        left: 1rem;
+    }
+}
+
+@media (max-width: 720px) {
+    .system-health-header {
+        display: grid;
+    }
+
+        .system-health-header .status-refresh {
+            width: 100%;
+        }
+
+    .system-health-node-header {
+        display: grid;
+    }
+
+    .system-health-status {
+        justify-self: start;
+    }
+
+    .system-health-updated {
+        text-align: left;
+    }
+}

@@ -8,17 +8,15 @@
             <strong>@Node.DisplayName</strong>
         </div>
 
-        <span class="system-health-status" aria-label="Status: @FormatStatus(Node.CompositeStatus)">
-            <span class="system-health-status-indicator" aria-hidden="true"></span>
-            @FormatStatus(Node.CompositeStatus)
-        </span>
+        <HealthStatusBadge Status="Node.CompositeStatus" />
     </header>
 
     @if (Node.OwnStatus != Node.CompositeStatus)
     {
-        <p class="system-health-node-own-status">
-            Own status: <strong>@FormatStatus(Node.OwnStatus)</strong>
-        </p>
+        <div class="system-health-node-own-status">
+            <span>Own status</span>
+            <HealthStatusBadge Status="Node.OwnStatus" />
+        </div>
     }
 
     @if (!string.IsNullOrWhiteSpace(Node.Description))
@@ -64,19 +62,6 @@
             TopologyNodeKind.Service => "Service",
             TopologyNodeKind.Storage => "Storage",
             _ => kind.ToString()
-        };
-    }
-
-    private static string FormatStatus(HealthStatus status)
-    {
-        return status switch
-        {
-            HealthStatus.Unknown => "Unknown",
-            HealthStatus.Starting => "Starting",
-            HealthStatus.Healthy => "Healthy",
-            HealthStatus.Degraded => "Degraded",
-            HealthStatus.Unhealthy => "Unhealthy",
-            _ => status.ToString()
         };
     }
 

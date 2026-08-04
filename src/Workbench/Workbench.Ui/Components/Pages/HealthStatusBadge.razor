@@ -1,6 +1,7 @@
 @using Workbench.Contracts.Observability.Health
 
-<span class="health-status-badge @GetStatusClass(Status)">
+<span class="health-status-badge @GetStatusClass(Status)"
+      aria-label="Health status: @GetStatusLabel(Status)">
     <span class="health-status-indicator" aria-hidden="true"></span>
     <span>@GetStatusLabel(Status)</span>
 </span>
@@ -13,10 +14,11 @@
     {
         return status switch
         {
+            HealthStatus.Unknown => "health-status-unknown",
+            HealthStatus.Starting => "health-status-starting",
             HealthStatus.Healthy => "health-status-healthy",
             HealthStatus.Degraded => "health-status-degraded",
             HealthStatus.Unhealthy => "health-status-unhealthy",
-            HealthStatus.Starting => "health-status-starting",
             _ => "health-status-unknown"
         };
     }
@@ -25,10 +27,11 @@
     {
         return status switch
         {
+            HealthStatus.Unknown => "Unknown",
+            HealthStatus.Starting => "Starting",
             HealthStatus.Healthy => "Healthy",
             HealthStatus.Degraded => "Degraded",
             HealthStatus.Unhealthy => "Unhealthy",
-            HealthStatus.Starting => "Starting",
             _ => "Unknown"
         };
     }
