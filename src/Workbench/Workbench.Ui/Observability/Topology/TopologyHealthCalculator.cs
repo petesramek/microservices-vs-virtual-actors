@@ -6,7 +6,8 @@ using Workbench.Contracts.Observability.Topology;
 /// <summary>
 /// Builds runtime topology snapshots and propagates dependency health from leaves to top-level nodes.
 /// </summary>
-internal sealed class TopologyHealthCalculator {
+internal sealed class TopologyHealthCalculator
+{
     /// <summary>
     /// Creates a point-in-time topology snapshot from a static definition and direct health observations.
     /// </summary>
@@ -17,7 +18,8 @@ internal sealed class TopologyHealthCalculator {
     public TopologySnapshot Calculate(
         TopologyDefinition definition,
         IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource,
-        DateTimeOffset generatedAtUtc) {
+        DateTimeOffset generatedAtUtc)
+    {
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(healthBySource);
 
@@ -32,7 +34,8 @@ internal sealed class TopologyHealthCalculator {
 
     private static TopologyNodeSnapshot CalculateNode(
         TopologyNodeDefinition definition,
-        IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource) {
+        IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource)
+    {
         TopologyNodeSnapshot[] children = definition.Children
             .Select(child => CalculateNode(child, healthBySource))
             .ToArray();
@@ -60,8 +63,10 @@ internal sealed class TopologyHealthCalculator {
 
     private static TopologyNodeHealth? ResolveOwnHealth(
         TopologyNodeDefinition definition,
-        IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource) {
-        if (definition.HealthSource is null) {
+        IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource)
+    {
+        if (definition.HealthSource is null)
+        {
             return null;
         }
 
@@ -77,50 +82,39 @@ internal sealed class TopologyHealthCalculator {
     private static HealthStatus CalculateCompositeStatus(
         HealthStatus? ownStatus,
         IReadOnlyList<TopologyNodeDefinition> childDefinitions,
-        IReadOnlyList<TopologyNodeSnapshot> childSnapshots) {
-        HealthStatus compositeStatus = ownStatus
-            ?? (childSnapshots.Count > 0
-                ? HealthStatus.Healthy
-                : HealthStatus.Unknown);
+        IReadOnlyList<TopologyNodeSnapshot> childSnapshots)
+    {
+        var statuses = new List<HealthStatus>(
+            childSnapshots.Count + (ownStatus.HasValue ? 1 : 0));
 
-        for (int index = 0; index < childSnapshots.Count; index++) {
-            HealthStatus childStatus = ApplyRequirement(
-                childSnapshots[index].CompositeStatus,
-                childDefinitions[index].Requirement);
-
-            if (GetSeverity(childStatus) > GetSeverity(compositeStatus)) {
-                compositeStatus = childStatus;
-            }
+        if (ownStatus is HealthStatus observedStatus)
+        {
+            statuses.Add(observedStatus);
         }
 
-        return compositeStatus;
+        for (int index = 0; index < childSnapshots.Count; index++)
+        {
+            statuses.Add(ApplyRequirement(
+                childSnapshots[index].CompositeStatus,
+                childDefinitions[index].Requirement));
+        }
+
+        return HealthStatusCalculator.Calculate(statuses);
     }
 
     private static HealthStatus ApplyRequirement(
         HealthStatus status,
-        TopologyDependencyRequirement requirement) {
-        if (requirement != TopologyDependencyRequirement.Optional) {
+        TopologyDependencyRequirement requirement)
+    {
+        if (requirement != TopologyDependencyRequirement.Optional)
+        {
             return status;
         }
 
-        return status switch {
-            HealthStatus.Unhealthy =>
-                HealthStatus.Degraded,
+        return status switch
+        {
+            HealthStatus.Unhealthy => HealthStatus.Degraded,
             _ => status,
-        };
-    }
-
-    private static int GetSeverity(HealthStatus status) {
-        return status switch {
-            HealthStatus.Healthy => 0,
-            HealthStatus.Unknown => 1,
-            HealthStatus.Starting => 2,
-            HealthStatus.Degraded => 3,
-            HealthStatus.Unhealthy => 4,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(status),
-                status,
-                "Unsupported observability health status."),
         };
     }
 }

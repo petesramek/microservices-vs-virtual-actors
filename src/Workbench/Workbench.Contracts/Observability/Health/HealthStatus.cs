@@ -1,31 +1,32 @@
 namespace Workbench.Contracts.Observability.Health;
 
 /// <summary>
-/// Represents the health state of a topology node.
+/// Represents the health state of a topology node or an aggregate of health observations.
 /// </summary>
-public enum HealthStatus {
+public enum HealthStatus
+{
     /// <summary>
-    /// The node health has not yet been determined.
+    /// Health has not yet been determined.
     /// </summary>
     Unknown,
 
     /// <summary>
-    /// The node is starting and is not yet ready.
+    /// Health is still being established and the observed resource is not yet ready.
     /// </summary>
     Starting,
 
     /// <summary>
-    /// The node and its required dependencies are healthy.
+    /// All observed parts are healthy.
     /// </summary>
     Healthy,
 
     /// <summary>
-    /// The node remains available with reduced functionality.
+    /// At least part of the observed system remains available with reduced functionality.
     /// </summary>
     Degraded,
 
     /// <summary>
-    /// The node is unavailable or a required dependency is unhealthy.
+    /// No observed part of the system is available.
     /// </summary>
     Unhealthy,
 }
