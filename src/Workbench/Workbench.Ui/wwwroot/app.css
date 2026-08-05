@@ -647,24 +647,35 @@ select:disabled {
 
 /* System health */
 .system-health {
-    margin-bottom: 1.5rem;
-    padding: 1rem;
+    margin-bottom: 1rem;
+    padding: .7rem;
     background: white;
     border: 1px solid #e5e7eb;
-    border-radius: .85rem;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+    border-radius: .7rem;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
 }
 
 .system-health-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: .75rem;
+    margin-bottom: .55rem;
+}
+
+.system-health-header .state-kicker {
+    margin-bottom: .15rem;
+    font-size: .66rem;
 }
 
 .system-health-header h2 {
     margin: 0;
+    font-size: 1rem;
+}
+
+.system-health-header .status-refresh {
+    padding: .3rem .5rem;
+    font-size: .74rem;
 }
 
 .system-health-tree {
@@ -672,86 +683,95 @@ select:disabled {
 }
 
 .system-health-updated {
-    margin: .75rem 0 0;
+    margin: .45rem 0 0;
     color: #6b7280;
-    font-size: .8rem;
+    font-size: .68rem;
     text-align: right;
 }
 
-/* Health hierarchy */
+/* Compact health hierarchy */
 .system-health-node {
     position: relative;
     min-width: 0;
-    padding: .85rem;
+    padding: .48rem .55rem;
     background: white;
     border: 1px solid #e5e7eb;
-    border-left-width: 4px;
-    border-radius: .75rem;
+    border-left-width: 3px;
+    border-radius: .55rem;
 }
 
 .system-health-node-root {
-    padding: 1rem;
+    padding: .6rem;
     background: #f8fafc;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
 }
 
 .system-health-node-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: .75rem;
+    gap: .45rem;
 }
 
 .system-health-node-title {
     display: grid;
-    gap: .15rem;
+    gap: .05rem;
     min-width: 0;
 }
 
 .system-health-node-title strong {
+    font-size: .82rem;
+    line-height: 1.15;
     overflow-wrap: anywhere;
+}
+
+.system-health-node-root > .system-health-node-header
+    .system-health-node-title strong {
+    font-size: .9rem;
 }
 
 .system-health-node-kind {
     color: #6b7280;
-    font-size: .68rem;
+    font-size: .54rem;
     font-weight: 800;
-    letter-spacing: .06em;
+    letter-spacing: .055em;
+    line-height: 1;
     text-transform: uppercase;
 }
 
 .system-health-node-own-status {
     display: flex;
     align-items: center;
-    gap: .45rem;
-    margin: .55rem 0 0;
+    gap: .35rem;
+    margin: .35rem 0 0;
     color: #4b5563;
-    font-size: .78rem;
+    font-size: .68rem;
 }
 
+/* Kept in the markup for a future expanded view. */
 .system-health-node-description {
-    margin: .55rem 0 0;
-    color: #4b5563;
-    font-size: .82rem;
-    line-height: 1.4;
-    overflow-wrap: anywhere;
+    display: none;
 }
 
 .system-health-node-children {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: .55rem;
     align-items: start;
-    margin-top: 1rem;
-    padding-top: 1rem;
+    margin-top: .55rem;
+    padding-top: .55rem;
     border-top: 1px solid #e5e7eb;
 }
 
 .system-health-node-root > .system-health-node-children {
-    grid-template-columns: minmax(210px, .8fr) minmax(520px, 2fr) minmax(260px, 1fr);
+    grid-template-columns:
+        minmax(170px, .75fr)
+        minmax(500px, 2fr)
+        minmax(220px, 1fr);
 }
 
-.system-health-node[data-node-id="orders-api"] > .system-health-node-children {
+.system-health-node[data-node-id="orders-api"]
+    > .system-health-node-children {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -762,10 +782,10 @@ select:disabled {
 
 .system-health-node-connector {
     position: absolute;
-    top: -.65rem;
-    left: 1.25rem;
+    top: -.4rem;
+    left: .9rem;
     width: 1px;
-    height: .65rem;
+    height: .4rem;
     background: #cbd5e1;
 }
 
@@ -794,19 +814,20 @@ select:disabled {
 .health-status-badge {
     display: inline-flex;
     align-items: center;
-    gap: .4rem;
+    gap: .28rem;
     flex: 0 0 auto;
-    padding: .3rem .55rem;
+    padding: .18rem .38rem;
     border: 1px solid transparent;
     border-radius: 999px;
-    font-size: .75rem;
+    font-size: .64rem;
     font-weight: 800;
+    line-height: 1.15;
     white-space: nowrap;
 }
 
 .health-status-indicator {
-    width: .5rem;
-    height: .5rem;
+    width: .36rem;
+    height: .36rem;
     border-radius: 999px;
     background: currentcolor;
 }
@@ -866,7 +887,7 @@ select:disabled {
 
 @media (max-width: 1180px) {
     .system-health-node-root > .system-health-node-children {
-        grid-template-columns: minmax(210px, .8fr) minmax(460px, 1.7fr);
+        grid-template-columns: minmax(170px, .7fr) minmax(430px, 1.7fr);
     }
 
     .system-health-node-root > .system-health-node-children
@@ -877,7 +898,8 @@ select:disabled {
 
 @media (max-width: 980px) {
     .system-health-node-root > .system-health-node-children,
-    .system-health-node[data-node-id="orders-api"] > .system-health-node-children {
+    .system-health-node[data-node-id="orders-api"]
+        > .system-health-node-children {
         grid-template-columns: 1fr;
     }
 
@@ -887,13 +909,14 @@ select:disabled {
     }
 
     .system-health-node-connector {
-        left: 1rem;
+        left: .75rem;
     }
 }
 
 @media (max-width: 720px) {
     .system-health-header {
         display: grid;
+        align-items: start;
     }
 
     .system-health-header .status-refresh {
@@ -901,11 +924,7 @@ select:disabled {
     }
 
     .system-health-node-header {
-        display: grid;
-    }
-
-    .health-status-badge {
-        justify-self: start;
+        align-items: flex-start;
     }
 
     .system-health-node-own-status {
