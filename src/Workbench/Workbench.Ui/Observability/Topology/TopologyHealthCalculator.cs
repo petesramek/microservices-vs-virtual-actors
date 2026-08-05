@@ -4,7 +4,7 @@ using Workbench.Contracts.Observability.Health;
 using Workbench.Contracts.Observability.Topology;
 
 /// <summary>
-/// Builds runtime topology snapshots and propagates dependency health from leaves to the root.
+/// Builds runtime topology snapshots and propagates dependency health from leaves to top-level nodes.
 /// </summary>
 internal sealed class TopologyHealthCalculator {
     /// <summary>
@@ -21,13 +21,13 @@ internal sealed class TopologyHealthCalculator {
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(healthBySource);
 
-        TopologyNodeSnapshot root = CalculateNode(
-            definition.Root,
-            healthBySource);
+        TopologyNodeSnapshot[] nodes = definition.Nodes
+            .Select(node => CalculateNode(node, healthBySource))
+            .ToArray();
 
         return new TopologySnapshot(
             generatedAtUtc,
-            root);
+            nodes);
     }
 
     private static TopologyNodeSnapshot CalculateNode(
@@ -37,12 +37,12 @@ internal sealed class TopologyHealthCalculator {
             .Select(child => CalculateNode(child, healthBySource))
             .ToArray();
 
-        TopologyNodeHealth ownHealth = ResolveOwnHealth(
+        TopologyNodeHealth? ownHealth = ResolveOwnHealth(
             definition,
             healthBySource);
 
         HealthStatus compositeStatus = CalculateCompositeStatus(
-            ownHealth.Status,
+            ownHealth?.Status,
             definition.Children,
             children);
 
@@ -50,20 +50,19 @@ internal sealed class TopologyHealthCalculator {
             definition.Id,
             definition.DisplayName,
             definition.Kind,
-            ownHealth.Status,
+            ownHealth?.Status,
             compositeStatus,
-            ownHealth.CheckedAtUtc,
-            ownHealth.Duration,
-            ownHealth.Description,
+            ownHealth?.CheckedAtUtc,
+            ownHealth?.Duration,
+            ownHealth?.Description,
             children);
     }
 
-    private static TopologyNodeHealth ResolveOwnHealth(
+    private static TopologyNodeHealth? ResolveOwnHealth(
         TopologyNodeDefinition definition,
         IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource) {
         if (definition.HealthSource is null) {
-            return new TopologyNodeHealth(
-                HealthStatus.Healthy);
+            return null;
         }
 
         return healthBySource.TryGetValue(
@@ -76,10 +75,13 @@ internal sealed class TopologyHealthCalculator {
     }
 
     private static HealthStatus CalculateCompositeStatus(
-        HealthStatus ownStatus,
+        HealthStatus? ownStatus,
         IReadOnlyList<TopologyNodeDefinition> childDefinitions,
         IReadOnlyList<TopologyNodeSnapshot> childSnapshots) {
-        HealthStatus compositeStatus = ownStatus;
+        HealthStatus compositeStatus = ownStatus
+            ?? (childSnapshots.Count > 0
+                ? HealthStatus.Healthy
+                : HealthStatus.Unknown);
 
         for (int index = 0; index < childSnapshots.Count; index++) {
             HealthStatus childStatus = ApplyRequirement(

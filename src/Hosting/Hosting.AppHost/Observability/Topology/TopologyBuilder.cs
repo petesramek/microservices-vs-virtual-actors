@@ -11,7 +11,7 @@ internal sealed class TopologyBuilder {
     private readonly HashSet<string> nodeIds = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Adds a logical group below the topology root.
+    /// Adds a logical group as a top-level topology node.
     /// </summary>
     /// <param name="id">The stable identifier of the group.</param>
     /// <param name="displayName">The display name shown to users.</param>
@@ -38,6 +38,38 @@ internal sealed class TopologyBuilder {
 
         configure(group);
         children.Add(group);
+
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a project service as a top-level topology node.
+    /// </summary>
+    /// <param name="resource">The Aspire project resource.</param>
+    /// <param name="displayName">The display name shown to users.</param>
+    /// <param name="configure">Optionally configures dependencies owned by the service.</param>
+    /// <returns>The current topology builder.</returns>
+    public TopologyBuilder AddService(
+        IResourceBuilder<ProjectResource> resource,
+        string displayName,
+        Action<TopologyNodeBuilder>? configure = null) {
+        ArgumentNullException.ThrowIfNull(resource);
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+
+        string id = resource.Resource.Name;
+        RegisterNodeId(id);
+
+        var service = new TopologyNodeBuilder(
+            id,
+            displayName,
+            TopologyNodeKind.Service,
+            id,
+            resource,
+            TopologyDependencyRequirement.Required,
+            RegisterNodeId);
+
+        configure?.Invoke(service);
+        children.Add(service);
 
         return this;
     }

@@ -31,7 +31,7 @@
             <span>@errorMessage</span>
         </section>
     }
-    else if (snapshot is null)
+    else if (snapshot is null || snapshot.Nodes.Count == 0)
     {
         <section class="card state-card empty-state">
             <strong>No health snapshot is available.</strong>
@@ -49,7 +49,10 @@
         }
 
         <div class="system-health-tree">
-            <SystemHealthNode Node="snapshot.Root" IsRoot="true" />
+            @foreach (TopologyNodeSnapshot node in snapshot.Nodes)
+            {
+                <SystemHealthNode Node="node" IsRoot="true" />
+            }
         </div>
 
         <p class="system-health-updated">

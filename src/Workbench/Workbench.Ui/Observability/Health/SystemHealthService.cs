@@ -47,14 +47,6 @@ internal sealed class SystemHealthService(
         var observations = new Dictionary<string, TopologyNodeHealth>(
             StringComparer.Ordinal);
 
-        if (!string.IsNullOrWhiteSpace(definition.Root.HealthSource)) {
-            observations[definition.Root.HealthSource] = new TopologyNodeHealth(
-                HealthStatus.Healthy,
-                checkedAtUtc,
-                null,
-                "The Workbench UI is available.");
-        }
-
         foreach ((string source, CollectedHealth collected) in reports) {
             observations[source] = collected.ServiceHealth;
 

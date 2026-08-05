@@ -96,17 +96,11 @@ internal static class Program {
             .WaitFor(workbenchGateway);
 
         builder.AddTopology(
-            "Workbench UI",
             workbenchUi,
             topology => {
-                topology.AddGroup(
-                    "workbench",
-                    "Workbench",
-                    group => {
-                        group.AddService(
-                            workbenchGateway,
-                            "Workbench Gateway");
-                    });
+                topology.AddService(
+                    workbenchGateway,
+                    "Workbench Gateway");
 
                 topology.AddGroup(
                     "microservices",
@@ -158,9 +152,8 @@ internal static class Program {
                                     });
                             });
                     });
-        });
+            });
 
         builder.Build().Run();
     }
 }
-

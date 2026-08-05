@@ -11,11 +11,12 @@
         <HealthStatusBadge Status="Node.CompositeStatus" />
     </header>
 
-    @if (Node.OwnStatus != Node.CompositeStatus)
+    @if (Node.OwnStatus is HealthStatus ownStatus
+        && ownStatus != Node.CompositeStatus)
     {
         <div class="system-health-node-own-status">
             <span>Own status</span>
-            <HealthStatusBadge Status="Node.OwnStatus" />
+            <HealthStatusBadge Status="ownStatus" />
         </div>
     }
 

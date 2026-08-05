@@ -21,18 +21,17 @@ internal static class TopologyResourceExtensions {
     /// Registers one topology definition for Aspire grouping and runtime health processing.
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
-    /// <param name="displayName">The display name of the topology root.</param>
-    /// <param name="root">The visual root project resource.</param>
-    /// <param name="configure">Configures the topology below the root resource.</param>
+    /// <param name="topologyProvider">
+    /// The project resource that receives and processes the topology definition.
+    /// </param>
+    /// <param name="configure">Configures the top-level topology nodes.</param>
     /// <returns>The generated neutral topology definition.</returns>
     public static TopologyDefinition AddTopology(
         this IDistributedApplicationBuilder builder,
-        string displayName,
-        IResourceBuilder<ProjectResource> root,
+        IResourceBuilder<ProjectResource> topologyProvider,
         Action<TopologyBuilder> configure) {
         ArgumentNullException.ThrowIfNull(builder);
-        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
-        ArgumentNullException.ThrowIfNull(root);
+        ArgumentNullException.ThrowIfNull(topologyProvider);
         ArgumentNullException.ThrowIfNull(configure);
 
         var topology = new TopologyBuilder();
@@ -40,33 +39,31 @@ internal static class TopologyResourceExtensions {
 
         if (topology.Children.Count == 0) {
             throw new InvalidOperationException(
-                "The topology must contain at least one group.");
+                "The topology must contain at least one top-level node.");
         }
 
-        foreach (TopologyNodeBuilder group in topology.Children) {
-            IResourceBuilder<ProjectResource>[] groupResources = group.Children
-                .SelectMany(child => child.EnumerateProjectResources())
+        foreach (TopologyNodeBuilder node in topology.Children) {
+            if (node.Kind != TopologyNodeKind.Group) {
+                continue;
+            }
+
+            IResourceBuilder<ProjectResource>[] groupResources = node
+                .EnumerateProjectResources()
                 .DistinctBy(resource => resource.Resource.Name)
                 .ToArray();
 
             builder.AddHealthGroup(
-                group.Id,
-                group.DisplayName,
+                node.Id,
+                node.DisplayName,
                 groupResources);
         }
 
         var definition = new TopologyDefinition(
-            new TopologyNodeDefinition(
-                root.Resource.Name,
-                displayName,
-                TopologyNodeKind.Service,
-                root.Resource.Name,
-                TopologyDependencyRequirement.Required,
-                topology.Children
-                    .Select(group => group.BuildDefinition())
-                    .ToArray()));
+            topology.Children
+                .Select(node => node.BuildDefinition())
+                .ToArray());
 
-        root.WithEnvironment(
+        topologyProvider.WithEnvironment(
             TopologyConfigurationName,
             JsonSerializer.Serialize(definition));
 
@@ -77,7 +74,7 @@ internal static class TopologyResourceExtensions {
                 HealthEndpointConfigurationPrefix,
                 resource.Resource.Name);
 
-            root.WithEnvironment(
+            topologyProvider.WithEnvironment(
                 configurationName,
                 ReferenceExpression.Create(
                     $"{resource.GetEndpoint(HttpEndpointName)}{HealthEndpointPath}"));
