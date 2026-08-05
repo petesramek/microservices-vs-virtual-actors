@@ -42,19 +42,15 @@ internal static class TopologyResourceExtensions {
                 "The topology must contain at least one top-level node.");
         }
 
-        foreach (TopologyNodeBuilder node in topology.Children) {
-            if (node.Kind != TopologyNodeKind.Group) {
-                continue;
-            }
-
-            IResourceBuilder<ProjectResource>[] groupResources = node
+        foreach (TopologyNodeBuilder group in EnumerateGroups(topology.Children)) {
+            IResourceBuilder<ProjectResource>[] groupResources = group
                 .EnumerateProjectResources()
                 .DistinctBy(resource => resource.Resource.Name)
                 .ToArray();
 
             builder.AddHealthGroup(
-                node.Id,
-                node.DisplayName,
+                group.Id,
+                group.DisplayName,
                 groupResources);
         }
 
@@ -81,5 +77,18 @@ internal static class TopologyResourceExtensions {
         }
 
         return definition;
+    }
+
+    private static IEnumerable<TopologyNodeBuilder> EnumerateGroups(
+        IEnumerable<TopologyNodeBuilder> nodes) {
+        foreach (TopologyNodeBuilder node in nodes) {
+            if (node.Kind == TopologyNodeKind.Group) {
+                yield return node;
+            }
+
+            foreach (TopologyNodeBuilder group in EnumerateGroups(node.Children)) {
+                yield return group;
+            }
+        }
     }
 }
