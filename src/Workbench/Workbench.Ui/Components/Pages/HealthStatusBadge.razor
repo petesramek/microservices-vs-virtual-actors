@@ -1,9 +1,10 @@
 @using Workbench.Contracts.Observability.Health
 
 <span class="health-status-badge @GetStatusClass(Status)"
-      aria-label="Health status: @GetStatusLabel(Status)">
+      aria-label="Health status: @GetStatusLabel(Status)"
+      title="@GetStatusLabel(Status)">
     <span class="health-status-indicator" aria-hidden="true"></span>
-    <span>@GetStatusLabel(Status)</span>
+    <span class="health-status-text">@GetStatusLabel(Status)</span>
 </span>
 
 @code {

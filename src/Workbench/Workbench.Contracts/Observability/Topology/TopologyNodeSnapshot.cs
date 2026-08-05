@@ -12,8 +12,9 @@ using Workbench.Contracts.Observability.Health;
 /// The health reported directly for the node, or <see langword="null" />
 /// when the node has no independent health source.
 /// </param>
-/// <param name="CompositeStatus">
-/// The health of the node including its required dependencies.
+/// <param name="DependencyStatus">
+/// The aggregate health of the node's direct dependencies, or
+/// <see langword="null" /> when the node has no dependencies.
 /// </param>
 /// <param name="CheckedAtUtc">
 /// The time at which the node health was last checked.
@@ -30,8 +31,29 @@ public sealed record TopologyNodeSnapshot(
     string DisplayName,
     TopologyNodeKind Kind,
     HealthStatus? OwnStatus,
-    HealthStatus CompositeStatus,
+    HealthStatus? DependencyStatus,
     DateTimeOffset? CheckedAtUtc,
     TimeSpan? Duration,
     string? Description,
-    IReadOnlyList<TopologyNodeSnapshot> Children);
+    IReadOnlyList<TopologyNodeSnapshot> Children) {
+    /// <summary>
+    /// Gets the aggregate health of the node and its dependencies.
+    /// </summary>
+    public HealthStatus CompositeStatus => HealthStatusCalculator.Calculate(
+        GetCompositeStatuses(OwnStatus, DependencyStatus));
+
+    private static IReadOnlyCollection<HealthStatus> GetCompositeStatuses(
+        HealthStatus? ownStatus,
+        HealthStatus? dependencyStatus) {
+        return (ownStatus, dependencyStatus) switch {
+            (HealthStatus own, HealthStatus dependencies) =>
+                [own, dependencies],
+            (HealthStatus own, null) =>
+                [own],
+            (null, HealthStatus dependencies) =>
+                [dependencies],
+            (null, null) =>
+                [],
+        };
+    }
+}

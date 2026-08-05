@@ -8,15 +8,14 @@
             <strong>@Node.DisplayName</strong>
         </div>
 
-        <HealthStatusBadge Status="Node.CompositeStatus" />
+        <HealthStatusBadge Status="@GetDisplayedStatus()" />
     </header>
 
-    @if (Node.OwnStatus is HealthStatus ownStatus
-        && ownStatus != Node.CompositeStatus)
+    @if (Node.DependencyStatus is HealthStatus dependencyStatus)
     {
-        <div class="system-health-node-own-status">
-            <span>Own status</span>
-            <HealthStatusBadge Status="ownStatus" />
+        <div class="system-health-node-dependency-status">
+            <span>Dependencies</span>
+            <HealthStatusBadge Status="dependencyStatus" />
         </div>
     }
 
@@ -46,13 +45,20 @@
     [Parameter]
     public bool IsRoot { get; set; }
 
+    private HealthStatus GetDisplayedStatus()
+    {
+        return Node.OwnStatus
+            ?? Node.DependencyStatus
+            ?? HealthStatus.Unknown;
+    }
+
     private string GetNodeClass()
     {
         string rootClass = IsRoot
             ? " system-health-node-root"
             : string.Empty;
 
-        return $"system-health-node system-health-node-{GetStatusClass(Node.CompositeStatus)}{rootClass}";
+        return $"system-health-node system-health-node-{GetStatusClass(GetDisplayedStatus())}{rootClass}";
     }
 
     private static string FormatKind(TopologyNodeKind kind)

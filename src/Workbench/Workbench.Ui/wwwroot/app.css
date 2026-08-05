@@ -708,6 +708,7 @@ select:disabled {
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
+    container-type: inline-size;
     padding: .48rem .55rem;
     background: white;
     border: 1px solid #e5e7eb;
@@ -739,6 +740,10 @@ select:disabled {
     overflow-wrap: anywhere;
 }
 
+.system-health-node-header > .health-status-badge {
+    margin-left: auto;
+}
+
 .system-health-node-root > .system-health-node-header
     .system-health-node-title strong {
     font-size: .88rem;
@@ -753,13 +758,18 @@ select:disabled {
     text-transform: uppercase;
 }
 
-.system-health-node-own-status {
+.system-health-node-dependency-status {
     display: flex;
     align-items: center;
-    gap: .35rem;
+    justify-content: space-between;
+    gap: .45rem;
     margin: .35rem 0 0;
     color: #4b5563;
     font-size: .68rem;
+}
+
+.system-health-node-dependency-status > .health-status-badge {
+    margin-left: auto;
 }
 
 /* Kept in the markup for a future expanded view. */
@@ -844,6 +854,27 @@ select:disabled {
     height: .36rem;
     border-radius: 999px;
     background: currentcolor;
+    flex: 0 0 auto;
+}
+
+.health-status-text {
+    display: inline;
+}
+
+@container (max-width: 13rem) {
+    .health-status-badge {
+        gap: 0;
+        padding: .28rem;
+    }
+
+    .health-status-indicator {
+        width: .48rem;
+        height: .48rem;
+    }
+
+    .health-status-text {
+        display: none;
+    }
 }
 
 .health-status-healthy {
@@ -923,10 +954,6 @@ select:disabled {
         align-items: flex-start;
     }
 
-    .system-health-node-own-status {
-        align-items: flex-start;
-        flex-direction: column;
-    }
 
     .system-health-updated {
         text-align: left;
