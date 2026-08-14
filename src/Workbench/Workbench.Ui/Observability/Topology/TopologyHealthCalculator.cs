@@ -1,13 +1,13 @@
-namespace Workbench.Gateway.Observability.Topology;
+namespace Workbench.Ui.Observability.Topology;
 
-using Workbench.Contracts.Observability.Health;
-using Workbench.Contracts.Observability.Topology;
+using global::Observability.Health;
+using global::Observability.Topology;
+using Observability.Topology;
 
 /// <summary>
 /// Builds runtime topology snapshots and propagates dependency health from leaves to top-level nodes.
 /// </summary>
-internal sealed class TopologyHealthCalculator
-{
+internal sealed class TopologyHealthCalculator {
     /// <summary>
     /// Creates a point-in-time topology snapshot from a static definition and direct health observations.
     /// </summary>
@@ -18,8 +18,7 @@ internal sealed class TopologyHealthCalculator
     public TopologySnapshot Calculate(
         TopologyDefinition definition,
         IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource,
-        DateTimeOffset generatedAtUtc)
-    {
+        DateTimeOffset generatedAtUtc) {
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(healthBySource);
 
@@ -34,8 +33,7 @@ internal sealed class TopologyHealthCalculator
 
     private static TopologyNodeSnapshot CalculateNode(
         TopologyNodeDefinition definition,
-        IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource)
-    {
+        IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource) {
         TopologyNodeSnapshot[] children = definition.Children
             .Select(child => CalculateNode(child, healthBySource))
             .ToArray();
@@ -63,10 +61,8 @@ internal sealed class TopologyHealthCalculator
 
     private static TopologyNodeHealth? ResolveOwnHealth(
         TopologyNodeDefinition definition,
-        IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource)
-    {
-        if (definition.HealthSource is null)
-        {
+        IReadOnlyDictionary<string, TopologyNodeHealth> healthBySource) {
+        if (definition.HealthSource is null) {
             return null;
         }
 
@@ -82,37 +78,31 @@ internal sealed class TopologyHealthCalculator
     private static HealthStatus CalculateCompositeStatus(
         HealthStatus? ownStatus,
         IReadOnlyList<TopologyNodeDefinition> childDefinitions,
-        IReadOnlyList<TopologyNodeSnapshot> childSnapshots)
-    {
+        IReadOnlyList<TopologyNodeSnapshot> childSnapshots) {
         var statuses = new List<HealthStatus>(
             childSnapshots.Count + (ownStatus.HasValue ? 1 : 0));
 
-        if (ownStatus is HealthStatus observedStatus)
-        {
+        if (ownStatus is HealthStatus observedStatus) {
             statuses.Add(observedStatus);
         }
 
-        for (int index = 0; index < childSnapshots.Count; index++)
-        {
+        for (int index = 0; index < childSnapshots.Count; index++) {
             statuses.Add(ApplyRequirement(
                 childSnapshots[index].CompositeStatus,
                 childDefinitions[index].Requirement));
         }
 
-        return HealthStatusCalculator.Calculate(statuses);
+        return HealthStatusEvaluator.Instance.Evaluate(statuses);
     }
 
     private static HealthStatus ApplyRequirement(
         HealthStatus status,
-        TopologyDependencyRequirement requirement)
-    {
-        if (requirement != TopologyDependencyRequirement.Optional)
-        {
+        TopologyDependencyRequirement requirement) {
+        if (requirement != TopologyDependencyRequirement.Optional) {
             return status;
         }
 
-        return status switch
-        {
+        return status switch {
             HealthStatus.Unhealthy => HealthStatus.Degraded,
             _ => status,
         };

@@ -1,10 +1,10 @@
-namespace Workbench.Contracts.Observability.Health;
-
+namespace Observability.Health;
 /// <summary>
 /// Calculates aggregate health from a collection of health observations.
 /// </summary>
-public static class HealthStatusCalculator
-{
+public class HealthStatusEvaluator {
+    public static readonly HealthStatusEvaluator Instance = new();
+
     /// <summary>
     /// Calculates the aggregate health represented by the supplied observations.
     /// </summary>
@@ -17,13 +17,11 @@ public static class HealthStatusCalculator
     /// observed system remains available, or <see cref="HealthStatus.Unhealthy"/>
     /// when no observed part is available.
     /// </returns>
-    public static HealthStatus Calculate(
-        IReadOnlyCollection<HealthStatus> statuses)
-    {
+    public HealthStatus Evaluate(
+        IReadOnlyCollection<HealthStatus> statuses) {
         ArgumentNullException.ThrowIfNull(statuses);
 
-        if (statuses.Count == 0)
-        {
+        if (statuses.Count == 0) {
             return HealthStatus.Unknown;
         }
 
@@ -32,10 +30,8 @@ public static class HealthStatusCalculator
         int unhealthyCount = 0;
         int unknownCount = 0;
 
-        foreach (HealthStatus status in statuses)
-        {
-            switch (status)
-            {
+        foreach (HealthStatus status in statuses) {
+            switch (status) {
                 case HealthStatus.Starting:
                     return HealthStatus.Starting;
 
@@ -63,18 +59,15 @@ public static class HealthStatusCalculator
             }
         }
 
-        if (healthyCount == statuses.Count)
-        {
+        if (healthyCount == statuses.Count) {
             return HealthStatus.Healthy;
         }
 
-        if (healthyCount > 0 || degradedCount > 0)
-        {
+        if (healthyCount > 0 || degradedCount > 0) {
             return HealthStatus.Degraded;
         }
 
-        if (unhealthyCount > 0)
-        {
+        if (unhealthyCount > 0) {
             return HealthStatus.Unhealthy;
         }
 

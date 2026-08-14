@@ -1,4 +1,4 @@
-namespace Ordering.Api.HealthChecks;
+namespace Ordering.Api.Observability.Health;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Orleans.Runtime;

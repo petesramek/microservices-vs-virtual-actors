@@ -1,4 +1,4 @@
-namespace Orders.Api.HealthChecks;
+namespace Orders.Api.Observability.Health;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 

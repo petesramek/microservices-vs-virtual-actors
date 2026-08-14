@@ -1,0 +1,189 @@
+@using global::Observability.Health
+@using global::Observability.Topology.Definitions
+@using global::Observability.Topology.Snapshots
+
+<article class="system-health-node"
+         data-node-id="@Definition.Id"
+         aria-labelledby="@HeadingId">
+    <header class="system-health-node-header">
+        <div class="system-health-node-title">
+            <span class="system-health-node-kind">
+                @FormatKind(Definition.Kind)
+            </span>
+
+            <strong id="@HeadingId">
+                @Definition.DisplayName
+            </strong>
+        </div>
+
+        <HealthStatusBadge Status="@Health" />
+    </header>
+
+    @if (Definition.Kind == TopologyNodeKind.Service)
+    {
+        <div class="system-health-node-facts">
+            <div class="system-health-node-fact">
+                <span>Availability</span>
+
+                <AvailabilityBadge Value="@Availability" />
+            </div>
+        </div>
+    }
+
+    @if (OutgoingEdges.Count > 0)
+    {
+        <section class="system-health-node-dependencies"
+                 aria-labelledby="@DependenciesHeadingId">
+            <header class="system-health-node-dependencies-header">
+                <span id="@DependenciesHeadingId">
+                    Dependencies
+                </span>
+
+                <span class="visually-hidden">
+                    from @Definition.DisplayName
+                </span>
+            </header>
+
+            <ul class="system-health-dependency-list">
+                @foreach (TopologyEdgeDefinition edge in OutgoingEdges)
+                {
+                    if (NodeDefinitions.TryGetValue(
+                            edge.TargetNodeId,
+                            out TopologyNodeDefinition? target))
+                    {
+                        <li>
+                            <SystemHealthDependency
+                                Definition="@edge"
+                                Snapshot="@GetEdgeSnapshot(edge)"
+                                Target="@target" />
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="system-health-dependency-missing"
+                            role="status">
+                            Dependency target
+                            <code>@edge.TargetNodeId</code>
+                            is not defined.
+                        </li>
+                    }
+                }
+            </ul>
+        </section>
+    }
+
+    @if (ShouldShowDescription)
+    {
+        <p class="system-health-node-description">
+            @Snapshot!.Description
+        </p>
+    }
+
+    @if (Snapshot?.CheckedAtUtc is DateTimeOffset checkedAtUtc)
+    {
+        <p class="system-health-node-checked"
+           title="@FormatFullTimestamp(checkedAtUtc)">
+            Checked @FormatTime(checkedAtUtc)
+        </p>
+    }
+</article>
+
+@code {
+    /// <summary>
+    /// Gets or sets the static node definition being rendered.
+    /// </summary>
+    [Parameter]
+    public required TopologyNodeDefinition Definition { get; set; }
+
+    /// <summary>
+    /// Gets or sets the current direct observation for the node.
+    /// </summary>
+    [Parameter]
+    public TopologyNodeSnapshot? Snapshot { get; set; }
+
+    /// <summary>
+    /// Gets or sets the dependency edges originating from this node.
+    /// </summary>
+    [Parameter]
+    public required IReadOnlyList<TopologyEdgeDefinition>
+        OutgoingEdges { get; set; }
+
+    /// <summary>
+    /// Gets or sets edge snapshots indexed by source and target node IDs.
+    /// </summary>
+    [Parameter]
+    public required IReadOnlyDictionary<
+        (string SourceNodeId, string TargetNodeId),
+        TopologyEdgeSnapshot> EdgeSnapshots { get; set; }
+
+    /// <summary>
+    /// Gets or sets node definitions indexed by stable node ID.
+    /// </summary>
+    [Parameter]
+    public required IReadOnlyDictionary<string, TopologyNodeDefinition>
+        NodeDefinitions { get; set; }
+
+    private string HeadingId =>
+        $"system-health-node-{SanitizeHtmlId(Definition.Id)}";
+
+    private string DependenciesHeadingId =>
+        $"{HeadingId}-dependencies";
+
+    private HealthStatus Health =>
+        Snapshot?.Health ?? HealthStatus.Unknown;
+
+    private ResourceAvailability Availability =>
+        Snapshot?.Availability ?? ResourceAvailability.Unknown;
+
+    private bool ShouldShowDescription =>
+        Snapshot is not null &&
+        Snapshot.Health != HealthStatus.Healthy &&
+        !string.IsNullOrWhiteSpace(Snapshot.Description);
+
+    private TopologyEdgeSnapshot? GetEdgeSnapshot(
+        TopologyEdgeDefinition edge)
+    {
+        return EdgeSnapshots.GetValueOrDefault((
+            edge.SourceNodeId,
+            edge.TargetNodeId));
+    }
+
+    private static string FormatKind(TopologyNodeKind kind)
+    {
+        return kind switch
+        {
+            TopologyNodeKind.Service => "Service",
+            TopologyNodeKind.Storage => "Storage",
+            _ => kind.ToString(),
+        };
+    }
+
+    private static string FormatTime(DateTimeOffset value)
+    {
+        return value
+            .ToLocalTime()
+            .ToString("HH:mm:ss");
+    }
+
+    private static string FormatFullTimestamp(DateTimeOffset value)
+    {
+        return value
+            .ToLocalTime()
+            .ToString("yyyy-MM-dd HH:mm:ss zzz");
+    }
+
+    private static string SanitizeHtmlId(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "unknown";
+        }
+
+        return string.Concat(
+            value.Select(character =>
+                char.IsLetterOrDigit(character) ||
+                character is '-' or '_'
+                    ? character
+                    : '-'));
+    }
+}

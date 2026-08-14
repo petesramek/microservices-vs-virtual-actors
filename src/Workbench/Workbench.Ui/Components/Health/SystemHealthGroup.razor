@@ -1,0 +1,139 @@
+@using global::Observability.Health
+@using global::Observability.Topology.Definitions
+@using global::Observability.Topology.Snapshots
+
+<section class="card system-health-group"
+         data-group-id="@Definition.Id"
+         aria-labelledby="@HeadingId">
+    <header class="system-health-group-header">
+        <h3 id="@HeadingId">
+            @Definition.DisplayName
+        </h3>
+
+        <HealthStatusBadge Status="@GroupHealth" />
+    </header>
+
+    @if (Definition.NodeIds.Count == 0)
+    {
+        <p class="system-health-group-empty">
+            No resources are configured for this group.
+        </p>
+    }
+    else
+    {
+        <div class="system-health-group-nodes">
+            @foreach (string nodeId in Definition.NodeIds)
+            {
+                if (NodeDefinitions.TryGetValue(
+                        nodeId,
+                        out TopologyNodeDefinition? nodeDefinition))
+                {
+                    NodeSnapshots.TryGetValue(
+                        nodeId,
+                        out TopologyNodeSnapshot? nodeSnapshot);
+
+                    <SystemHealthNode
+                        Definition="@nodeDefinition"
+                        Snapshot="@nodeSnapshot"
+                        OutgoingEdges="@GetOutgoingEdges(nodeId)"
+                        EdgeSnapshots="@EdgeSnapshots"
+                        NodeDefinitions="@NodeDefinitions" />
+                }
+                else
+                {
+                    <article class="system-health-node system-health-node-missing"
+                             data-node-id="@nodeId"
+                             role="status">
+                        <header class="system-health-node-header">
+                            <div class="system-health-node-title">
+                                <span class="system-health-node-kind">
+                                    Unknown resource
+                                </span>
+
+                                <strong>@nodeId</strong>
+                            </div>
+
+                            <HealthStatusBadge
+                                Status="@HealthStatus.Unknown" />
+                        </header>
+
+                        <p class="system-health-node-description">
+                            The group references a node that is not present
+                            in the topology definition.
+                        </p>
+                    </article>
+                }
+            }
+        </div>
+    }
+</section>
+
+@code {
+    /// <summary>
+    /// Gets or sets the static group definition being rendered.
+    /// </summary>
+    [Parameter]
+    public required TopologyGroupDefinition Definition { get; set; }
+
+    /// <summary>
+    /// Gets or sets the current group health snapshot.
+    /// </summary>
+    [Parameter]
+    public TopologyGroupSnapshot? Snapshot { get; set; }
+
+    /// <summary>
+    /// Gets or sets node definitions indexed by stable node ID.
+    /// </summary>
+    [Parameter]
+    public required IReadOnlyDictionary<string, TopologyNodeDefinition>
+        NodeDefinitions { get; set; }
+
+    /// <summary>
+    /// Gets or sets node snapshots indexed by stable node ID.
+    /// </summary>
+    [Parameter]
+    public required IReadOnlyDictionary<string, TopologyNodeSnapshot>
+        NodeSnapshots { get; set; }
+
+    /// <summary>
+    /// Gets or sets edge definitions grouped by source-node ID.
+    /// </summary>
+    [Parameter]
+    public required ILookup<string, TopologyEdgeDefinition>
+        OutgoingEdgeDefinitions { get; set; }
+
+    /// <summary>
+    /// Gets or sets edge snapshots indexed by source and target node IDs.
+    /// </summary>
+    [Parameter]
+    public required IReadOnlyDictionary<
+        (string SourceNodeId, string TargetNodeId),
+        TopologyEdgeSnapshot> EdgeSnapshots { get; set; }
+
+    private string HeadingId =>
+        $"system-health-group-{SanitizeHtmlId(Definition.Id)}";
+
+    private HealthStatus GroupHealth =>
+        Snapshot?.Health ?? HealthStatus.Unknown;
+
+    private IReadOnlyList<TopologyEdgeDefinition> GetOutgoingEdges(
+        string nodeId)
+    {
+        return OutgoingEdgeDefinitions[nodeId].ToArray();
+    }
+
+    private static string SanitizeHtmlId(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "unknown";
+        }
+
+        return string.Concat(
+            value.Select(character =>
+                char.IsLetterOrDigit(character) ||
+                character is '-' or '_'
+                    ? character
+                    : '-'));
+    }
+}

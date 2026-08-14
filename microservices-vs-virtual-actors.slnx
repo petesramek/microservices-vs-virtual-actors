@@ -4,6 +4,7 @@
     <Project Path="src/Workbench/Workbench.Gateway/Workbench.Gateway.csproj" />
     <Project Path="src/Workbench/Workbench.Ui/Workbench.Ui.csproj" />
   </Folder>
+  <Folder Name="/src/" />
   <Folder Name="/src/Hosting/">
     <Project Path="src/Hosting/Hosting.AppHost/Hosting.AppHost.csproj" Id="4eeba294-4d93-451b-9be0-3fa1f29e3ef5" />
     <Project Path="src/Hosting/Hosting.ServiceDefaults/Hosting.ServiceDefaults.csproj" />
@@ -12,6 +13,10 @@
     <Project Path="src/Microservices/Inventory.Api/Inventory.Api.csproj" />
     <Project Path="src/Microservices/Orders.Api/Orders.Api.csproj" />
     <Project Path="src/Microservices/Payments.Api/Payments.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Observability/">
+    <Project Path="src/Observability/Observability.Health/Observability.Health.csproj" Id="846cb3f2-fbeb-4a93-ad62-a224782d1862" />
+    <Project Path="src/Observability/Observability.Topology/Observability.Topology.csproj" Id="cae034d1-b867-49d9-86ac-3f1f1857152d" />
   </Folder>
   <Folder Name="/src/VirtualActors/">
     <Project Path="src/VirtualActors/Ordering.Api/Ordering.Api.csproj" />
@@ -23,6 +28,7 @@
     <Project Path="tests/Workbench.AcceptanceTests/Workbench.AcceptanceTests.csproj" />
     <Project Path="tests/Workbench.ScenarioRegressionTests/Workbench.ScenarioRegressionTests.csproj" />
   </Folder>
+  <Folder Name="/tests/" />
   <Folder Name="/tests/Microservices.Tests/">
     <Project Path="tests/Microservices.Tests/Microservices.Tests.csproj" />
   </Folder>

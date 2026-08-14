@@ -1,0 +1,25 @@
+@using global::Observability.Health
+
+<span class="health-status-badge @Presentation.CssClass"
+      aria-label="Health status: @Presentation.Label"
+      title="@Presentation.Label">
+    <span class="health-status-indicator" aria-hidden="true"></span>
+    <span class="health-status-text">@Presentation.Label</span>
+</span>
+
+@code {
+    [Parameter]
+    public HealthStatus Status { get; set; }
+
+    private StatusPresentation Presentation => Status switch
+    {
+        HealthStatus.Unknown => new("health-status-badge--unknown", "Unknown"),
+        HealthStatus.Starting => new("health-status-badge--starting", "Starting"),
+        HealthStatus.Healthy => new("health-status-badge--healthy", "Healthy"),
+        HealthStatus.Degraded => new("health-status-badge--degraded", "Degraded"),
+        HealthStatus.Unhealthy => new("health-status-badge--unhealthy", "Unhealthy"),
+        _ => new("health-status-badge--unknown", "Unknown")
+    };
+
+    private readonly record struct StatusPresentation(string CssClass, string Label);
+}

@@ -4,6 +4,7 @@ using Workbench.Gateway.Clients;
 using Workbench.Gateway.Configuration;
 using Workbench.Gateway.Endpoints;
 using Workbench.Gateway.Extensions;
+using Workbench.Gateway.Observability.Health;
 using Workbench.Gateway.Scenarios;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -39,6 +40,15 @@ builder.Services.AddHttpClient<VirtualActorsServiceClient>((services, client) =>
     client.BaseAddress = new Uri(options.VirtualActorsBaseUrl);
 });
 
+// Register caller-specific downstream dependency health checks.
+builder.Services
+    .AddHealthChecks()
+    .AddTypeActivatedCheck<DownstreamEndpointHealthCheck>(
+        "orders-api",
+        DownstreamEndpoint.Microservices)
+    .AddTypeActivatedCheck<DownstreamEndpointHealthCheck>(
+        "ordering-api",
+        DownstreamEndpoint.VirtualActors);
 // Configure gateway services.
 builder.Services.AddSingleton<ServiceStatusClient>();
 builder.Services.AddSingleton<ScenarioRunner>();

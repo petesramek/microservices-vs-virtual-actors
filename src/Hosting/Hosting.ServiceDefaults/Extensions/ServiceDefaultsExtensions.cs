@@ -1,25 +1,23 @@
 namespace Hosting.ServiceDefaults.Extensions;
 
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using global::Observability.Health;
 using Hosting.ServiceDefaults.Observability;
 using Hosting.ServiceDefaults.Telemetry;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using FrameworkHealthCheckOptions = Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
-using ContractHealthEntry = Workbench.Contracts.Observability.Health.HealthEntry;
-using ContractHealthReport = Workbench.Contracts.Observability.Health.HealthResponse;
-using ContractHealthStatus = Workbench.Contracts.Observability.Health.HealthStatus;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FrameworkHealthReport = Microsoft.Extensions.Diagnostics.HealthChecks.HealthReport;
 using FrameworkHealthStatus = Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus;
+using FrameworkHealthCheckResult = Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult;
 
 /// <summary>
 /// Provides shared hosting defaults for application services.
@@ -148,7 +146,7 @@ public static class ServiceDefaultsExtensions {
             .AddHealthChecks()
             .AddCheck(
                 "self",
-                () => HealthCheckResult.Healthy(),
+                () => FrameworkHealthCheckResult.Healthy(),
                 ["live"]);
 
         return builder;
@@ -166,13 +164,13 @@ public static class ServiceDefaultsExtensions {
         if (app.Environment.IsDevelopment()) {
             app.MapHealthChecks(
                 HealthEndpointPath,
-                new HealthCheckOptions {
+                new FrameworkHealthCheckOptions {
                     ResponseWriter = WriteHealthReportAsync,
                 });
 
             app.MapHealthChecks(
                 AlivenessEndpointPath,
-                new HealthCheckOptions {
+                new FrameworkHealthCheckOptions {
                     Predicate = registration =>
                         registration.Tags.Contains("live"),
                 });
@@ -184,12 +182,12 @@ public static class ServiceDefaultsExtensions {
     private static Task WriteHealthReportAsync(
         HttpContext context,
         FrameworkHealthReport report) {
-        ContractHealthReport response = new(
+        HealthReport response = new(
             MapHealthStatus(report.Status),
             ToMilliseconds(report.TotalDuration),
             report.Entries.ToDictionary(
                 entry => entry.Key,
-                entry => new ContractHealthEntry(
+                entry => new HealthEntry(
                     MapHealthStatus(entry.Value.Status),
                     entry.Value.Description,
                     ToMilliseconds(entry.Value.Duration)),
@@ -201,13 +199,13 @@ public static class ServiceDefaultsExtensions {
             context.RequestAborted);
     }
 
-    private static ContractHealthStatus MapHealthStatus(
+    private static HealthStatus MapHealthStatus(
         FrameworkHealthStatus status) {
         return status switch {
-            FrameworkHealthStatus.Healthy => ContractHealthStatus.Healthy,
-            FrameworkHealthStatus.Degraded => ContractHealthStatus.Degraded,
-            FrameworkHealthStatus.Unhealthy => ContractHealthStatus.Unhealthy,
-            _ => ContractHealthStatus.Unknown,
+            FrameworkHealthStatus.Healthy => HealthStatus.Healthy,
+            FrameworkHealthStatus.Degraded => HealthStatus.Degraded,
+            FrameworkHealthStatus.Unhealthy => HealthStatus.Unhealthy,
+            _ => HealthStatus.Unknown,
         };
     }
 

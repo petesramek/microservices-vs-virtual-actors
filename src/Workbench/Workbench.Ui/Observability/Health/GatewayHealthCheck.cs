@@ -1,4 +1,4 @@
-namespace Workbench.Ui.HealthChecks;
+namespace Workbench.Ui.Observability.Health;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 

@@ -1,72 +1,178 @@
 namespace Workbench.Ui.Observability.Health;
 
-using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Workbench.Contracts.Observability.Health;
-using Workbench.Contracts.Observability.Topology;
-using Workbench.Gateway.Observability.Topology;
+using global::Observability.Health;
+using global::Observability.Topology.Definitions;
+using global::Observability.Topology.Evaluation;
+using global::Observability.Topology.Snapshots;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Workbench.Ui.Observability.Topology;
 
 /// <summary>
-/// Collects application health reports and builds the composite system health snapshot.
+/// Collects service availability and detailed health observations and builds
+/// a graph-oriented system health snapshot.
 /// </summary>
 internal sealed class SystemHealthService(
     HttpClient httpClient,
     TopologyDefinitionProvider topologyDefinitionProvider,
-    TopologyHealthCalculator topologyHealthCalculator,
+    GroupHealthEvaluator groupHealthEvaluator,
     IOptions<HealthEndpointOptions> healthEndpointOptions,
+    IConfiguration configuration,
     TimeProvider timeProvider) {
+    private const string AliveEndpointsSectionName =
+        "Observability:AliveEndpoints";
+
     private static readonly JsonSerializerOptions SerializerOptions =
         CreateSerializerOptions();
 
     private readonly IReadOnlyDictionary<string, string> healthEndpoints =
         healthEndpointOptions.Value;
 
+    private readonly IReadOnlyDictionary<string, string> aliveEndpoints =
+        ReadEndpoints(configuration, AliveEndpointsSectionName);
+
     /// <summary>
-    /// Collects the latest health reports and builds the composite topology snapshot.
+    /// Collects the latest service availability and detailed health reports
+    /// and creates a graph snapshot containing direct node, edge, and group
+    /// observations.
     /// </summary>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>The latest system health snapshot.</returns>
+    /// <param name="cancellationToken">
+    /// The token used to cancel the operation.
+    /// </param>
+    /// <returns>The latest graph-oriented system health snapshot.</returns>
     public async Task<TopologySnapshot> GetSnapshotAsync(
         CancellationToken cancellationToken = default) {
         TopologyDefinition definition = topologyDefinitionProvider.Definition;
-        DateTimeOffset checkedAtUtc = timeProvider.GetUtcNow();
+        DateTimeOffset generatedAtUtc = timeProvider.GetUtcNow();
 
-        Task<KeyValuePair<string, CollectedHealth>>[] tasks = healthEndpoints
-            .Select(endpoint => CollectAsync(
-                endpoint.Key,
-                endpoint.Value,
-                checkedAtUtc,
+        TopologyNodeDefinition[] serviceNodes = definition.Nodes
+            .Where(node => node.Kind == TopologyNodeKind.Service)
+            .ToArray();
+
+        Task<ServiceObservation>[] collectionTasks = serviceNodes
+            .Select(node => CollectServiceAsync(
+                node.Id,
+                generatedAtUtc,
                 cancellationToken))
             .ToArray();
 
-        KeyValuePair<string, CollectedHealth>[] reports =
-            await Task.WhenAll(tasks).ConfigureAwait(false);
+        ServiceObservation[] collectedServices = await Task
+            .WhenAll(collectionTasks)
+            .ConfigureAwait(false);
 
-        var observations = new Dictionary<string, TopologyNodeHealth>(
-            StringComparer.Ordinal);
+        IReadOnlyDictionary<string, ServiceObservation> services =
+            collectedServices.ToDictionary(
+                observation => observation.NodeId,
+                StringComparer.Ordinal);
 
-        foreach ((string source, CollectedHealth collected) in reports) {
-            observations[source] = collected.ServiceHealth;
+        TopologyNodeSnapshot[] nodes = definition.Nodes
+            .Select(node => CreateNodeSnapshot(
+                node,
+                services,
+                generatedAtUtc))
+            .ToArray();
 
-            foreach ((string entryName, TopologyNodeHealth entryHealth) in
-                collected.Entries) {
-                observations[entryName] = entryHealth;
-            }
-        }
+        TopologyEdgeSnapshot[] edges = definition.Edges
+            .Select(edge => CreateEdgeSnapshot(
+                edge,
+                services,
+                generatedAtUtc))
+            .ToArray();
 
-        return topologyHealthCalculator.Calculate(
-            definition,
-            observations,
-            checkedAtUtc);
+        TopologyGroupSnapshot[] groups = definition.Groups
+            .Select(group => new TopologyGroupSnapshot(
+                group.Id,
+                groupHealthEvaluator.Evaluate(
+                    group,
+                    nodes)))
+            .ToArray();
+
+        return new TopologySnapshot(
+            generatedAtUtc,
+            nodes,
+            edges,
+            groups);
     }
 
-    private async Task<KeyValuePair<string, CollectedHealth>> CollectAsync(
-        string healthSource,
-        string endpoint,
+    private async Task<ServiceObservation> CollectServiceAsync(
+        string nodeId,
         DateTimeOffset checkedAtUtc,
         CancellationToken cancellationToken) {
+        Task<AvailabilityObservation> availabilityTask =
+            CollectAvailabilityAsync(
+                nodeId,
+                checkedAtUtc,
+                cancellationToken);
+
+        Task<HealthObservation> healthTask = CollectHealthAsync(
+            nodeId,
+            checkedAtUtc,
+            cancellationToken);
+
+        await Task.WhenAll(availabilityTask, healthTask)
+            .ConfigureAwait(false);
+
+        return new ServiceObservation(
+            nodeId,
+            await availabilityTask.ConfigureAwait(false),
+            await healthTask.ConfigureAwait(false));
+    }
+
+    private async Task<AvailabilityObservation> CollectAvailabilityAsync(
+        string nodeId,
+        DateTimeOffset checkedAtUtc,
+        CancellationToken cancellationToken) {
+        if (!aliveEndpoints.TryGetValue(nodeId, out string? endpoint) ||
+            string.IsNullOrWhiteSpace(endpoint)) {
+            return new AvailabilityObservation(
+                ResourceAvailability.Unknown,
+                checkedAtUtc,
+                "The alive endpoint is not configured.");
+        }
+
+        try {
+            using HttpResponseMessage response = await httpClient
+                .GetAsync(endpoint, cancellationToken)
+                .ConfigureAwait(false);
+
+            return response.IsSuccessStatusCode
+                ? new AvailabilityObservation(
+                    ResourceAvailability.Available,
+                    checkedAtUtc,
+                    null)
+                : new AvailabilityObservation(
+                    ResourceAvailability.Unavailable,
+                    checkedAtUtc,
+                    $"The alive endpoint returned HTTP " +
+                    $"{(int)response.StatusCode}.");
+        } catch (OperationCanceledException)
+              when (!cancellationToken.IsCancellationRequested) {
+            return new AvailabilityObservation(
+                ResourceAvailability.Unavailable,
+                checkedAtUtc,
+                "The alive request timed out.");
+        } catch (HttpRequestException) {
+            return new AvailabilityObservation(
+                ResourceAvailability.Unavailable,
+                checkedAtUtc,
+                "The alive endpoint could not be reached.");
+        }
+    }
+
+    private async Task<HealthObservation> CollectHealthAsync(
+        string nodeId,
+        DateTimeOffset checkedAtUtc,
+        CancellationToken cancellationToken) {
+        if (!healthEndpoints.TryGetValue(nodeId, out string? endpoint) ||
+            string.IsNullOrWhiteSpace(endpoint)) {
+            return HealthObservation.Unavailable(
+                checkedAtUtc,
+                "The health endpoint is not configured.");
+        }
+
         try {
             using HttpResponseMessage response = await httpClient
                 .GetAsync(endpoint, cancellationToken)
@@ -79,72 +185,166 @@ internal sealed class SystemHealthService(
                 .ConfigureAwait(false);
 
             if (report is null) {
-                return CreateUnavailableResult(
-                    healthSource,
-                    "The health endpoint returned an empty response.",
-                    checkedAtUtc);
+                return HealthObservation.Unavailable(
+                    checkedAtUtc,
+                    "The health endpoint returned an empty response.");
             }
 
-            var entries = report.Entries.ToDictionary(
-                entry => entry.Key,
-                entry => new TopologyNodeHealth(
-                    entry.Value.Status,
-                    checkedAtUtc,
-                    TimeSpan.FromMilliseconds(
-                        entry.Value.DurationMilliseconds),
-                    entry.Value.Description),
-                StringComparer.Ordinal);
+            IReadOnlyDictionary<string, EntryObservation> entries =
+                report.Entries.ToDictionary(
+                    entry => entry.Key,
+                    entry => new EntryObservation(
+                        entry.Value.Status,
+                        checkedAtUtc,
+                        TimeSpan.FromMilliseconds(
+                            entry.Value.DurationMilliseconds),
+                        entry.Value.Description),
+                    StringComparer.Ordinal);
 
-            var serviceHealth = new TopologyNodeHealth(
+            return new HealthObservation(
                 report.Status,
                 checkedAtUtc,
                 TimeSpan.FromMilliseconds(report.DurationMilliseconds),
                 response.IsSuccessStatusCode
                     ? null
-                    : $"The health endpoint returned HTTP {(int)response.StatusCode}.");
-
-            return new KeyValuePair<string, CollectedHealth>(
-                healthSource,
-                new CollectedHealth(serviceHealth, entries));
-        }
-        catch (OperationCanceledException)
-            when (!cancellationToken.IsCancellationRequested) {
-            return CreateUnavailableResult(
-                healthSource,
-                "The health request timed out.",
-                checkedAtUtc);
-        }
-        catch (HttpRequestException exception) {
-            return CreateUnavailableResult(
-                healthSource,
-                exception.Message,
-                checkedAtUtc);
-        }
-        catch (JsonException exception) {
-            return CreateUnavailableResult(
-                healthSource,
-                exception.Message,
-                checkedAtUtc);
+                    : $"The health endpoint returned HTTP " +
+                      $"{(int)response.StatusCode}.",
+                entries);
+        } catch (OperationCanceledException)
+              when (!cancellationToken.IsCancellationRequested) {
+            return HealthObservation.Unavailable(
+                checkedAtUtc,
+                "The health request timed out.");
+        } catch (HttpRequestException) {
+            return HealthObservation.Unavailable(
+                checkedAtUtc,
+                "The health endpoint could not be reached.");
+        } catch (JsonException) {
+            return HealthObservation.Unavailable(
+                checkedAtUtc,
+                "The health response could not be parsed.");
+        } catch (NotSupportedException) {
+            return HealthObservation.Unavailable(
+                checkedAtUtc,
+                "The health response format is not supported.");
         }
     }
 
-    private static KeyValuePair<string, CollectedHealth>
-        CreateUnavailableResult(
-            string healthSource,
-            string description,
-            DateTimeOffset checkedAtUtc) {
-        var health = new TopologyNodeHealth(
-            HealthStatus.Unhealthy,
-            checkedAtUtc,
-            null,
-            description);
+    private static TopologyNodeSnapshot CreateNodeSnapshot(
+        TopologyNodeDefinition node,
+        IReadOnlyDictionary<string, ServiceObservation> services,
+        DateTimeOffset checkedAtUtc) {
+        ResourceAvailability? availability =
+            node.Kind == TopologyNodeKind.Service
+                ? GetAvailability(node.Id, services)
+                : null;
 
-        return new KeyValuePair<string, CollectedHealth>(
-            healthSource,
-            new CollectedHealth(
-                health,
-                new Dictionary<string, TopologyNodeHealth>(
-                    StringComparer.Ordinal)));
+        if (node.HealthSource is null ||
+            !services.TryGetValue(
+                node.HealthSource.ProviderNodeId,
+                out ServiceObservation? provider)) {
+            return new TopologyNodeSnapshot(
+                node.Id,
+                availability,
+                HealthStatus.Unknown,
+                checkedAtUtc,
+                null,
+                "The node health source is unavailable.");
+        }
+
+        if (!provider.Health.Entries.TryGetValue(
+                node.HealthSource.EntryKey,
+                out EntryObservation? entry)) {
+            return new TopologyNodeSnapshot(
+                node.Id,
+                availability,
+                HealthStatus.Unknown,
+                provider.Health.CheckedAtUtc,
+                null,
+                $"Health entry '{node.HealthSource.EntryKey}' was not " +
+                "reported.");
+        }
+
+        return new TopologyNodeSnapshot(
+            node.Id,
+            availability,
+            entry.Status,
+            entry.CheckedAtUtc,
+            entry.Duration,
+            entry.Description);
+    }
+
+    private static TopologyEdgeSnapshot CreateEdgeSnapshot(
+        TopologyEdgeDefinition edge,
+        IReadOnlyDictionary<string, ServiceObservation> services,
+        DateTimeOffset checkedAtUtc) {
+        if (string.IsNullOrWhiteSpace(edge.HealthEntryKey)) {
+            return new TopologyEdgeSnapshot(
+                edge.SourceNodeId,
+                edge.TargetNodeId,
+                HealthStatus.Unknown,
+                checkedAtUtc,
+                null,
+                "The dependency health entry is not configured.");
+        }
+
+        if (!services.TryGetValue(
+                edge.SourceNodeId,
+                out ServiceObservation? source)) {
+            return new TopologyEdgeSnapshot(
+                edge.SourceNodeId,
+                edge.TargetNodeId,
+                HealthStatus.Unknown,
+                checkedAtUtc,
+                null,
+                "The dependency source health report is unavailable.");
+        }
+
+        if (!source.Health.Entries.TryGetValue(
+                edge.HealthEntryKey,
+                out EntryObservation? entry)) {
+            return new TopologyEdgeSnapshot(
+                edge.SourceNodeId,
+                edge.TargetNodeId,
+                HealthStatus.Unknown,
+                source.Health.CheckedAtUtc,
+                null,
+                $"Health entry '{edge.HealthEntryKey}' was not reported.");
+        }
+
+        return new TopologyEdgeSnapshot(
+            edge.SourceNodeId,
+            edge.TargetNodeId,
+            entry.Status,
+            entry.CheckedAtUtc,
+            entry.Duration,
+            entry.Description);
+    }
+
+    private static ResourceAvailability GetAvailability(
+        string nodeId,
+        IReadOnlyDictionary<string, ServiceObservation> services) {
+        return services.TryGetValue(
+            nodeId,
+            out ServiceObservation? service)
+                ? service.Availability.Availability
+                : ResourceAvailability.Unknown;
+    }
+
+    private static IReadOnlyDictionary<string, string> ReadEndpoints(
+        IConfiguration configuration,
+        string sectionName) {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sectionName);
+
+        return configuration
+            .GetSection(sectionName)
+            .GetChildren()
+            .Where(section => !string.IsNullOrWhiteSpace(section.Value))
+            .ToDictionary(
+                section => section.Key,
+                section => section.Value!,
+                StringComparer.Ordinal);
     }
 
     private static JsonSerializerOptions CreateSerializerOptions() {
@@ -154,7 +354,38 @@ internal sealed class SystemHealthService(
         return options;
     }
 
-    private sealed record CollectedHealth(
-        TopologyNodeHealth ServiceHealth,
-        IReadOnlyDictionary<string, TopologyNodeHealth> Entries);
+    private sealed record ServiceObservation(
+        string NodeId,
+        AvailabilityObservation Availability,
+        HealthObservation Health);
+
+    private sealed record AvailabilityObservation(
+        ResourceAvailability Availability,
+        DateTimeOffset CheckedAtUtc,
+        string? Description);
+
+    private sealed record HealthObservation(
+        HealthStatus Status,
+        DateTimeOffset CheckedAtUtc,
+        TimeSpan? Duration,
+        string? Description,
+        IReadOnlyDictionary<string, EntryObservation> Entries) {
+        public static HealthObservation Unavailable(
+            DateTimeOffset checkedAtUtc,
+            string description) {
+            return new HealthObservation(
+                HealthStatus.Unknown,
+                checkedAtUtc,
+                null,
+                description,
+                new Dictionary<string, EntryObservation>(
+                    StringComparer.Ordinal));
+        }
+    }
+
+    private sealed record EntryObservation(
+        HealthStatus Status,
+        DateTimeOffset CheckedAtUtc,
+        TimeSpan? Duration,
+        string? Description);
 }

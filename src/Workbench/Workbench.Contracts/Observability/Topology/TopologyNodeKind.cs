@@ -1,4 +1,4 @@
-namespace Workbench.Contracts.Observability.Topology;
+namespace Observability.Topology;
 
 /// <summary>
 /// Identifies the role of a node in the observable application topology.

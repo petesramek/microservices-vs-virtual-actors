@@ -1,10 +1,9 @@
-namespace Workbench.Contracts.Observability.Health;
+namespace Observability.Health;
 
 /// <summary>
 /// Represents the health state of a topology node or an aggregate of health observations.
 /// </summary>
-public enum HealthStatus
-{
+public enum HealthStatus {
     /// <summary>
     /// Health has not yet been determined.
     /// </summary>

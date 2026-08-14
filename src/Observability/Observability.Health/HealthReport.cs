@@ -1,5 +1,4 @@
-namespace Workbench.Contracts.Observability.Health;
-
+namespace Observability.Health;
 /// <summary>
 /// Represents the detailed health report of one application.
 /// </summary>

@@ -1,7 +1,8 @@
 using Hosting.ServiceDefaults.Extensions;
-using Workbench.Gateway.Observability.Topology;
 using Workbench.Ui.Components;
-using Workbench.Ui.HealthChecks;
+using Workbench.Ui.Extensions;
+using Workbench.Ui.Observability.Health;
+using Workbench.Ui.Observability.Topology;
 using Workbench.Ui.Services;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);

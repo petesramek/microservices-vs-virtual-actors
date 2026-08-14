@@ -1,5 +1,4 @@
-namespace Workbench.Contracts.Observability.Health;
-
+namespace Observability.Health;
 /// <summary>
 /// Represents the result of one named health check.
 /// </summary>

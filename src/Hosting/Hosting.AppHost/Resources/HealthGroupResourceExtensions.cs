@@ -2,16 +2,14 @@ namespace Hosting.AppHost.Resources;
 
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using global::Observability.Health;
 using Microsoft.Extensions.DependencyInjection;
-using ContractHealthStatus = Workbench.Contracts.Observability.Health.HealthStatus;
 using FrameworkHealthStatus = Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus;
-using Workbench.Contracts.Observability.Health;
 
 /// <summary>
 /// Provides methods for adding health-aggregating visual groups to the Aspire application model.
 /// </summary>
-internal static class HealthGroupResourceExtensions
-{
+internal static class HealthGroupResourceExtensions {
     /// <summary>
     /// Adds a visual resource group whose state is derived from its child project resources.
     /// </summary>
@@ -24,15 +22,13 @@ internal static class HealthGroupResourceExtensions
         this IDistributedApplicationBuilder builder,
         string name,
         string displayName,
-        params IResourceBuilder<ProjectResource>[] children)
-    {
+        params IResourceBuilder<ProjectResource>[] children) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(children);
 
-        if (children.Length == 0)
-        {
+        if (children.Length == 0) {
             throw new ArgumentException(
                 "A health group must contain at least one child resource.",
                 nameof(children));
@@ -45,8 +41,7 @@ internal static class HealthGroupResourceExtensions
 
         IResourceBuilder<HealthGroupResource> resourceBuilder = builder
             .AddResource(resource)
-            .WithInitialState(new CustomResourceSnapshot
-            {
+            .WithInitialState(new CustomResourceSnapshot {
                 ResourceType = displayName,
                 State = CreateStateSnapshot(HealthGroupState.Unknown),
                 Properties =
@@ -57,8 +52,7 @@ internal static class HealthGroupResourceExtensions
                 ],
             })
             .ExcludeFromManifest()
-            .OnInitializeResource((group, context, cancellationToken) =>
-            {
+            .OnInitializeResource((group, context, cancellationToken) => {
                 ResourceNotificationService notificationService = context.Services
                     .GetRequiredService<ResourceNotificationService>();
 
@@ -71,8 +65,7 @@ internal static class HealthGroupResourceExtensions
                 return Task.CompletedTask;
             });
 
-        foreach (IResourceBuilder<ProjectResource> child in children)
-        {
+        foreach (IResourceBuilder<ProjectResource> child in children) {
             child.WithParentRelationship(resource);
         }
 
@@ -83,8 +76,7 @@ internal static class HealthGroupResourceExtensions
         HealthGroupResource group,
         IReadOnlyCollection<IResource> children,
         ResourceNotificationService notificationService,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         HashSet<string> childNames = children
             .Select(child => child.Name)
             .ToHashSet(StringComparer.Ordinal);
@@ -94,10 +86,8 @@ internal static class HealthGroupResourceExtensions
 
         await foreach (ResourceEvent resourceEvent in notificationService
             .WatchAsync(cancellationToken)
-            .ConfigureAwait(false))
-        {
-            if (!childNames.Contains(resourceEvent.Resource.Name))
-            {
+            .ConfigureAwait(false)) {
+            if (!childNames.Contains(resourceEvent.Resource.Name)) {
                 continue;
             }
 
@@ -110,8 +100,7 @@ internal static class HealthGroupResourceExtensions
             await notificationService
                 .PublishUpdateAsync(
                     group,
-                    snapshot => snapshot with
-                    {
+                    snapshot => snapshot with {
                         State = CreateStateSnapshot(state),
                     })
                 .ConfigureAwait(false);
@@ -120,58 +109,50 @@ internal static class HealthGroupResourceExtensions
 
     private static HealthGroupState EvaluateState(
         IReadOnlyCollection<string> childNames,
-        IReadOnlyDictionary<string, CustomResourceSnapshot> childSnapshots)
-    {
-        if (childSnapshots.Count == 0)
-        {
+        IReadOnlyDictionary<string, CustomResourceSnapshot> childSnapshots) {
+        if (childSnapshots.Count == 0) {
             return HealthGroupState.Unknown;
         }
 
-        ContractHealthStatus[] statuses = childNames
+        HealthStatus[] statuses = childNames
             .Select(name => ResolveStatus(name, childSnapshots))
             .ToArray();
 
-        return MapGroupState(HealthStatusCalculator.Calculate(statuses));
+        return MapGroupState(HealthStatusEvaluator.Instance.Evaluate(statuses));
     }
 
-    private static ContractHealthStatus ResolveStatus(
+    private static HealthStatus ResolveStatus(
         string childName,
-        IReadOnlyDictionary<string, CustomResourceSnapshot> childSnapshots)
-    {
+        IReadOnlyDictionary<string, CustomResourceSnapshot> childSnapshots) {
         if (!childSnapshots.TryGetValue(
             childName,
             out CustomResourceSnapshot? snapshot)
-            || IsStarting(snapshot))
-        {
-            return ContractHealthStatus.Starting;
+            || IsStarting(snapshot)) {
+            return HealthStatus.Starting;
         }
 
-        return snapshot.HealthStatus switch
-        {
-            FrameworkHealthStatus.Healthy => ContractHealthStatus.Healthy,
-            FrameworkHealthStatus.Degraded => ContractHealthStatus.Degraded,
-            FrameworkHealthStatus.Unhealthy => ContractHealthStatus.Unhealthy,
-            null => ContractHealthStatus.Unknown,
+        return snapshot.HealthStatus switch {
+            FrameworkHealthStatus.Healthy => HealthStatus.Healthy,
+            FrameworkHealthStatus.Degraded => HealthStatus.Degraded,
+            FrameworkHealthStatus.Unhealthy => HealthStatus.Unhealthy,
+            null => HealthStatus.Unknown,
         };
     }
 
-    private static bool IsStarting(CustomResourceSnapshot snapshot)
-    {
+    private static bool IsStarting(CustomResourceSnapshot snapshot) {
         string? state = snapshot.State?.Text;
 
         return snapshot.HealthStatus is null
             && !KnownResourceStates.TerminalStates.Contains(state);
     }
 
-    private static HealthGroupState MapGroupState(ContractHealthStatus status)
-    {
-        return status switch
-        {
-            ContractHealthStatus.Starting => HealthGroupState.Starting,
-            ContractHealthStatus.Healthy => HealthGroupState.Healthy,
-            ContractHealthStatus.Degraded => HealthGroupState.Degraded,
-            ContractHealthStatus.Unhealthy => HealthGroupState.Unhealthy,
-            ContractHealthStatus.Unknown => HealthGroupState.Unknown,
+    private static HealthGroupState MapGroupState(HealthStatus status) {
+        return status switch {
+            HealthStatus.Starting => HealthGroupState.Starting,
+            HealthStatus.Healthy => HealthGroupState.Healthy,
+            HealthStatus.Degraded => HealthGroupState.Degraded,
+            HealthStatus.Unhealthy => HealthGroupState.Unhealthy,
+            HealthStatus.Unknown => HealthGroupState.Unknown,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(status),
                 status,
@@ -180,10 +161,8 @@ internal static class HealthGroupResourceExtensions
     }
 
     private static ResourceStateSnapshot CreateStateSnapshot(
-        HealthGroupState state)
-    {
-        return state switch
-        {
+        HealthGroupState state) {
+        return state switch {
             HealthGroupState.Starting => new(
                 "Starting",
                 KnownResourceStateStyles.Info),

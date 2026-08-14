@@ -1,10 +1,10 @@
 namespace Hosting.AppHost.Observability.Topology;
 
+using System.Text.Json;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using global::Observability.Topology.Definitions;
 using Hosting.AppHost.Resources;
-using System.Text.Json;
-using Workbench.Contracts.Observability.Topology;
 
 /// <summary>
 /// Provides registration methods for observable application topologies.
@@ -12,19 +12,29 @@ using Workbench.Contracts.Observability.Topology;
 internal static class TopologyResourceExtensions {
     private const string TopologyConfigurationName =
         "Observability__TopologyDefinition";
+
     private const string HealthEndpointConfigurationPrefix =
         "Observability__HealthEndpoints";
+
+    private const string AliveEndpointConfigurationPrefix =
+        "Observability__AliveEndpoints";
+
     private const string HttpEndpointName = "http";
-    private const string HealthEndpointPath = "/health";
 
     /// <summary>
-    /// Registers one topology definition for Aspire grouping and runtime health processing.
+    /// Registers one graph topology for Aspire grouping and Workbench
+    /// observability collection.
     /// </summary>
-    /// <param name="builder">The distributed application builder.</param>
-    /// <param name="topologyProvider">
-    /// The project resource that receives and processes the topology definition.
+    /// <param name="builder">
+    /// The distributed application builder.
     /// </param>
-    /// <param name="configure">Configures the top-level topology nodes.</param>
+    /// <param name="topologyProvider">
+    /// The project resource that receives the serialized topology and
+    /// service endpoint configuration.
+    /// </param>
+    /// <param name="configure">
+    /// Configures topology nodes, dependency edges, and visual groups.
+    /// </param>
     /// <returns>The generated neutral topology definition.</returns>
     public static TopologyDefinition AddTopology(
         this IDistributedApplicationBuilder builder,
@@ -35,60 +45,92 @@ internal static class TopologyResourceExtensions {
         ArgumentNullException.ThrowIfNull(configure);
 
         var topology = new TopologyBuilder();
+
         configure(topology);
 
-        if (topology.Children.Count == 0) {
+        if (topology.Nodes.Count == 0) {
             throw new InvalidOperationException(
-                "The topology must contain at least one top-level node.");
+                "The topology must contain at least one node.");
         }
 
-        foreach (TopologyNodeBuilder group in EnumerateGroups(topology.Children)) {
-            IResourceBuilder<ProjectResource>[] groupResources = group
-                .EnumerateProjectResources()
-                .DistinctBy(resource => resource.Resource.Name)
-                .ToArray();
+        TopologyDefinition definition = topology.Definition;
 
-            builder.AddHealthGroup(
-                group.Id,
-                group.DisplayName,
-                groupResources);
-        }
-
-        var definition = new TopologyDefinition(
-            topology.Children
-                .Select(node => node.BuildDefinition())
-                .ToArray());
+        AddAspireHealthGroups(
+            builder,
+            topology,
+            definition.Groups);
 
         topologyProvider.WithEnvironment(
             TopologyConfigurationName,
             JsonSerializer.Serialize(definition));
 
-        foreach (IResourceBuilder<ProjectResource> resource in
-            topology.ProjectResources) {
-            string configurationName = string.Join(
-                "__",
-                HealthEndpointConfigurationPrefix,
-                resource.Resource.Name);
-
-            topologyProvider.WithEnvironment(
-                configurationName,
-                ReferenceExpression.Create(
-                    $"{resource.GetEndpoint(HttpEndpointName)}{HealthEndpointPath}"));
-        }
+        AddServiceEndpointConfiguration(
+            topologyProvider,
+            topology,
+            definition.Nodes);
 
         return definition;
     }
 
-    private static IEnumerable<TopologyNodeBuilder> EnumerateGroups(
-        IEnumerable<TopologyNodeBuilder> nodes) {
-        foreach (TopologyNodeBuilder node in nodes) {
-            if (node.Kind == TopologyNodeKind.Group) {
-                yield return node;
+    private static void AddAspireHealthGroups(
+        IDistributedApplicationBuilder builder,
+        TopologyBuilder topology,
+        IReadOnlyCollection<TopologyGroupDefinition> groups) {
+        foreach (TopologyGroupDefinition group in groups) {
+            IResourceBuilder<ProjectResource>[] resources = group.NodeIds
+                .Select(topology.TryGetProjectResource)
+                .Where(resource => resource is not null)
+                .Cast<IResourceBuilder<ProjectResource>>()
+                .DistinctBy(
+                    resource => resource.Resource.Name,
+                    StringComparer.Ordinal)
+                .ToArray();
+
+            if (resources.Length == 0) {
+                continue;
             }
 
-            foreach (TopologyNodeBuilder group in EnumerateGroups(node.Children)) {
-                yield return group;
-            }
+            builder.AddHealthGroup(
+                group.Id,
+                group.DisplayName,
+                resources);
         }
+    }
+
+    private static void AddServiceEndpointConfiguration(
+        IResourceBuilder<ProjectResource> topologyProvider,
+        TopologyBuilder topology,
+        IReadOnlyCollection<TopologyNodeDefinition> nodes) {
+        foreach (TopologyNodeDefinition node in nodes) {
+            if (node.Kind != TopologyNodeKind.Service) {
+                continue;
+            }
+
+            IResourceBuilder<ProjectResource> resource =
+                topology.GetProjectResource(node.Id);
+
+            topologyProvider.WithEnvironment(
+                CreateConfigurationName(
+                    HealthEndpointConfigurationPrefix,
+                    node.Id),
+                ReferenceExpression.Create(
+                    $"{resource.GetEndpoint(HttpEndpointName)}/health"));
+
+            topologyProvider.WithEnvironment(
+                CreateConfigurationName(
+                    AliveEndpointConfigurationPrefix,
+                    node.Id),
+                ReferenceExpression.Create(
+                    $"{resource.GetEndpoint(HttpEndpointName)}/alive"));
+        }
+    }
+
+    private static string CreateConfigurationName(
+        string prefix,
+        string nodeId) {
+        return string.Join(
+            "__",
+            prefix,
+            nodeId);
     }
 }

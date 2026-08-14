@@ -1,9 +1,7 @@
 using Hosting.AppHost.Observability.Topology;
 
-internal static class Program
-{
-    private static void Main(string[] args)
-    {
+internal static class Program {
+    private static void Main(string[] args) {
         IDistributedApplicationBuilder builder =
             DistributedApplication.CreateBuilder(args);
 
@@ -48,8 +46,7 @@ internal static class Program
             .AddProject<Projects.Ordering_Silo>("ordering-silo")
             .WithUrlForEndpoint(
                 "http",
-                url =>
-                {
+                url => {
                     url.Url = "/dashboard";
                     url.DisplayText = "Orleans Dashboard";
                 })
@@ -100,83 +97,113 @@ internal static class Program
 
         builder.AddTopology(
             workbenchUi,
-            topology =>
-            {
-                topology.AddGroup(
-                    "workbench",
-                    "Workbench",
-                    group =>
-                    {
-                        group.AddService(
-                            workbenchUi,
-                            "Workbench UI",
-                            ui =>
-                            {
-                                ui.AddService(
-                                    workbenchGateway,
-                                    "Workbench API",
-                                    workbenchApi =>
-                                    {
-                                        workbenchApi.AddGroup(
-                                            "microservices",
-                                            "Microservices",
-                                            microservices =>
-                                            {
-                                                microservices.AddService(
-                                                    ordersApi,
-                                                    "Orders API",
-                                                    orders =>
-                                                    {
-                                                        orders.AddStorage(
-                                                            "orders-database",
-                                                            "Orders Database");
-
-                                                        orders.AddService(
-                                                            inventoryApi,
-                                                            "Inventory API",
-                                                            inventory =>
-                                                            {
-                                                                inventory.AddStorage(
-                                                                    "inventory-database",
-                                                                    "Inventory Database");
-                                                            });
-
-                                                        orders.AddService(
-                                                            paymentsApi,
-                                                            "Payments API",
-                                                            payments =>
-                                                            {
-                                                                payments.AddStorage(
-                                                                    "payments-database",
-                                                                    "Payments Database");
-                                                            });
-                                                    });
-                                            });
-
-                                        workbenchApi.AddGroup(
-                                            "virtual-actors",
-                                            "Virtual Actors",
-                                            virtualActors =>
-                                            {
-                                                virtualActors.AddService(
-                                                    orderingApi,
-                                                    "Ordering API",
-                                                    ordering =>
-                                                    {
-                                                        ordering.AddService(
-                                                            orderingSilo,
-                                                            "Ordering Silo",
-                                                            silo =>
-                                                            {
-                                                                silo.AddStorage(
-                                                                    "ordering-database",
-                                                                    "Ordering Database");
-                                                            });
-                                                    });
-                                            });
-                                    });
-                            });
-                    });
+            topology => {
+                topology
+                    .AddService(
+                        workbenchUi,
+                        "Workbench UI")
+                    .AddService(
+                        workbenchGateway,
+                        "Workbench API")
+                    .AddService(
+                        ordersApi,
+                        "Orders API")
+                    .AddService(
+                        inventoryApi,
+                        "Inventory API")
+                    .AddService(
+                        paymentsApi,
+                        "Payments API")
+                    .AddService(
+                        orderingApi,
+                        "Ordering API")
+                    .AddService(
+                        orderingSilo,
+                        "Ordering Silo")
+                    .AddStorage(
+                        "orders-database",
+                        "Orders Database",
+                        ordersApi,
+                        "orders-database")
+                    .AddStorage(
+                        "inventory-database",
+                        "Inventory Database",
+                        inventoryApi,
+                        "inventory-database")
+                    .AddStorage(
+                        "payments-database",
+                        "Payments Database",
+                        paymentsApi,
+                        "payments-database")
+                    .AddStorage(
+                        "ordering-database",
+                        "Ordering Database",
+                        orderingSilo,
+                        "ordering-database")
+                    .AddDependency(
+                        workbenchUi,
+                        workbenchGateway,
+                        "workbench-gateway")
+                    .AddDependency(
+                        workbenchGateway,
+                        ordersApi,
+                        "orders-api")
+                    .AddDependency(
+                        workbenchGateway,
+                        orderingApi,
+                        "ordering-api")
+                    .AddDependency(
+                        ordersApi,
+                        inventoryApi,
+                        "inventory-api")
+                    .AddDependency(
+                        ordersApi,
+                        paymentsApi,
+                        "payments-api")
+                    .AddDependency(
+                        orderingApi,
+                        orderingSilo,
+                        "orleans-cluster")
+                    .AddDependency(
+                        ordersApi,
+                        "orders-database",
+                        "orders-database")
+                    .AddDependency(
+                        inventoryApi,
+                        "inventory-database",
+                        "inventory-database")
+                    .AddDependency(
+                        paymentsApi,
+                        "payments-database",
+                        "payments-database")
+                    .AddDependency(
+                        orderingSilo,
+                        "ordering-database",
+                        "ordering-database")
+                    .AddGroup(
+                        "workbench",
+                        "Workbench",
+                        workbenchUi,
+                        workbenchGateway)
+                    .AddGroup(
+                        "microservices",
+                        "Microservices",
+                        new[] {
+                            ordersApi.Resource.Name,
+                            inventoryApi.Resource.Name,
+                            paymentsApi.Resource.Name,
+                            "orders-database",
+                            "inventory-database",
+                            "payments-database",
+                        })
+                    .AddGroup(
+                        "virtual-actors",
+                        "Virtual Actors",
+                        new[] {
+                            orderingApi.Resource.Name,
+                            orderingSilo.Resource.Name,
+                            "ordering-database",
+                        });
             });
 
         builder.Build().Run();

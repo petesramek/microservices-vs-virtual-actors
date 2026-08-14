@@ -1,4 +1,4 @@
-namespace Workbench.Contracts.Observability.Topology;
+namespace Observability.Topology;
 
 /// <summary>
 /// Defines how a child node affects the composite health of its parent.

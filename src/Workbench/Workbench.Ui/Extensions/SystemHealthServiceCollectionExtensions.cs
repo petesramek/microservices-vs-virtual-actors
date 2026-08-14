@@ -1,6 +1,7 @@
-namespace Microsoft.Extensions.DependencyInjection;
+namespace Workbench.Ui.Extensions;
 
-using Workbench.Gateway.Observability.Topology;
+using global::Observability.Health;
+using global::Observability.Topology.Evaluation;
 using Workbench.Ui.Observability.Health;
 
 /// <summary>
@@ -11,10 +12,16 @@ internal static class SystemHealthServiceCollectionExtensions {
         TimeSpan.FromSeconds(2);
 
     /// <summary>
-    /// Adds the server-side system health collector.
+    /// Adds the graph-oriented server-side system health collector and its
+    /// dependencies.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The application configuration.</param>
+    /// <param name="services">
+    /// The service collection.
+    /// </param>
+    /// <param name="configuration">
+    /// The application configuration containing service health and alive
+    /// endpoint mappings supplied by AppHost.
+    /// </param>
     /// <returns>The service collection.</returns>
     public static IServiceCollection AddSystemHealth(
         this IServiceCollection services,
@@ -32,7 +39,8 @@ internal static class SystemHealthServiceCollectionExtensions {
             .ValidateOnStart();
 
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<TopologyHealthCalculator>();
+        services.AddSingleton(HealthStatusEvaluator.Instance);
+        services.AddSingleton<GroupHealthEvaluator>();
 
         services.AddHttpClient<SystemHealthService>(client => {
             client.Timeout = HealthRequestTimeout;

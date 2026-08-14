@@ -1,4 +1,4 @@
-namespace Workbench.Contracts.Observability.Topology;
+namespace Observability.Topology;
 
 /// <summary>
 /// Represents a point-in-time view of the observable application topology.

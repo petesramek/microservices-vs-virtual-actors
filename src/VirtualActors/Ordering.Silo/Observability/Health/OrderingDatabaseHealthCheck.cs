@@ -1,4 +1,4 @@
-namespace Ordering.Silo.HealthChecks;
+namespace Ordering.Silo.Observability.Health;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;

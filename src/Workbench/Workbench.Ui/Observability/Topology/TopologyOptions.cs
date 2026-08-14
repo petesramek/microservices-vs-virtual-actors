@@ -1,4 +1,4 @@
-namespace Workbench.Gateway.Observability.Topology;
+namespace Workbench.Ui.Observability.Topology;
 
 /// <summary>
 /// Defines configuration used to load the workbench topology.

@@ -1,0 +1,81 @@
+@using global::Observability.Health
+@using global::Observability.Topology.Definitions
+@using global::Observability.Topology.Snapshots
+
+<div class="system-health-dependency"
+     data-source-node-id="@Definition.SourceNodeId"
+     data-target-node-id="@Definition.TargetNodeId"
+     aria-label="@AccessibleLabel">
+    <span class="system-health-dependency-target">
+        <span class="system-health-dependency-arrow"
+              aria-hidden="true">
+            →
+        </span>
+
+        <span class="system-health-dependency-name">
+            @Target.DisplayName
+        </span>
+
+        <span class="system-health-dependency-requirement">
+            @RequirementLabel
+        </span>
+    </span>
+
+    <HealthStatusBadge Status="@Health" />
+</div>
+
+@if (ShouldShowDescription) {
+    <p class="system-health-dependency-description">
+        @Snapshot!.Description
+    </p>
+}
+
+@code {
+    /// <summary>
+    /// Gets or sets the static dependency-edge definition.
+    /// </summary>
+    [Parameter]
+    public required TopologyEdgeDefinition Definition { get; set; }
+
+    /// <summary>
+    /// Gets or sets the current observation for the dependency edge.
+    /// </summary>
+    [Parameter]
+    public TopologyEdgeSnapshot? Snapshot { get; set; }
+
+    /// <summary>
+    /// Gets or sets the dependency target-node definition.
+    /// </summary>
+    [Parameter]
+    public required TopologyNodeDefinition Target { get; set; }
+
+    private HealthStatus Health =>
+        Snapshot?.Health ?? HealthStatus.Unknown;
+
+    private string RequirementLabel =>
+        Definition.Requirement switch {
+            TopologyDependencyRequirement.Required => "Required",
+            TopologyDependencyRequirement.Optional => "Optional",
+            _ => Definition.Requirement.ToString(),
+        };
+
+    private bool ShouldShowDescription =>
+        Snapshot is not null &&
+        Snapshot.Health != HealthStatus.Healthy &&
+        !string.IsNullOrWhiteSpace(Snapshot.Description);
+
+    private string AccessibleLabel =>
+        $"{RequirementLabel} dependency on {Target.DisplayName}. " +
+        $"Health status: {FormatHealth(Health)}.";
+
+    private static string FormatHealth(HealthStatus health) {
+        return health switch {
+            HealthStatus.Unknown => "Unknown",
+            HealthStatus.Starting => "Starting",
+            HealthStatus.Healthy => "Healthy",
+            HealthStatus.Degraded => "Degraded",
+            HealthStatus.Unhealthy => "Unhealthy",
+            _ => "Unknown",
+        };
+    }
+}

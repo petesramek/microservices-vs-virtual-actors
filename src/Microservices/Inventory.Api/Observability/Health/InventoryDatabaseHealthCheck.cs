@@ -1,4 +1,4 @@
-namespace Inventory.Api.HealthChecks;
+namespace Inventory.Api.Observability.Health;
 
 using Inventory.Api.Data;
 using Microsoft.Extensions.Diagnostics.HealthChecks;

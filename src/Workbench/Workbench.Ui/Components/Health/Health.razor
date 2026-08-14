@@ -1,0 +1,311 @@
+@page "/system-health"
+
+@using global::Observability.Health
+@using global::Observability.Topology.Definitions
+@using global::Observability.Topology.Snapshots
+@using Workbench.Ui.Observability.Health
+@using Workbench.Ui.Observability.Topology
+
+@inject SystemHealthService HealthService
+@inject TopologyDefinitionProvider TopologyProvider
+
+<PageTitle>System Health</PageTitle>
+
+<HeadContent>
+    <link rel="stylesheet" href="health.css" />
+</HeadContent>
+
+<section class="health-page"
+         aria-labelledby="health-page-title">
+    <header class="page-heading health-page-header">
+        <span class="state-kicker">Observability</span>
+        <h2 id="health-page-title">System Health</h2>
+        <p>
+            Review service availability, direct resource health,
+            dependency health, and group health.
+        </p>
+    </header>
+
+    <section class="system-health"
+             aria-labelledby="health-page-title"
+             aria-busy="@isLoading.ToString().ToLowerInvariant()">
+        <header class="system-health-header">
+            <div>
+                <span class="state-kicker">System health</span>
+                <h2>Live dependency health</h2>
+            </div>
+
+            <div class="system-health-actions">
+                @if (snapshot is not null) {
+                    <span class="system-health-updated"
+                          title="@FormatFullTimestamp(snapshot.GeneratedAtUtc)">
+                        Updated @FormatTime(snapshot.GeneratedAtUtc)
+                    </span>
+                }
+
+                <button type="button"
+                        class="status-refresh"
+                        @onclick="RefreshAsync"
+                        disabled="@isLoading">
+                    @(isLoading ? "Refreshing…" : "Refresh")
+                </button>
+            </div>
+        </header>
+
+        @if (isLoading && snapshot is null) {
+            <section class="card state-card running-state"
+                     role="status"
+                     aria-live="polite">
+                <strong>Checking system health…</strong>
+
+                <p>
+                    Collecting service, storage, and dependency observations.
+                </p>
+            </section>
+        } else if (!string.IsNullOrWhiteSpace(errorMessage) &&
+                   snapshot is null) {
+            <section class="card status-error-card"
+                     role="alert">
+                <strong>System health is unavailable.</strong>
+
+                <p>@errorMessage</p>
+            </section>
+        } else if (snapshot is null || snapshot.Nodes.Count == 0) {
+            <section class="card state-card empty-state">
+                <strong>No health snapshot is available.</strong>
+
+                <p>
+                    Refresh to inspect the current system state.
+                </p>
+            </section>
+        } else {
+            @if (!string.IsNullOrWhiteSpace(errorMessage)) {
+                <section class="card status-error-card"
+                         role="alert">
+                    <strong>
+                        Showing the last available snapshot.
+                    </strong>
+
+                    <p>@errorMessage</p>
+                </section>
+            }
+
+            <section class="health-summary"
+                     aria-label="System health summary">
+                <article class="card">
+                    <span>Services available</span>
+
+                    <strong>
+                        @AvailableServiceCount / @ServiceCount
+                    </strong>
+                </article>
+
+                <article class="card">
+                    <span>Healthy resources</span>
+
+                    <strong>
+                        @HealthyNodeCount / @NodeCount
+                    </strong>
+                </article>
+
+                <article class="card">
+                    <span>Resource issues</span>
+
+                    <strong>@ResourceIssueCount</strong>
+                </article>
+
+                <article class="card">
+                    <span>Dependency issues</span>
+
+                    <strong>@DependencyIssueCount</strong>
+                </article>
+            </section>
+
+            @if (UnmonitoredDependencyCount > 0) {
+                <section class="card system-health-warning"
+                         role="status">
+                    <strong>
+                        @FormatUnmonitoredDependencyCount(
+                            UnmonitoredDependencyCount)
+                    </strong>
+
+                    <p>
+                        Dependencies with unknown health are shown separately
+                        from observed operational failures.
+                    </p>
+                </section>
+            }
+
+            <div class="system-health-groups">
+                @foreach (TopologyGroupDefinition group in Definition.Groups) {
+                    GroupSnapshots.TryGetValue(
+                        group.Id,
+                        out TopologyGroupSnapshot? groupSnapshot);
+
+                    <SystemHealthGroup Definition="@group"
+                                       Snapshot="@groupSnapshot"
+                                       NodeDefinitions="@NodeDefinitions"
+                                       NodeSnapshots="@NodeSnapshots"
+                                       OutgoingEdgeDefinitions="@OutgoingEdgeDefinitions"
+                                       EdgeSnapshots="@EdgeSnapshots" />
+                }
+            </div>
+        }
+    </section>
+</section>
+
+@code {
+    private TopologySnapshot? snapshot;
+    private string? errorMessage;
+    private bool isLoading;
+
+    private TopologyDefinition Definition =>
+        TopologyProvider.Definition;
+
+    private IReadOnlyDictionary<string, TopologyNodeDefinition>
+        NodeDefinitions { get; set; } =
+            new Dictionary<string, TopologyNodeDefinition>(
+                StringComparer.Ordinal);
+
+    private IReadOnlyDictionary<string, TopologyNodeSnapshot>
+        NodeSnapshots { get; set; } =
+            new Dictionary<string, TopologyNodeSnapshot>(
+                StringComparer.Ordinal);
+
+    private IReadOnlyDictionary<string, TopologyGroupSnapshot>
+        GroupSnapshots { get; set; } =
+            new Dictionary<string, TopologyGroupSnapshot>(
+                StringComparer.Ordinal);
+
+    private IReadOnlyDictionary<
+        (string SourceNodeId, string TargetNodeId),
+        TopologyEdgeSnapshot> EdgeSnapshots { get; set; } =
+            new Dictionary<
+                (string SourceNodeId, string TargetNodeId),
+                TopologyEdgeSnapshot>();
+
+    private ILookup<string, TopologyEdgeDefinition>
+        OutgoingEdgeDefinitions { get; set; } =
+            Array.Empty<TopologyEdgeDefinition>()
+                .ToLookup(
+                    edge => edge.SourceNodeId,
+                    StringComparer.Ordinal);
+
+    private IReadOnlySet<string> ServiceNodeIds { get; set; } =
+        new HashSet<string>(StringComparer.Ordinal);
+
+    private int ServiceCount =>
+        ServiceNodeIds.Count;
+
+    private int NodeCount =>
+        Definition.Nodes.Count;
+
+    private int AvailableServiceCount =>
+        NodeSnapshots.Values.Count(
+            node =>
+                ServiceNodeIds.Contains(node.Id) &&
+                node.Availability == ResourceAvailability.Available);
+
+    private int HealthyNodeCount =>
+        NodeSnapshots.Values.Count(
+            node => node.Health == HealthStatus.Healthy);
+
+    private int ResourceIssueCount =>
+        NodeSnapshots.Values.Count(
+            node => node.Health is
+                HealthStatus.Degraded or
+                HealthStatus.Unhealthy);
+
+    private int DependencyIssueCount =>
+        EdgeSnapshots.Values.Count(
+            edge => edge.Health is
+                HealthStatus.Degraded or
+                HealthStatus.Unhealthy);
+
+    private int UnmonitoredDependencyCount =>
+        EdgeSnapshots.Values.Count(
+            edge => edge.Health == HealthStatus.Unknown);
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync() {
+        BuildDefinitionIndexes();
+        await RefreshAsync();
+    }
+
+    private void BuildDefinitionIndexes() {
+        NodeDefinitions = Definition.Nodes.ToDictionary(
+            node => node.Id,
+            StringComparer.Ordinal);
+
+        ServiceNodeIds = Definition.Nodes
+            .Where(node => node.Kind == TopologyNodeKind.Service)
+            .Select(node => node.Id)
+            .ToHashSet(StringComparer.Ordinal);
+
+        OutgoingEdgeDefinitions = Definition.Edges.ToLookup(
+            edge => edge.SourceNodeId,
+            StringComparer.Ordinal);
+    }
+
+    private async Task RefreshAsync() {
+        if (isLoading) {
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = null;
+
+        try {
+            TopologySnapshot latestSnapshot =
+                await HealthService.GetSnapshotAsync();
+
+            snapshot = latestSnapshot;
+            BuildSnapshotIndexes(latestSnapshot);
+        } catch (OperationCanceledException) {
+            errorMessage =
+                "The health refresh was canceled.";
+        } catch (Exception) {
+            errorMessage =
+                "The latest system health snapshot could not be loaded.";
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    private void BuildSnapshotIndexes(
+        TopologySnapshot latestSnapshot) {
+        NodeSnapshots = latestSnapshot.Nodes.ToDictionary(
+            node => node.Id,
+            StringComparer.Ordinal);
+
+        GroupSnapshots = latestSnapshot.Groups.ToDictionary(
+            group => group.Id,
+            StringComparer.Ordinal);
+
+        EdgeSnapshots = latestSnapshot.Edges.ToDictionary(
+            edge => (
+                edge.SourceNodeId,
+                edge.TargetNodeId));
+    }
+
+    private static string FormatUnmonitoredDependencyCount(
+        int count) {
+        return count == 1
+            ? "1 dependency is not currently monitored."
+            : $"{count} dependencies are not currently monitored.";
+    }
+
+    private static string FormatTime(
+        DateTimeOffset value) {
+        return value
+            .ToLocalTime()
+            .ToString("HH:mm:ss");
+    }
+
+    private static string FormatFullTimestamp(
+        DateTimeOffset value) {
+        return value
+            .ToLocalTime()
+            .ToString("yyyy-MM-dd HH:mm:ss zzz");
+    }
+}

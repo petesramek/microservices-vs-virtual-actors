@@ -1,17 +1,24 @@
-namespace Workbench.Gateway.Observability.Topology;
+namespace Workbench.Ui.Observability.Topology;
 
 using System.Text.Json;
+using global::Observability.Topology.Definitions;
 using Microsoft.Extensions.Options;
-using Workbench.Contracts.Observability.Topology;
 
 /// <summary>
-/// Provides the topology definition supplied through application configuration.
+/// Provides the graph topology definition supplied through application
+/// configuration.
 /// </summary>
 internal sealed class TopologyDefinitionProvider {
     /// <summary>
-    /// Initializes a new instance of the <see cref="TopologyDefinitionProvider"/> class.
+    /// Initializes a new instance of the
+    /// <see cref="TopologyDefinitionProvider"/> class.
     /// </summary>
-    /// <param name="options">The configured topology options.</param>
+    /// <param name="options">
+    /// The configured topology options.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// The topology definition is missing or cannot be deserialized.
+    /// </exception>
     public TopologyDefinitionProvider(
         IOptions<TopologyOptions> options) {
         ArgumentNullException.ThrowIfNull(options);
@@ -27,7 +34,7 @@ internal sealed class TopologyDefinitionProvider {
     }
 
     /// <summary>
-    /// Gets the configured topology definition.
+    /// Gets the configured graph topology definition.
     /// </summary>
     public TopologyDefinition Definition { get; }
 }

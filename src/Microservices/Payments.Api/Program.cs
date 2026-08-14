@@ -1,9 +1,9 @@
 using Hosting.ServiceDefaults.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Payments.Api.Data;
-using Payments.Api.HealthChecks;
 using Payments.Api.Logging;
 using Payments.Api.Models;
+using Payments.Api.Observability.Health;
 using Workbench.Contracts;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);

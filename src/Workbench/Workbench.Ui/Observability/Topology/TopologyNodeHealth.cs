@@ -1,6 +1,6 @@
-namespace Workbench.Gateway.Observability.Topology;
+namespace Workbench.Ui.Observability.Topology;
 
-using Workbench.Contracts.Observability.Health;
+using global::Observability.Health;
 
 /// <summary>
 /// Represents a direct health observation for a topology node health source.

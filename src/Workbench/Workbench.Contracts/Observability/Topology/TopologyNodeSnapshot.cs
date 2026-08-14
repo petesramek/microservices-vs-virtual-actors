@@ -1,6 +1,6 @@
-namespace Workbench.Contracts.Observability.Topology;
+namespace Observability.Topology;
 
-using Workbench.Contracts.Observability.Health;
+using global::Observability.Health;
 
 /// <summary>
 /// Represents the observed state of a node and its dependencies.
@@ -39,7 +39,7 @@ public sealed record TopologyNodeSnapshot(
     /// <summary>
     /// Gets the aggregate health of the node and its dependencies.
     /// </summary>
-    public HealthStatus CompositeStatus => HealthStatusCalculator.Calculate(
+    public HealthStatus CompositeStatus => HealthStatusEvaluator.Instance.Evaluate(
         GetCompositeStatuses(OwnStatus, DependencyStatus));
 
     private static IReadOnlyCollection<HealthStatus> GetCompositeStatuses(

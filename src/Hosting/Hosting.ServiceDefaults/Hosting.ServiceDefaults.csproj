@@ -18,6 +18,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\Observability\Observability.Health\Observability.Health.csproj" />
+	  <ProjectReference Include="..\..\Observability\Observability.Topology\Observability.Topology.csproj" />
 	  <ProjectReference Include="..\..\Workbench\Workbench.Contracts\Workbench.Contracts.csproj" />
 	</ItemGroup>
 

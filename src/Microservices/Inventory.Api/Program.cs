@@ -1,8 +1,8 @@
 using Hosting.ServiceDefaults.Extensions;
 using Inventory.Api.Data;
-using Inventory.Api.HealthChecks;
 using Inventory.Api.Logging;
 using Inventory.Api.Models;
+using Inventory.Api.Observability.Health;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Workbench.Contracts;

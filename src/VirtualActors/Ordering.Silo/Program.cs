@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ordering.Persistence.Sqlite.Extensions;
-using Ordering.Silo.HealthChecks;
+using Ordering.Silo.Observability.Health;
 using Orleans.Dashboard;
 
 const string ConnectionName = "Default";
