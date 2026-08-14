@@ -212,9 +212,11 @@
 
     private int ResourceIssueCount =>
         NodeSnapshots.Values.Count(
-            node => node.Health is
-                HealthStatus.Degraded or
-                HealthStatus.Unhealthy);
+            node =>
+                node.Availability == ResourceAvailability.Unavailable ||
+                node.Health is
+                    HealthStatus.Degraded or
+                    HealthStatus.Unhealthy);
 
     private int DependencyIssueCount =>
         EdgeSnapshots.Values.Count(

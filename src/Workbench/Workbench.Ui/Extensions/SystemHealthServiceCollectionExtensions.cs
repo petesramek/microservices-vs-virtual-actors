@@ -41,6 +41,7 @@ internal static class SystemHealthServiceCollectionExtensions {
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(HealthStatusEvaluator.Instance);
         services.AddSingleton<GroupHealthEvaluator>();
+        services.AddSingleton<DependencyHealthEvaluator>();
 
         services.AddHttpClient<SystemHealthService>(client => {
             client.Timeout = HealthRequestTimeout;
