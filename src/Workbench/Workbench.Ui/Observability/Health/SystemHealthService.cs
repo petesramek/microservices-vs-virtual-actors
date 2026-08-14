@@ -123,7 +123,7 @@ internal sealed class SystemHealthService(
 
         return new TopologySnapshot(
             generatedAtUtc,
-            nodes,
+            aggregateNodes,
             edges,
             groups);
     }
@@ -265,29 +265,10 @@ internal sealed class SystemHealthService(
         TopologyNodeDefinition node,
         IReadOnlyDictionary<string, ServiceObservation> services,
         DateTimeOffset checkedAtUtc) {
-        ResourceAvailability? availability =
-            node.Kind == TopologyNodeKind.Service
+        ResourceAvailability? availability = node.Kind ==
+            TopologyNodeKind.Service
                 ? GetAvailability(node.Id, services)
                 : null;
-
-        if (node.Kind == TopologyNodeKind.Service &&
-            availability == ResourceAvailability.Unavailable &&
-            node.HealthSource is not null &&
-            string.Equals(
-                node.HealthSource.ProviderNodeId,
-                node.Id,
-                StringComparison.Ordinal)) {
-            ServiceObservation? service = services.GetValueOrDefault(node.Id);
-
-            return new TopologyNodeSnapshot(
-                node.Id,
-                availability,
-                HealthStatus.Unhealthy,
-                service?.Availability.CheckedAtUtc ?? checkedAtUtc,
-                null,
-                service?.Availability.Description ??
-                    "The service is unavailable.");
-        }
 
         if (node.HealthSource is null ||
             !services.TryGetValue(
@@ -311,11 +292,8 @@ internal sealed class SystemHealthService(
                 HealthStatus.Unknown,
                 provider.Health.CheckedAtUtc,
                 null,
-                provider.Health.Entries.Count == 0 &&
-                !string.IsNullOrWhiteSpace(provider.Health.Description)
-                    ? provider.Health.Description
-                    : $"Health entry '{node.HealthSource.EntryKey}' was not " +
-                      "reported.");
+                $"Health entry '{node.HealthSource.EntryKey}' was not " +
+                "reported.");
         }
 
         return new TopologyNodeSnapshot(
