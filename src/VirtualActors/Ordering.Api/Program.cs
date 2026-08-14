@@ -18,7 +18,8 @@ builder.UseOrleansClient(clientBuilder => {
 
 builder.Services
     .AddHealthChecks()
-    .AddCheck<OrleansClusterHealthCheck>("orleans-cluster");
+    //.AddCheck<OrleansClusterHealthCheck>("orleans-cluster")
+    ;
 
 WebApplication app = builder.Build();
 

@@ -6,9 +6,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Observability\Health\" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\Observability\Observability.Health\Observability.Health.csproj" />
   </ItemGroup>
 </Project>

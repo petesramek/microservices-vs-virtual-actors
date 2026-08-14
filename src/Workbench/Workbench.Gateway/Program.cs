@@ -43,8 +43,9 @@ builder.Services.AddHttpClient<VirtualActorsServiceClient>((services, client) =>
 // Register caller-specific downstream dependency health checks.
 builder.Services
     .AddHealthChecks()
-    .AddCheck<GatewayDependencyHealthCheck>("orders-api")
-    .AddCheck<GatewayDependencyHealthCheck>("ordering-api");
+    //.AddCheck<GatewayDependencyHealthCheck>("orders-api")
+    //.AddCheck<GatewayDependencyHealthCheck>("ordering-api")
+    ;
 // Configure gateway services.
 builder.Services.AddSingleton<ServiceStatusClient>();
 builder.Services.AddSingleton<ScenarioRunner>();

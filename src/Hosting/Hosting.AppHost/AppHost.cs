@@ -1,4 +1,6 @@
 using Hosting.AppHost.Observability.Topology;
+using Observability.Topology;
+using Observability.Topology.Definitions;
 
 internal static class Program {
     private static void Main(string[] args) {
@@ -142,28 +144,22 @@ internal static class Program {
                         "ordering-database")
                     .AddDependency(
                         workbenchUi,
-                        workbenchGateway,
-                        "workbench-gateway")
+                        workbenchGateway)
                     .AddDependency(
                         workbenchGateway,
-                        ordersApi,
-                        "orders-api")
+                        ordersApi)
                     .AddDependency(
                         workbenchGateway,
-                        orderingApi,
-                        "ordering-api")
+                        orderingApi)
                     .AddDependency(
                         ordersApi,
-                        inventoryApi,
-                        "inventory-api")
+                        inventoryApi)
                     .AddDependency(
                         ordersApi,
-                        paymentsApi,
-                        "payments-api")
+                        paymentsApi)
                     .AddDependency(
                         orderingApi,
-                        orderingSilo,
-                        "orleans-cluster")
+                        orderingSilo)
                     .AddDependency(
                         ordersApi,
                         "orders-database",

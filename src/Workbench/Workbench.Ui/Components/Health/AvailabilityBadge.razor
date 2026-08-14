@@ -1,14 +1,31 @@
 @using global::Observability.Topology.Snapshots
 
 <span class="availability-badge @Presentation.CssClass"
-      role="status"
       aria-label="Availability: @Presentation.Label"
-      title="@Presentation.Label">
+      title="@Presentation.Description">
     <span class="availability-indicator" aria-hidden="true"></span>
     <span class="availability-text">@Presentation.Label</span>
 </span>
 
 @code {
+    private static readonly AvailabilityPresentation AvailablePresentation =
+        new(
+            "availability-available",
+            "Online",
+            "The service is reachable.");
+
+    private static readonly AvailabilityPresentation UnavailablePresentation =
+        new(
+            "availability-unavailable",
+            "Down",
+            "The service is not reachable.");
+
+    private static readonly AvailabilityPresentation UnknownPresentation =
+        new(
+            "availability-unknown",
+            "Unknown",
+            "No current availability observation is available.");
+
     /// <summary>
     /// Gets or sets the resource availability displayed by the badge.
     /// </summary>
@@ -17,24 +34,14 @@
 
     private AvailabilityPresentation Presentation => Value switch
     {
-        ResourceAvailability.Available => new(
-            "availability-badge--available",
-            "Available"),
-
-        ResourceAvailability.Unavailable => new(
-            "availability-badge--unavailable",
-            "Unavailable"),
-
-        ResourceAvailability.Unknown => new(
-            "availability-badge--unknown",
-            "Unknown"),
-
-        _ => new(
-            "availability-badge--unknown",
-            "Unknown")
+        ResourceAvailability.Available => AvailablePresentation,
+        ResourceAvailability.Unavailable => UnavailablePresentation,
+        ResourceAvailability.Unknown => UnknownPresentation,
+        _ => UnknownPresentation,
     };
 
     private readonly record struct AvailabilityPresentation(
         string CssClass,
-        string Label);
+        string Label,
+        string Description);
 }

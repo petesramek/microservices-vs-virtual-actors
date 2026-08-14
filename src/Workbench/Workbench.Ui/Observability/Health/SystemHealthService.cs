@@ -18,6 +18,7 @@ using Workbench.Ui.Observability.Topology;
 internal sealed class SystemHealthService(
     HttpClient httpClient,
     TopologyDefinitionProvider topologyDefinitionProvider,
+    DependencyHealthEvaluator dependencyHealthEvaluator,
     GroupHealthEvaluator groupHealthEvaluator,
     IOptions<HealthEndpointOptions> healthEndpointOptions,
     IConfiguration configuration,
@@ -75,11 +76,41 @@ internal sealed class SystemHealthService(
                 generatedAtUtc))
             .ToArray();
 
+        IReadOnlyDictionary<string, TopologyNodeDefinition>
+            nodeDefinitionsById = definition.Nodes.ToDictionary(
+                node => node.Id,
+                StringComparer.Ordinal);
+
+        IReadOnlyDictionary<string, TopologyNodeSnapshot> nodeSnapshotsById =
+            nodes.ToDictionary(
+                node => node.Id,
+                StringComparer.Ordinal);
+
         TopologyEdgeSnapshot[] edges = definition.Edges
             .Select(edge => CreateEdgeSnapshot(
                 edge,
                 services,
+                nodeDefinitionsById,
+                nodeSnapshotsById,
                 generatedAtUtc))
+            .ToArray();
+
+        ILookup<string, TopologyEdgeDefinition> edgeDefinitionsBySource =
+            definition.Edges.ToLookup(
+                edge => edge.SourceNodeId,
+                StringComparer.Ordinal);
+
+        ILookup<string, TopologyEdgeSnapshot> edgeSnapshotsBySource =
+            edges.ToLookup(
+                edge => edge.SourceNodeId,
+                StringComparer.Ordinal);
+
+        TopologyNodeSnapshot[] aggregateNodes = nodes
+            .Select(node => CreateAggregateNodeSnapshot(
+                node,
+                edgeDefinitionsBySource[node.Id].ToArray(),
+                edgeSnapshotsBySource[node.Id].ToArray(),
+                dependencyHealthEvaluator))
             .ToArray();
 
         TopologyGroupSnapshot[] groups = definition.Groups
@@ -87,7 +118,7 @@ internal sealed class SystemHealthService(
                 group.Id,
                 groupHealthEvaluator.Evaluate(
                     group,
-                    nodes)))
+                    aggregateNodes)))
             .ToArray();
 
         return new TopologySnapshot(
@@ -239,6 +270,25 @@ internal sealed class SystemHealthService(
                 ? GetAvailability(node.Id, services)
                 : null;
 
+        if (node.Kind == TopologyNodeKind.Service &&
+            availability == ResourceAvailability.Unavailable &&
+            node.HealthSource is not null &&
+            string.Equals(
+                node.HealthSource.ProviderNodeId,
+                node.Id,
+                StringComparison.Ordinal)) {
+            ServiceObservation? service = services.GetValueOrDefault(node.Id);
+
+            return new TopologyNodeSnapshot(
+                node.Id,
+                availability,
+                HealthStatus.Unhealthy,
+                service?.Availability.CheckedAtUtc ?? checkedAtUtc,
+                null,
+                service?.Availability.Description ??
+                    "The service is unavailable.");
+        }
+
         if (node.HealthSource is null ||
             !services.TryGetValue(
                 node.HealthSource.ProviderNodeId,
@@ -261,8 +311,11 @@ internal sealed class SystemHealthService(
                 HealthStatus.Unknown,
                 provider.Health.CheckedAtUtc,
                 null,
-                $"Health entry '{node.HealthSource.EntryKey}' was not " +
-                "reported.");
+                provider.Health.Entries.Count == 0 &&
+                !string.IsNullOrWhiteSpace(provider.Health.Description)
+                    ? provider.Health.Description
+                    : $"Health entry '{node.HealthSource.EntryKey}' was not " +
+                      "reported.");
         }
 
         return new TopologyNodeSnapshot(
@@ -277,17 +330,59 @@ internal sealed class SystemHealthService(
     private static TopologyEdgeSnapshot CreateEdgeSnapshot(
         TopologyEdgeDefinition edge,
         IReadOnlyDictionary<string, ServiceObservation> services,
+        IReadOnlyDictionary<string, TopologyNodeDefinition>
+            nodeDefinitionsById,
+        IReadOnlyDictionary<string, TopologyNodeSnapshot>
+            nodeSnapshotsById,
         DateTimeOffset checkedAtUtc) {
-        if (string.IsNullOrWhiteSpace(edge.HealthEntryKey)) {
+        if (!string.IsNullOrWhiteSpace(edge.HealthEntryKey)) {
+            return CreateReportedEdgeSnapshot(
+                edge,
+                services,
+                checkedAtUtc);
+        }
+
+        if (!nodeDefinitionsById.TryGetValue(
+                edge.TargetNodeId,
+                out TopologyNodeDefinition? targetDefinition) ||
+            targetDefinition.Kind != TopologyNodeKind.Service ||
+            !nodeSnapshotsById.TryGetValue(
+                edge.TargetNodeId,
+                out TopologyNodeSnapshot? targetSnapshot)) {
             return new TopologyEdgeSnapshot(
                 edge.SourceNodeId,
                 edge.TargetNodeId,
                 HealthStatus.Unknown,
                 checkedAtUtc,
                 null,
-                "The dependency health entry is not configured.");
+                "No current target service observation is available.");
         }
 
+        HealthStatus health = targetSnapshot.Availability switch {
+            ResourceAvailability.Unavailable => HealthStatus.Unhealthy,
+            ResourceAvailability.Unknown => HealthStatus.Unknown,
+            ResourceAvailability.Available => targetSnapshot.Health,
+            _ => HealthStatus.Unknown,
+        };
+
+        string? description = targetSnapshot.Availability ==
+            ResourceAvailability.Unavailable
+                ? "The target service is unavailable."
+                : targetSnapshot.Description;
+
+        return new TopologyEdgeSnapshot(
+            edge.SourceNodeId,
+            edge.TargetNodeId,
+            health,
+            targetSnapshot.CheckedAtUtc,
+            targetSnapshot.Duration,
+            description);
+    }
+
+    private static TopologyEdgeSnapshot CreateReportedEdgeSnapshot(
+        TopologyEdgeDefinition edge,
+        IReadOnlyDictionary<string, ServiceObservation> services,
+        DateTimeOffset checkedAtUtc) {
         if (!services.TryGetValue(
                 edge.SourceNodeId,
                 out ServiceObservation? source)) {
@@ -301,7 +396,7 @@ internal sealed class SystemHealthService(
         }
 
         if (!source.Health.Entries.TryGetValue(
-                edge.HealthEntryKey,
+                edge.HealthEntryKey!,
                 out EntryObservation? entry)) {
             return new TopologyEdgeSnapshot(
                 edge.SourceNodeId,
@@ -319,6 +414,62 @@ internal sealed class SystemHealthService(
             entry.CheckedAtUtc,
             entry.Duration,
             entry.Description);
+    }
+
+    private static TopologyNodeSnapshot CreateAggregateNodeSnapshot(
+        TopologyNodeSnapshot node,
+        IReadOnlyCollection<TopologyEdgeDefinition> edgeDefinitions,
+        IReadOnlyCollection<TopologyEdgeSnapshot> edgeSnapshots,
+        DependencyHealthEvaluator dependencyHealthEvaluator) {
+        if (edgeDefinitions.Count == 0) {
+            return node;
+        }
+
+        HealthStatus dependencyHealth = dependencyHealthEvaluator.Evaluate(
+            edgeDefinitions,
+            edgeSnapshots);
+
+        return new TopologyNodeSnapshot(
+            node.Id,
+            node.Availability,
+            CombineHealth(
+                node.Health,
+                dependencyHealth),
+            node.CheckedAtUtc,
+            node.Duration,
+            node.Description);
+    }
+
+    private static HealthStatus CombineHealth(
+        HealthStatus directHealth,
+        HealthStatus dependencyHealth) {
+        if (directHealth == HealthStatus.Starting ||
+            dependencyHealth == HealthStatus.Starting) {
+            return HealthStatus.Starting;
+        }
+
+        if (directHealth == HealthStatus.Unhealthy) {
+            return HealthStatus.Unhealthy;
+        }
+
+        if (dependencyHealth == HealthStatus.Unhealthy) {
+            return directHealth == HealthStatus.Healthy
+                ? HealthStatus.Degraded
+                : HealthStatus.Unhealthy;
+        }
+
+        if (directHealth == HealthStatus.Degraded ||
+            dependencyHealth == HealthStatus.Degraded) {
+            return HealthStatus.Degraded;
+        }
+
+        if (directHealth == HealthStatus.Healthy) {
+            return dependencyHealth == HealthStatus.Unknown
+                ? HealthStatus.Degraded
+                : HealthStatus.Healthy;
+        }
+
+        return HealthStatus.Unknown;
     }
 
     private static ResourceAvailability GetAvailability(
@@ -350,7 +501,6 @@ internal sealed class SystemHealthService(
     private static JsonSerializerOptions CreateSerializerOptions() {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         options.Converters.Add(new JsonStringEnumConverter());
-
         return options;
     }
 

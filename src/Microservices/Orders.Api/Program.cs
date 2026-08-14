@@ -39,8 +39,9 @@ builder.Services.AddHttpClient<IPaymentsClient, HttpPaymentsClient>(client => {
 builder.Services
     .AddHealthChecks()
     .AddCheck<OrdersDatabaseHealthCheck>("orders-database")
-    .AddCheck<InventoryApiHealthCheck>("inventory-api")
-    .AddCheck<PaymentsApiHealthCheck>("payments-api");
+    //.AddCheck<InventoryApiHealthCheck>("inventory-api")
+    //.AddCheck<PaymentsApiHealthCheck>("payments-api")
+    ;
 
 WebApplication app = builder.Build();
 

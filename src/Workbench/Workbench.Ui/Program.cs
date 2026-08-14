@@ -31,7 +31,8 @@ builder.Services.AddHttpClient(
 
 builder.Services
     .AddHealthChecks()
-    .AddCheck<GatewayHealthCheck>("workbench-gateway");
+    //.AddCheck<GatewayHealthCheck>("workbench-gateway")
+    ;
 
 // Configure and validate the observable topology definition.
 builder.Services
