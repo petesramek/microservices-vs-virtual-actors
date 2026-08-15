@@ -1,9 +1,9 @@
 using Hosting.AppHost.Observability.Topology;
+using Workbench.AppHost.Extensions;
 
 internal static class Program {
     private static void Main(string[] args) {
-        IDistributedApplicationBuilder builder =
-            DistributedApplication.CreateBuilder(args);
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
         IResourceBuilder<ProjectResource> inventoryApi = builder
             .AddProject<Projects.Inventory_Api>("inventory-api")
@@ -12,7 +12,8 @@ internal static class Program {
                 url => url.DisplayText = "Inventory API")
             .WithHttpHealthCheck(
                 path: "/health",
-                endpointName: "http");
+                endpointName: "http")
+            .WithObservabilityConfiguration(builder.Configuration);
 
         IResourceBuilder<ProjectResource> paymentsApi = builder
             .AddProject<Projects.Payments_Api>("payments-api")
@@ -21,7 +22,8 @@ internal static class Program {
                 url => url.DisplayText = "Payments API")
             .WithHttpHealthCheck(
                 path: "/health",
-                endpointName: "http");
+                endpointName: "http")
+            .WithObservabilityConfiguration(builder.Configuration);
 
         IResourceBuilder<ProjectResource> ordersApi = builder
             .AddProject<Projects.Orders_Api>("orders-api")
@@ -39,6 +41,7 @@ internal static class Program {
             .WithEnvironment(
                 "Services__PaymentsBaseUrl",
                 paymentsApi.GetEndpoint("http"))
+            .WithObservabilityConfiguration(builder.Configuration)
             .WaitFor(inventoryApi)
             .WaitFor(paymentsApi);
 
@@ -52,7 +55,8 @@ internal static class Program {
                 })
             .WithHttpHealthCheck(
                 path: "/health",
-                endpointName: "http");
+                endpointName: "http")
+            .WithObservabilityConfiguration(builder.Configuration);
 
         IResourceBuilder<ProjectResource> orderingApi = builder
             .AddProject<Projects.Ordering_Api>("ordering-api")
@@ -62,7 +66,8 @@ internal static class Program {
             .WithHttpHealthCheck(
                 path: "/health",
                 endpointName: "http")
-            .WaitFor(orderingSilo);
+            .WaitFor(orderingSilo)
+            .WithObservabilityConfiguration(builder.Configuration);
 
         IResourceBuilder<ProjectResource> workbenchGateway = builder
             .AddProject<Projects.Workbench_Gateway>("workbench-gateway")
@@ -79,7 +84,8 @@ internal static class Program {
             // Override ServiceEndpoints:VirtualActorsBaseUrl with Ordering.Api.
             .WithEnvironment(
                 "ServiceEndpoints__VirtualActorsBaseUrl",
-                orderingApi.GetEndpoint("http"));
+                orderingApi.GetEndpoint("http"))
+            .WithObservabilityConfiguration(builder.Configuration);
 
         IResourceBuilder<ProjectResource> workbenchUi = builder
             .AddProject<Projects.Workbench_Ui>("workbench-ui")
@@ -93,7 +99,8 @@ internal static class Program {
             .WithEnvironment(
                 "Gateway__BaseUrl",
                 workbenchGateway.GetEndpoint("http"))
-            .WaitFor(workbenchGateway);
+            .WaitFor(workbenchGateway)
+            .WithObservabilityConfiguration(builder.Configuration);
 
         builder.AddTopology(
             workbenchUi,

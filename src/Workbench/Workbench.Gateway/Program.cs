@@ -1,4 +1,5 @@
 using Hosting.ServiceDefaults.Extensions;
+using Hosting.ServiceDefaults.Observability;
 using Microsoft.Extensions.Options;
 using Workbench.Gateway.Clients;
 using Workbench.Gateway.Configuration;
@@ -50,6 +51,12 @@ public class Program {
         // Configure gateway services.
         builder.Services.AddSingleton<ServiceStatusClient>();
         builder.Services.AddSingleton<ScenarioRunner>();
+
+        // Register workbench metrics
+        builder.Services
+            .AddSingleton<ScenarioMetrics>()
+            .AddOpenTelemetry()
+                .WithMetrics(metrics => metrics.AddMeter(ScenarioMetrics.MeterName));
 
         WebApplication app = builder.Build();
 

@@ -1,5 +1,7 @@
 namespace Workbench.ScenarioRegressionTests;
 
+using Hosting.ServiceDefaults.Observability;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using System.Collections.Concurrent;
 using System.Net;
@@ -14,6 +16,11 @@ using Xunit;
 /// Regression tests for scenario result metrics produced by the workbench gateway client.
 /// </summary>
 public sealed class ScenarioResultRegressionTests {
+    private static readonly ServiceProvider MetricsServices = new ServiceCollection()
+        .AddMetrics()
+        .AddSingleton<ScenarioMetrics>()
+        .BuildServiceProvider();
+
     /// <summary>
     /// Verifies that a successful order reports one request submission and one unique successful order.
     /// </summary>
@@ -325,7 +332,9 @@ public sealed class ScenarioResultRegressionTests {
             BaseAddress = new Uri("http://scenario-regression.test"),
         };
 
-        return (new ScenarioRunner(), new RegressionServiceClient(httpClient));
+        var metrics = MetricsServices.GetRequiredService<ScenarioMetrics>();
+
+        return (new ScenarioRunner(metrics), new RegressionServiceClient(httpClient));
     }
 
     private static RunScenarioRequest CreateRequest(
@@ -450,6 +459,3 @@ public sealed class ScenarioResultRegressionTests {
         private sealed record StoredOrder(Guid OrderId, OrderStatus Status, string? Reason);
     }
 }
-
-
-

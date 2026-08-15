@@ -1,6 +1,5 @@
 namespace Hosting.ServiceDefaults.Observability;
 
-using Hosting.ServiceDefaults.Telemetry;
 using OpenTelemetry.Trace;
 
 /// <summary>

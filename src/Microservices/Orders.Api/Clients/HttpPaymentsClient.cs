@@ -1,6 +1,6 @@
 namespace Orders.Api.Clients;
 
-using Hosting.ServiceDefaults.Telemetry;
+using Hosting.ServiceDefaults.Observability;
 using Orders.Api.Clients.Abstraction;
 using System.Net.Http.Json;
 using Workbench.Contracts;

@@ -1,7 +1,6 @@
 namespace Workbench.Gateway.Endpoints;
 
 using Hosting.ServiceDefaults.Observability;
-using Hosting.ServiceDefaults.Telemetry;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Diagnostics;

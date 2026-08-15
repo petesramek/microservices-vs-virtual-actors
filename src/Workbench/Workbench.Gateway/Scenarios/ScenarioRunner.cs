@@ -1,5 +1,6 @@
 namespace Workbench.Gateway.Scenarios;
 
+using Hosting.ServiceDefaults.Observability;
 using System.Diagnostics;
 using Workbench.Contracts;
 using Workbench.Gateway.Clients;
@@ -8,6 +9,12 @@ using Workbench.Gateway.Clients;
 /// Runs workbench scenarios through a service client.
 /// </summary>
 public sealed class ScenarioRunner {
+    private readonly ScenarioMetrics _metrics;
+
+    public ScenarioRunner(ScenarioMetrics metrics) {
+        _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+    }
+
     /// <summary>
     /// Runs the specified scenario through the supplied service client.
     /// </summary>
@@ -30,7 +37,7 @@ public sealed class ScenarioRunner {
         };
     }
 
-    private static async Task<ScenarioExecutionResult> RunSingleOrderAsync(
+    private async Task<ScenarioExecutionResult> RunSingleOrderAsync(
         IServiceClient serviceClient,
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
@@ -50,6 +57,8 @@ public sealed class ScenarioRunner {
             .ConfigureAwait(false);
 
         stopwatch.Stop();
+
+        RecordWorkflowRunMetrics(serviceClient, request, stopwatch.Elapsed);
 
         if (prepared.Scenario == ScenarioKind.PaymentTimeoutAfterReservation) {
             return ToResult(
@@ -71,7 +80,7 @@ public sealed class ScenarioRunner {
             serviceClient.CreateTimeline(prepared, order, inventory));
     }
 
-    private static async Task<ScenarioExecutionResult> RunConcurrentOrdersAsync(
+    private async Task<ScenarioExecutionResult> RunConcurrentOrdersAsync(
         IServiceClient serviceClient,
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
@@ -100,6 +109,8 @@ public sealed class ScenarioRunner {
 
         stopwatch.Stop();
 
+        RecordWorkflowRunMetrics(serviceClient, request, stopwatch.Elapsed);
+
         var completed = orders.Count(order => order.Status == OrderStatus.Completed);
         var rejected = orders.Count(order => order.Status == OrderStatus.Rejected);
         OrderResponse representative = orders.FirstOrDefault(order => order.Status == OrderStatus.Completed) ?? orders[0];
@@ -122,7 +133,7 @@ public sealed class ScenarioRunner {
             0);
     }
 
-    private static async Task<ScenarioExecutionResult> RunDuplicateRequestAsync(
+    private async Task<ScenarioExecutionResult> RunDuplicateRequestAsync(
         IServiceClient serviceClient,
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
@@ -147,6 +158,8 @@ public sealed class ScenarioRunner {
             .ConfigureAwait(false);
 
         stopwatch.Stop();
+
+        RecordWorkflowRunMetrics(serviceClient, request, stopwatch.Elapsed);
 
         OrderResponse representative = responses.FirstOrDefault(response => response.Status == OrderStatus.Completed)
             ?? responses[0];
@@ -312,5 +325,9 @@ public sealed class ScenarioRunner {
 
     private static bool IsVirtualActors(string serviceName) {
         return serviceName.Equals("Virtual Actors", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void RecordWorkflowRunMetrics(IServiceClient serviceClient, RunScenarioRequest request, TimeSpan elapsed) {
+        _metrics.RecordWorkflowRun(elapsed, serviceClient.Name, request.Scenario.ToString());
     }
 }

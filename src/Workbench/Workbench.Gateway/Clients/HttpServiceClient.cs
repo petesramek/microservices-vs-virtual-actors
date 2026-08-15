@@ -1,6 +1,6 @@
 namespace Workbench.Gateway.Clients;
 
-using Hosting.ServiceDefaults.Telemetry;
+using Hosting.ServiceDefaults.Observability;
 using System.Net.Http.Json;
 using Workbench.Contracts;
 using Workbench.Gateway.Extensions;

@@ -1,4 +1,4 @@
-namespace Hosting.ServiceDefaults.Telemetry;
+namespace Hosting.ServiceDefaults.Observability;
 
 using System.Diagnostics;
 
@@ -7,9 +7,15 @@ using System.Diagnostics;
 /// </summary>
 public static class ScenarioTelemetry {
     /// <summary>
+    /// Gets the activity source used to create scenario execution traces.
+    /// </summary>
+    public static ActivitySource ActivitySource { get; } =
+        new(ActivitySourceName);
+
+    /// <summary>
     /// The activity source name used for workbench scenario traces.
     /// </summary>
-    public const string ActivitySourceName = "Workbench.Scenarios";
+    public const string ActivitySourceName = "Scenario.Workflows";
 
     /// <summary>
     /// The internal HTTP header used to identify scenario-related requests.
@@ -46,12 +52,6 @@ public static class ScenarioTelemetry {
     /// </summary>
     public const string ConcurrentRequestsTagName =
         "scenario.concurrent_requests";
-
-    /// <summary>
-    /// Gets the activity source used to create scenario execution traces.
-    /// </summary>
-    public static ActivitySource ActivitySource { get; } =
-        new(ActivitySourceName);
 
     public static string GetActivityName(string scenario) => $"Scenario: {scenario}";
 }
