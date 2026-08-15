@@ -4,7 +4,6 @@ using global::Observability.Health;
 using Hosting.ServiceDefaults.Observability;
 using Hosting.ServiceDefaults.Telemetry;
 using Microsoft.AspNetCore.Builder;
-using FrameworkHealthCheckOptions = Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,9 +14,10 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FrameworkHealthCheckOptions = Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions;
+using FrameworkHealthCheckResult = Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult;
 using FrameworkHealthReport = Microsoft.Extensions.Diagnostics.HealthChecks.HealthReport;
 using FrameworkHealthStatus = Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus;
-using FrameworkHealthCheckResult = Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult;
 
 /// <summary>
 /// Provides shared hosting defaults for application services.

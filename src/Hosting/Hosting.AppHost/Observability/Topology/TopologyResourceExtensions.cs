@@ -1,10 +1,10 @@
 namespace Hosting.AppHost.Observability.Topology;
 
-using System.Text.Json;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using global::Observability.Topology.Definitions;
 using Hosting.AppHost.Resources;
+using System.Text.Json;
 
 /// <summary>
 /// Provides registration methods for observable application topologies.

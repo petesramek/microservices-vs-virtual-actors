@@ -1,6 +1,5 @@
 using Hosting.ServiceDefaults.Extensions;
 using Ordering.Api.Logging;
-using Ordering.Api.Observability.Health;
 using Ordering.Grains.Contracts;
 using Ordering.Grains.Interfaces;
 using Workbench.Contracts;

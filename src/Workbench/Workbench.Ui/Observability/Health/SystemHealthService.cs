@@ -1,14 +1,14 @@
 namespace Workbench.Ui.Observability.Health;
 
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using global::Observability.Health;
 using global::Observability.Topology.Definitions;
 using global::Observability.Topology.Evaluation;
 using global::Observability.Topology.Snapshots;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Workbench.Ui.Observability.Topology;
 
 /// <summary>

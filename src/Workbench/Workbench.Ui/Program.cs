@@ -1,7 +1,6 @@
 using Hosting.ServiceDefaults.Extensions;
 using Workbench.Ui.Components;
 using Workbench.Ui.Extensions;
-using Workbench.Ui.Observability.Health;
 using Workbench.Ui.Observability.Topology;
 using Workbench.Ui.Services;
 
@@ -22,17 +21,8 @@ builder.Services.AddHttpClient<ScenarioRunnerClient>(client => {
     client.BaseAddress = new Uri(gatewayBaseUrl);
 });
 
-builder.Services.AddHttpClient(
-    GatewayHealthCheck.HttpClientName,
-    client => {
-        client.BaseAddress = new Uri(
-            gatewayBaseUrl.TrimEnd('/') + "/");
-    });
-
 builder.Services
-    .AddHealthChecks()
-    //.AddCheck<GatewayHealthCheck>("workbench-gateway")
-    ;
+    .AddHealthChecks();
 
 // Configure and validate the observable topology definition.
 builder.Services

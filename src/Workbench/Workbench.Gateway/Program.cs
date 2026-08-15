@@ -4,7 +4,6 @@ using Workbench.Gateway.Clients;
 using Workbench.Gateway.Configuration;
 using Workbench.Gateway.Endpoints;
 using Workbench.Gateway.Extensions;
-using Workbench.Gateway.Observability.Health;
 using Workbench.Gateway.Scenarios;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);

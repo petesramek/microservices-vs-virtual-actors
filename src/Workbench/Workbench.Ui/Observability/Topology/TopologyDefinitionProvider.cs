@@ -1,8 +1,8 @@
 namespace Workbench.Ui.Observability.Topology;
 
-using System.Text.Json;
 using global::Observability.Topology.Definitions;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 /// <summary>
 /// Provides the graph topology definition supplied through application

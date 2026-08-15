@@ -1,6 +1,4 @@
 using Hosting.AppHost.Observability.Topology;
-using Observability.Topology;
-using Observability.Topology.Definitions;
 
 internal static class Program {
     private static void Main(string[] args) {
