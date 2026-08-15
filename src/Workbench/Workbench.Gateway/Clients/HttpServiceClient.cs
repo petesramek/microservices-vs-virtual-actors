@@ -3,7 +3,7 @@ namespace Workbench.Gateway.Clients;
 using Hosting.ServiceDefaults.Telemetry;
 using System.Net.Http.Json;
 using Workbench.Contracts;
-using Workbench.Gateway.Correlation;
+using Workbench.Gateway.Extensions;
 
 /// <summary>
 /// Provides shared HTTP operations for a scenario service.
@@ -97,7 +97,7 @@ public abstract class HttpServiceClient(HttpClient httpClient, string name)
             ScenarioTelemetry.ScenarioHeaderName,
             ScenarioTelemetry.ScenarioHeaderValue);
 
-        string? correlationId = CorrelationIdContext.CurrentId;
+        string? correlationId = CorrelationIdApplicationBuilderExtensions.CorrelationIdContext.CurrentId;
 
         if (!string.IsNullOrWhiteSpace(correlationId)) {
             message.Headers.TryAddWithoutValidation(

@@ -3,7 +3,7 @@ namespace VirtualActors.Tests;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Ordering.Grains.Contracts;
-using Ordering.Grains.Interfaces;
+using Ordering.Grains.Grains.Abstraction;
 using Ordering.Grains.State;
 using Ordering.Persistence.Sqlite.Extensions;
 using Orleans;

@@ -6,67 +6,69 @@ using Workbench.Gateway.Endpoints;
 using Workbench.Gateway.Extensions;
 using Workbench.Gateway.Scenarios;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+namespace Workbench.Gateway;
 
-// Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
-builder.AddServiceDefaults();
+public class Program {
+    private static async Task Main(string[] args) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Configure standardized error responses.
-builder.Services.AddProblemDetails();
+        // Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
+        builder.AddServiceDefaults();
 
-// Configure and validate downstream architecture endpoints.
-builder.Services
-    .AddOptions<ServiceEndpointOptions>()
-    .Bind(builder.Configuration.GetSection(ServiceEndpointOptions.SectionName))
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
+        // Configure standardized error responses.
+        builder.Services.AddProblemDetails();
 
-// Configure microservices service client.
-builder.Services.AddHttpClient<MicroservicesServiceClient>((services, client) => {
-    ServiceEndpointOptions options = services
-        .GetRequiredService<IOptions<ServiceEndpointOptions>>()
-        .Value;
+        // Configure and validate downstream architecture endpoints.
+        builder.Services
+            .AddOptions<ServiceEndpointOptions>()
+            .Bind(builder.Configuration.GetSection(ServiceEndpointOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
-    client.BaseAddress = new Uri(options.MicroservicesBaseUrl);
-});
+        // Configure microservices service client.
+        builder.Services.AddHttpClient<MicroservicesServiceClient>((services, client) => {
+            ServiceEndpointOptions options = services
+                .GetRequiredService<IOptions<ServiceEndpointOptions>>()
+                .Value;
 
-// Configure virtual actor service client.
-builder.Services.AddHttpClient<VirtualActorsServiceClient>((services, client) => {
-    ServiceEndpointOptions options = services
-        .GetRequiredService<IOptions<ServiceEndpointOptions>>()
-        .Value;
+            client.BaseAddress = new Uri(options.MicroservicesBaseUrl);
+        });
 
-    client.BaseAddress = new Uri(options.VirtualActorsBaseUrl);
-});
+        // Configure virtual actor service client.
+        builder.Services.AddHttpClient<VirtualActorsServiceClient>((services, client) => {
+            ServiceEndpointOptions options = services
+                .GetRequiredService<IOptions<ServiceEndpointOptions>>()
+                .Value;
 
-// Register caller-specific downstream dependency health checks.
-builder.Services
-    .AddHealthChecks()
-    //.AddCheck<GatewayDependencyHealthCheck>("orders-api")
-    //.AddCheck<GatewayDependencyHealthCheck>("ordering-api")
-    ;
-// Configure gateway services.
-builder.Services.AddSingleton<ServiceStatusClient>();
-builder.Services.AddSingleton<ScenarioRunner>();
+            client.BaseAddress = new Uri(options.VirtualActorsBaseUrl);
+        });
 
-WebApplication app = builder.Build();
+        // Register caller-specific downstream dependency health checks.
+        builder.Services
+            .AddHealthChecks();
 
-// Configure the request pipeline.
-app.UseCorrelationId();
-app.UseExceptionHandler();
+        // Configure gateway services.
+        builder.Services.AddSingleton<ServiceStatusClient>();
+        builder.Services.AddSingleton<ScenarioRunner>();
 
-// Map gateway endpoints.
-app.MapGet("/", () => Results.Ok(new {
-    Name = "Architecture Workbench Gateway",
-    Description = "Routes scenario requests by X-Architecture header.",
-}));
+        WebApplication app = builder.Build();
 
-app.MapStatusEndpoints();
-app.MapScenarioEndpoints();
+        // Configure the request pipeline.
+        app.UseCorrelationId();
+        app.UseExceptionHandler();
 
-// Map the shared health and aliveness endpoints.
-app.MapDefaultEndpoints();
+        // Map gateway endpoints.
+        app.MapGet("/", () => Results.Ok(new {
+            Name = "Workbench Gateway",
+            Description = "Routes scenario requests by X-Architecture header.",
+        }));
 
-await app.RunAsync().ConfigureAwait(false);
+        //app.MapStatusEndpoints();
+        app.MapScenarioEndpoints();
 
-public partial class Program;
+        // Map the shared health and aliveness endpoints.
+        app.MapDefaultEndpoints();
+
+        await app.RunAsync().ConfigureAwait(false);
+    }
+}

@@ -18,12 +18,10 @@ internal sealed class OrleansClusterHealthCheck(
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(context);
 
-        using var timeoutCancellationTokenSource =
-            new CancellationTokenSource(Timeout);
-        using var linkedCancellationTokenSource =
-            CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken,
-                timeoutCancellationTokenSource.Token);
+        using var timeoutCancellationTokenSource = new CancellationTokenSource(Timeout);
+        using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            timeoutCancellationTokenSource.Token);
 
         try {
             IManagementGrain managementGrain = clusterClient

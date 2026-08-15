@@ -1,7 +1,7 @@
 using Hosting.ServiceDefaults.Extensions;
 using Ordering.Api.Logging;
 using Ordering.Grains.Contracts;
-using Ordering.Grains.Interfaces;
+using Ordering.Grains.Grains.Abstraction;
 using Workbench.Contracts;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -16,9 +16,7 @@ builder.UseOrleansClient(clientBuilder => {
 });
 
 builder.Services
-    .AddHealthChecks()
-    //.AddCheck<OrleansClusterHealthCheck>("orleans-cluster")
-    ;
+    .AddHealthChecks();
 
 WebApplication app = builder.Build();
 

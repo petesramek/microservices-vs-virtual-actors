@@ -2,7 +2,7 @@ namespace Ordering.Persistence.Sqlite.Extensions;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Ordering.Persistence.Sqlite.Storage;
+using Ordering.Persistence.Sqlite.Internal.Infrastructure;
 using Orleans.Hosting;
 using Orleans.Runtime.Hosting;
 

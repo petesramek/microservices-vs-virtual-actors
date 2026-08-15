@@ -1,7 +1,7 @@
 namespace VirtualActors.Tests;
 
 using Ordering.Grains.Contracts;
-using Ordering.Grains.Interfaces;
+using Ordering.Grains.Grains.Abstraction;
 using Shouldly;
 using Workbench.Contracts;
 using Xunit;

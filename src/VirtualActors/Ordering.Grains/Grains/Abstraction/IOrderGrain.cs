@@ -1,4 +1,4 @@
-namespace Ordering.Grains.Interfaces;
+namespace Ordering.Grains.Grains.Abstraction;
 
 using Ordering.Grains.Contracts;
 using Orleans;
@@ -6,7 +6,7 @@ using Orleans;
 /// <summary>
 /// Represents one order workflow identity.
 /// </summary>
-[Alias($"Ordering.Grains.Interfaces.IOrderGrain")]
+[Alias($"Ordering.Grains.Abstraction.IOrderGrain")]
 public interface IOrderGrain : IGrainWithGuidKey {
     /// <summary>
     /// Places the order if it has not already been processed.

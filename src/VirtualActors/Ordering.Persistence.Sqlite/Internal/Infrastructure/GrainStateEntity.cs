@@ -1,4 +1,4 @@
-namespace Ordering.Persistence.Sqlite.Storage;
+namespace Ordering.Persistence.Sqlite.Internal.Infrastructure;
 
 /// <summary>
 /// Represents one serialized Orleans grain state stored in SQLite.

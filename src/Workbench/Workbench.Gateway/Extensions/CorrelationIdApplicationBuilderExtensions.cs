@@ -1,7 +1,5 @@
 namespace Workbench.Gateway.Extensions;
 
-using Workbench.Gateway.Correlation;
-
 /// <summary>
 /// Provides extensions for configuring correlation identifier handling.
 /// </summary>
@@ -18,12 +16,12 @@ internal static class CorrelationIdApplicationBuilderExtensions {
 
         app.Use(async (context, next) => {
             string? correlationId = context.Request.Headers[CorrelationIdHeader].FirstOrDefault();
+
             if (string.IsNullOrWhiteSpace(correlationId)) {
                 correlationId = $"run-{Guid.NewGuid():N}";
             }
 
-            context.Response.Headers[CorrelationIdHeader] = correlationId;
-            CorrelationIdContext.CurrentId = correlationId;
+            context.Response.Headers[CorrelationIdHeader] = CorrelationIdContext.CurrentId = correlationId;
 
             ILogger logger = context.RequestServices
                 .GetRequiredService<ILoggerFactory>()
@@ -42,4 +40,20 @@ internal static class CorrelationIdApplicationBuilderExtensions {
 
         return app;
     }
+
+    /// <summary>
+    /// Provides access to the correlation identifier for the current asynchronous execution flow.
+    /// </summary>
+    internal static class CorrelationIdContext {
+        private static readonly AsyncLocal<string?> Current = new();
+
+        /// <summary>
+        /// Gets or sets the correlation identifier for the current asynchronous execution flow.
+        /// </summary>
+        public static string? CurrentId {
+            get => Current.Value;
+            set => Current.Value = value;
+        }
+    }
+
 }

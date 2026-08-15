@@ -186,7 +186,7 @@ internal static class ScenarioEndpoints {
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
         using Activity? activity = ScenarioTelemetry.ActivitySource.StartActivity(
-            $"Run {serviceClient.Name}",
+            $"Architecture: {serviceClient.Name}",
             ActivityKind.Internal);
 
         try {
@@ -224,7 +224,7 @@ internal static class ScenarioEndpoints {
         };
 
         return ScenarioTelemetry.ActivitySource.StartActivity(
-            ScenarioTelemetry.RunScenarioActivityName,
+            ScenarioTelemetry.GetActivityName(request.Scenario.ToString()),
             ActivityKind.Internal,
             default(ActivityContext),
             tags);

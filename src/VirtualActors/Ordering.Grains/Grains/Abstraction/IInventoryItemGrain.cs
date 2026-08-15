@@ -1,4 +1,4 @@
-namespace Ordering.Grains.Interfaces;
+namespace Ordering.Grains.Grains.Abstraction;
 
 using Ordering.Grains.Contracts;
 using Orleans;
@@ -6,7 +6,7 @@ using Orleans;
 /// <summary>
 /// Represents inventory for one product identity.
 /// </summary>
-[Alias($"Ordering.Grains.Interfaces.IInventoryItemGrain")]
+[Alias($"Ordering.Grains.Abstraction.IInventoryItemGrain")]
 public interface IInventoryItemGrain : IGrainWithStringKey {
     /// <summary>
     /// Resets available inventory for deterministic scenarios.

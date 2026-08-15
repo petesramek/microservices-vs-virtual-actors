@@ -7,40 +7,44 @@ using Ordering.Persistence.Sqlite.Extensions;
 using Ordering.Silo.Observability.Health;
 using Orleans.Dashboard;
 
-const string ConnectionName = "Default";
-const string StorageProviderName = "OrderingStorage";
+namespace Ordering.Silo;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+public class Program {
+    private static async Task Main(string[] args) {
+        const string ConnectionName = "Default";
+        const string StorageProviderName = "OrderingStorage";
 
-builder.AddServiceDefaults();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-string connectionString =
-    builder.Configuration.GetConnectionString(ConnectionName)
-    ?? throw new InvalidOperationException(
-        "The Default database connection string is not configured.");
+        builder.AddServiceDefaults();
 
-builder.Services
-    .AddHealthChecks()
-    .AddCheck<OrderingDatabaseHealthCheck>("ordering-database");
+        string connectionString =
+            builder.Configuration.GetConnectionString(ConnectionName)
+            ?? throw new InvalidOperationException(
+                "The Default database connection string is not configured.");
 
-builder.UseOrleans(siloBuilder => {
-    siloBuilder
-        .UseLocalhostClustering()
-        .AddActivityPropagation()
-        .AddDashboard();
+        builder.Services
+            .AddHealthChecks()
+            .AddCheck<OrderingDatabaseHealthCheck>("ordering-database");
 
-    siloBuilder.AddSqliteGrainStorage(
-        StorageProviderName,
-        connectionString);
-});
+        builder.UseOrleans(siloBuilder => {
+            siloBuilder
+                .UseLocalhostClustering()
+                .AddActivityPropagation()
+                .AddDashboard();
 
-WebApplication app = builder.Build();
+            siloBuilder.AddSqliteGrainStorage(
+                StorageProviderName,
+                connectionString);
+        });
 
-app.MapOrleansDashboard("/dashboard");
-app.MapDefaultEndpoints();
+        WebApplication app = builder.Build();
 
-await app
-    .RunAsync()
-    .ConfigureAwait(false);
+        app.MapOrleansDashboard("/dashboard");
+        app.MapDefaultEndpoints();
 
-public partial class Program;
+        await app
+            .RunAsync()
+            .ConfigureAwait(false);
+    }
+}

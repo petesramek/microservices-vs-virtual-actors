@@ -1,4 +1,4 @@
-namespace Ordering.Grains.Interfaces;
+namespace Ordering.Grains.Grains.Abstraction;
 
 using Ordering.Grains.Contracts;
 using Orleans;
@@ -6,7 +6,7 @@ using Orleans;
 /// <summary>
 /// Represents payment behavior for one customer/account identity.
 /// </summary>
-[Alias($"Ordering.Grains.Interfaces.IPaymentAccountGrain")]
+[Alias($"Ordering.Grains.Abstraction.IPaymentAccountGrain")]
 public interface IPaymentAccountGrain : IGrainWithStringKey {
     /// <summary>
     /// Authorizes a payment request.

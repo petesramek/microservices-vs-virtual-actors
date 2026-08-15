@@ -1,4 +1,4 @@
-namespace Ordering.Persistence.Sqlite.Storage;
+namespace Ordering.Persistence.Sqlite.Internal.Infrastructure;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;

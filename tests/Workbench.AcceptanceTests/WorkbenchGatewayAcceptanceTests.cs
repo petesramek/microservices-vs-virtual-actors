@@ -7,6 +7,7 @@ using Shouldly;
 using System.Net;
 using System.Net.Http.Json;
 using Workbench.Contracts;
+using Workbench.Gateway;
 using Xunit;
 
 /// <summary>
