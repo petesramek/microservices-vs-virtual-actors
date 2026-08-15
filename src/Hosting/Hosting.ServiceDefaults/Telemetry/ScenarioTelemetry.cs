@@ -12,11 +12,6 @@ public static class ScenarioTelemetry {
     public const string ActivitySourceName = "Workbench.Scenarios";
 
     /// <summary>
-    /// The activity name used for a scenario execution.
-    /// </summary>
-    public const string RunScenarioActivityName = "Run workbench scenario";
-
-    /// <summary>
     /// The internal HTTP header used to identify scenario-related requests.
     /// </summary>
     public const string ScenarioHeaderName = "X-Scenario-Run";
@@ -57,4 +52,6 @@ public static class ScenarioTelemetry {
     /// </summary>
     public static ActivitySource ActivitySource { get; } =
         new(ActivitySourceName);
+
+    public static string GetActivityName(string scenario) => $"Scenario: {scenario}";
 }
