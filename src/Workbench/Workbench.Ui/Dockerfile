@@ -3,9 +3,9 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore src/Workbench/Workbench.Gateway/Workbench.Ui.csproj
+RUN dotnet restore src/Workbench/Workbench.Ui/Workbench.Ui.csproj
 
-RUN dotnet publish src/Workbench/Workbench.Gateway/Workbench.Ui.csproj \
+RUN dotnet publish src/Workbench/Workbench.Ui/Workbench.Ui.csproj \
     -c Release \
     -o /app/publish \
     --no-restore \
