@@ -27,14 +27,20 @@ The project performs four main tasks:
 ### Project structure
 
 ```text
-Abstractions/
-  IHealthStatusEvaluator.cs
-
-Extensions/
-  HealthServiceCollectionExtensions.cs
+Observability.Health/
+├── Abstraction/
+│   └── IHealthStatusEvaluator.cs
+├── Extensions/
+│   └── HealthServiceCollectionExtensions.cs
+├── HealthEntry.cs
+├── HealthReport.cs
+├── HealthStatus.cs
+├── HealthStatusEvaluator.cs
+├── Observability.Health.csproj
+└── README.md
 ```
 
-The project also contains the default evaluator implementation and the health contracts consumed by other observability projects.
+Generated `bin/` and `obj/` directories are intentionally omitted because they contain build outputs and intermediate files rather than maintained project source.
 
 ### Public API
 
@@ -168,7 +174,7 @@ When modifying the project:
 - Treat precedence changes as behavioral compatibility changes.
 - Define and test empty-collection behavior explicitly.
 - Define and test unsupported enum-value behavior explicitly.
-- Add public abstractions to the `Abstractions` folder.
+- Add public abstractions to the `Abstraction` folder.
 - Add dependency-injection registrations to focused extensions in the `Extensions` folder.
 - Document every declared type and member.
 - Update this README when the public contract, service lifetime, or project structure changes.
