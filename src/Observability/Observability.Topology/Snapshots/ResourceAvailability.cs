@@ -1,21 +1,25 @@
 namespace Observability.Topology.Snapshots;
 
 /// <summary>
-/// Represents whether a runnable service can be reached.
+/// Represents whether a runtime resource can be reached.
 /// </summary>
+/// <remarks>
+/// Availability describes reachability and is independent of the resource's
+/// reported health status.
+/// </remarks>
 public enum ResourceAvailability {
     /// <summary>
-    /// Availability could not be determined.
+    /// Indicates that resource availability has not been determined.
     /// </summary>
     Unknown = 0,
 
     /// <summary>
-    /// The resource can be reached successfully.
+    /// Indicates that the resource was reached successfully.
     /// </summary>
     Available = 1,
 
     /// <summary>
-    /// The resource could not be reached.
+    /// Indicates that the resource could not be reached.
     /// </summary>
     Unavailable = 2,
 }
