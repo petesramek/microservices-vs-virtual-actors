@@ -4,6 +4,7 @@ using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using global::Observability.Health;
 using global::Observability.Topology.Definitions;
+using global::Observability.Topology.Validation;
 using Hosting.AppHost.Resources;
 using System.Text.Json;
 
@@ -48,6 +49,9 @@ internal static class TopologyResourceExtensions {
     /// <param name="builder">
     /// The distributed application builder.
     /// </param>
+    /// <param name="healthStatusEvaluator">
+    /// The evaluator used by the generated Aspire health groups.
+    /// </param>
     /// <param name="topologyProvider">
     /// The project resource that receives the serialized topology and
     /// service endpoint configuration.
@@ -56,23 +60,24 @@ internal static class TopologyResourceExtensions {
     /// Configures topology nodes, dependency edges, and visual groups.
     /// </param>
     /// <returns>
-    /// A snapshot of the configured neutral topology definition.
+    /// A validated snapshot of the configured neutral topology definition.
     /// </returns>
     /// <remarks>
-    /// The configuration callback must register at least one node. Visual
-    /// groups are also registered as Aspire health groups when they contain at
-    /// least one project-backed member. The serialized definition and each
-    /// service's <c>http</c> health and liveness endpoint references are added
-    /// to <paramref name="topologyProvider"/> as environment variables.
+    /// The completed topology is validated before any Aspire health groups or
+    /// environment variables are registered. Visual groups are registered as
+    /// Aspire health groups when they contain at least one project-backed
+    /// member. The serialized definition and each service's <c>http</c> health
+    /// and liveness endpoint references are added to
+    /// <paramref name="topologyProvider"/> as environment variables.
     /// </remarks>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="builder"/>, <paramref name="topologyProvider"/>, or
-    /// <paramref name="configure"/> is <see langword="null"/>.
+    /// <paramref name="builder"/>, <paramref name="healthStatusEvaluator"/>,
+    /// <paramref name="topologyProvider"/>, or <paramref name="configure"/> is
+    /// <see langword="null"/>.
     /// </exception>
     /// <exception cref="InvalidOperationException">
-    /// The configured topology contains no nodes, or a registered service does
-    /// not expose the named <c>http</c> endpoint required for endpoint
-    /// references.
+    /// The configured topology is invalid, or a registered service does not
+    /// expose the named <c>http</c> endpoint required for endpoint references.
     /// </exception>
     public static TopologyDefinition AddTopology(
         this IDistributedApplicationBuilder builder,
@@ -80,19 +85,15 @@ internal static class TopologyResourceExtensions {
         IResourceBuilder<ProjectResource> topologyProvider,
         Action<TopologyBuilder> configure) {
         ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(healthStatusEvaluator);
         ArgumentNullException.ThrowIfNull(topologyProvider);
         ArgumentNullException.ThrowIfNull(configure);
 
-        var topology = new TopologyBuilder();
-
+        TopologyBuilder topology = new();
         configure(topology);
 
-        if (topology.Nodes.Count == 0) {
-            throw new InvalidOperationException(
-                "The topology must contain at least one node.");
-        }
-
         TopologyDefinition definition = topology.Definition;
+        EnsureValid(definition);
 
         AddAspireHealthGroups(
             builder,
@@ -113,6 +114,32 @@ internal static class TopologyResourceExtensions {
     }
 
     /// <summary>
+    /// Validates a completed topology before it is published to Aspire
+    /// resources.
+    /// </summary>
+    /// <param name="definition">The topology definition to validate.</param>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="definition"/> contains one or more validation errors.
+    /// </exception>
+    private static void EnsureValid(TopologyDefinition definition) {
+        TopologyValidator validator = new();
+        TopologyValidationResult result = validator.Validate(definition);
+
+        if (result.IsValid) {
+            return;
+        }
+
+        string errors = string.Join(
+            Environment.NewLine,
+            result.Errors.Select(static error => $"- {error}"));
+
+        throw new InvalidOperationException(
+            "The observability topology is invalid:"
+            + Environment.NewLine
+            + errors);
+    }
+
+    /// <summary>
     /// Registers topology groups as Aspire health groups.
     /// </summary>
     /// <param name="builder">
@@ -122,6 +149,9 @@ internal static class TopologyResourceExtensions {
     /// The topology used to resolve project-backed group members.
     /// </param>
     /// <param name="groups">The visual groups to register.</param>
+    /// <param name="healthStatusEvaluator">
+    /// The evaluator used by the generated health groups.
+    /// </param>
     /// <remarks>
     /// Non-project members are ignored. Groups without any project-backed
     /// members are not registered, and duplicate project resources are added
@@ -135,10 +165,10 @@ internal static class TopologyResourceExtensions {
         foreach (TopologyGroupDefinition group in groups) {
             IResourceBuilder<ProjectResource>[] resources = group.NodeIds
                 .Select(topology.TryGetProjectResource)
-                .Where(resource => resource is not null)
+                .Where(static resource => resource is not null)
                 .Cast<IResourceBuilder<ProjectResource>>()
                 .DistinctBy(
-                    resource => resource.Resource.Name,
+                    static resource => resource.Resource.Name,
                     StringComparer.Ordinal)
                 .ToArray();
 
