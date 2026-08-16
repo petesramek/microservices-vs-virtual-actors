@@ -1,14 +1,29 @@
-namespace Payments.Api.Logging;
+namespace Payments.Api.Internal.Observability.Logging;
 
+using Microsoft.Extensions.Logging;
+
+/// <summary>
+/// Defines source-generated informational log messages for payment operations.
+/// </summary>
 internal static partial class LogInformation {
-    const LogLevel Level = LogLevel.Information;
-    const int EventIdBase = (int)Level * 100;
+    /// <summary>
+    /// Defines the log level shared by the messages in this class.
+    /// </summary>
+    private const LogLevel Level = LogLevel.Information;
 
     /// <summary>
-    /// Logs that a request with a correlation identifier is being handled.
+    /// Defines the first event ID reserved for payment informational events.
     /// </summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="correlationId">The correlation identifier.</param>
+    private const int EventIdBase = (int)Level * 100;
+
+    /// <summary>
+    /// Logs that a request is being handled with its correlation identifier.
+    /// </summary>
+    /// <param name="logger">The logger used to write the event.</param>
+    /// <param name="correlationId">
+    /// The correlation identifier, or <see langword="null"/> when none was
+    /// supplied.
+    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 1,
         Level = Level,
@@ -20,9 +35,9 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that payment authorization is starting.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="paymentId">The payment identifier.</param>
-    /// <param name="orderId">The order identifier.</param>
+    /// <param name="orderId">The associated order identifier.</param>
     /// <param name="customerId">The customer identifier.</param>
     [LoggerMessage(
         EventId = EventIdBase + 2,
@@ -37,10 +52,13 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that payment authorization completed.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="paymentId">The payment identifier.</param>
-    /// <param name="orderId">The order identifier.</param>
-    /// <param name="authorized">Whether the payment was authorized.</param>
+    /// <param name="orderId">The associated order identifier.</param>
+    /// <param name="authorized">
+    /// <see langword="true"/> when the payment was authorized; otherwise
+    /// <see langword="false"/>.
+    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 3,
         Level = Level,

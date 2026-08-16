@@ -1,7 +1,7 @@
-namespace Payments.Api.Observability.Health;
+namespace Payments.Api.Internal.Observability.Health;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Payments.Api.Data;
+using Payments.Api.Internal.Infrastructure;
 
 /// <summary>
 /// Verifies that the Payments database can accept connections.

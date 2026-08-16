@@ -1,136 +1,93 @@
+namespace Payments.Api;
+
 using Hosting.ServiceDefaults.Extensions;
 using Microsoft.EntityFrameworkCore;
-using Payments.Api.Data;
-using Payments.Api.Logging;
-using Payments.Api.Models;
-using Payments.Api.Observability.Health;
-using Workbench.Contracts;
+using Payments.Api.Extensions;
+using Payments.Api.Internal.Infrastructure;
+using Payments.Api.Internal.Observability.Health;
+using Payments.Api.Internal.Observability.Logging;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+/// <summary>
+/// Provides the entry point and application composition for the Payments API.
+/// </summary>
+public class Program {
+    /// <summary>
+    /// Configures and runs the Payments API host.
+    /// </summary>
+    /// <param name="args">The command-line arguments passed to the application.</param>
+    /// <returns>
+    /// A task that represents the lifetime of the application host.
+    /// </returns>
+    private static async Task Main(string[] args) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
-builder.AddServiceDefaults();
+        builder.AddServiceDefaults();
 
-builder.Services.AddDbContext<PaymentsDbContext>(options => {
-    var connectionString = builder.Configuration.GetConnectionString("Default")
-        ?? "Data Source=payments.db";
+        builder.Services.AddDbContext<PaymentsDbContext>(options => {
+            string connectionString =
+                builder.Configuration.GetConnectionString("Default")
+                ?? "Data Source=payments.db";
 
-    options.UseSqlite(connectionString);
-});
-
-builder.Services
-    .AddHealthChecks()
-    .AddCheck<PaymentsDatabaseHealthCheck>("payments-database");
-
-WebApplication app = builder.Build();
-
-// correlation-id-logging
-app.Use(async (context, next) => {
-    var correlationId = context.Request.Headers["X-Correlation-ID"]
-        .FirstOrDefault();
-
-    if (string.IsNullOrWhiteSpace(correlationId)) {
-        await next().ConfigureAwait(false);
-        return;
-    }
-
-    using IDisposable? scope = app.Logger.BeginScope(
-        new Dictionary<string, object>(StringComparer.Ordinal) {
-            ["CorrelationId"] = correlationId,
+            options.UseSqlite(connectionString);
         });
 
-    app.Logger.HandlingRequestWithCorrelationId(correlationId);
+        builder.Services
+            .AddHealthChecks()
+            .AddCheck<PaymentsDatabaseHealthCheck>("payments-database");
 
-    await next().ConfigureAwait(false);
-});
+        WebApplication app = builder.Build();
 
-await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
+        app.Use(async (context, next) => {
+            string? correlationId = context.Request.Headers["X-Correlation-ID"]
+                .FirstOrDefault();
 
-app.MapGet("/", () => Results.Ok(new {
-    Name = "Payments API",
-    Phase = "Microservices",
-}));
-
-app.MapPost("/api/payments/authorize", async (
-    AuthorizePaymentRequest request,
-    PaymentsDbContext db,
-    ILoggerFactory loggerFactory,
-    CancellationToken cancellationToken) => {
-        ILogger logger = loggerFactory.CreateLogger("Payments.Authorize");
-
-        logger.AuthorizingPayment(
-            request.PaymentId,
-            request.OrderId,
-            request.CustomerId);
-
-        try {
-            PaymentAttempt? existing = await db.PaymentAttempts
-                .AsNoTracking()
-                .SingleOrDefaultAsync(
-                    paymentAttempt =>
-                        paymentAttempt.IdempotencyKey == request.IdempotencyKey,
-                    cancellationToken)
-                .ConfigureAwait(false);
-
-            if (existing is not null) {
-                logger.PaymentAuthorizationCompleted(
-                    existing.PaymentId,
-                    existing.OrderId,
-                    existing.Authorized);
-
-                return Results.Ok(new AuthorizePaymentResponse(
-                    existing.Authorized,
-                    existing.Reason));
+            if (string.IsNullOrWhiteSpace(correlationId)) {
+                await next().ConfigureAwait(false);
+                return;
             }
 
-            var authorized = !request.SimulateFailure;
-            var reason = authorized ? null : "PaymentFailed";
+            using IDisposable? scope = app.Logger.BeginScope(
+                new Dictionary<string, object>(StringComparer.Ordinal) {
+                    ["CorrelationId"] = correlationId,
+                });
 
-            db.PaymentAttempts.Add(new PaymentAttempt {
-                PaymentId = request.PaymentId,
-                OrderId = request.OrderId,
-                CustomerId = request.CustomerId,
-                IdempotencyKey = request.IdempotencyKey,
-                Authorized = authorized,
-                Reason = reason,
-            });
+            app.Logger.HandlingRequestWithCorrelationId(correlationId);
 
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await next().ConfigureAwait(false);
+        });
 
-            logger.PaymentAuthorizationCompleted(
-                request.PaymentId,
-                request.OrderId,
-                authorized);
+        await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
 
-            return Results.Ok(new AuthorizePaymentResponse(
-                authorized,
-                reason));
-        } catch (OperationCanceledException) {
-            throw;
-        } catch (Exception exception) {
-            logger.PaymentAuthorizationFailed(
-                exception,
-                request.PaymentId,
-                request.OrderId,
-                request.CustomerId);
+        app.MapPaymentsEndpoints();
+        app.MapDefaultEndpoints();
 
-            return Results.Problem(
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
-    });
+        await app.RunAsync().ConfigureAwait(false);
+    }
 
-// Map the shared health and aliveness endpoints.
-app.MapDefaultEndpoints();
+    /// <summary>
+    /// Ensures that the payments database and its schema exist before requests
+    /// are accepted.
+    /// </summary>
+    /// <param name="services">
+    /// The application service provider used to resolve the payments database
+    /// context.
+    /// </param>
+    /// <returns>
+    /// A task that represents the asynchronous database initialization
+    /// operation.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="services"/> is <see langword="null"/>.
+    /// </exception>
+    private static async Task EnsureDatabaseAsync(IServiceProvider services) {
+        ArgumentNullException.ThrowIfNull(services);
 
-await app.RunAsync().ConfigureAwait(false);
+        await using AsyncServiceScope scope = services.CreateAsyncScope();
+        PaymentsDbContext db = scope.ServiceProvider
+            .GetRequiredService<PaymentsDbContext>();
 
-static async Task EnsureDatabaseAsync(IServiceProvider services) {
-    using IServiceScope scope = services.CreateScope();
-
-    PaymentsDbContext db = scope.ServiceProvider
-        .GetRequiredService<PaymentsDbContext>();
-
-    await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
+        await db.Database
+            .EnsureCreatedAsync()
+            .ConfigureAwait(false);
+    }
 }
-
-public partial class Program;
