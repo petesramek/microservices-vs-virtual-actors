@@ -4,7 +4,7 @@ namespace Observability.Health;
 /// Evaluates aggregate health from a collection of health observations.
 /// </summary>
 /// <remarks>
-/// The evaluator is stateless and safe to reuse across callers. A
+/// The evaluator is stateless and can be reused across evaluations. A
 /// <see cref="HealthStatus.Starting"/> observation takes precedence over every
 /// other status. Otherwise, an entirely healthy collection is healthy; a
 /// collection containing a healthy or degraded observation is degraded; a
@@ -36,6 +36,7 @@ public sealed class HealthStatusEvaluator : IHealthStatusEvaluator {
             return HealthStatus.Unknown;
         }
 
+        bool hasStarting = false;
         int healthyCount = 0;
         int degradedCount = 0;
         int unhealthyCount = 0;
@@ -43,7 +44,8 @@ public sealed class HealthStatusEvaluator : IHealthStatusEvaluator {
         foreach (HealthStatus status in statuses) {
             switch (status) {
                 case HealthStatus.Starting:
-                    return HealthStatus.Starting;
+                    hasStarting = true;
+                    break;
                 case HealthStatus.Healthy:
                     healthyCount++;
                     break;
@@ -61,6 +63,10 @@ public sealed class HealthStatusEvaluator : IHealthStatusEvaluator {
                         status,
                         "Unsupported observability health status.");
             }
+        }
+
+        if (hasStarting) {
+            return HealthStatus.Starting;
         }
 
         if (healthyCount == statuses.Count) {
