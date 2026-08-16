@@ -3,29 +3,31 @@ namespace Hosting.AppHost.Resources;
 /// <summary>
 /// Defines the aggregate states displayed for an Aspire health group.
 /// </summary>
-internal enum HealthGroupState {
+internal enum HealthGroupState
+{
     /// <summary>
-    /// Child resource states are not yet available.
+    /// Indicates that child resource health is not yet available or cannot be
+    /// determined.
     /// </summary>
     Unknown,
 
     /// <summary>
-    /// At least one child resource is still starting or waiting.
+    /// Indicates that at least one child resource is still starting or waiting.
     /// </summary>
     Starting,
 
     /// <summary>
-    /// All child resources are healthy.
+    /// Indicates that all child resources are healthy.
     /// </summary>
     Healthy,
 
     /// <summary>
-    /// At least one child resource is healthy and at least one is unhealthy.
+    /// Indicates that the aggregate child health is degraded.
     /// </summary>
     Degraded,
 
     /// <summary>
-    /// No child resource is healthy.
+    /// Indicates that the aggregate child health is unhealthy.
     /// </summary>
     Unhealthy,
 }

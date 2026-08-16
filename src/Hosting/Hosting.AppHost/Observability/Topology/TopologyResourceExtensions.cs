@@ -7,18 +7,37 @@ using Hosting.AppHost.Resources;
 using System.Text.Json;
 
 /// <summary>
-/// Provides registration methods for observable application topologies.
+/// Provides extensions that register an observability topology and expose its
+/// definition and service endpoints to a topology-provider project resource.
 /// </summary>
+/// <remarks>
+/// The generated environment-variable names use double underscores to model
+/// hierarchical .NET configuration keys.
+/// </remarks>
 internal static class TopologyResourceExtensions {
+    /// <summary>
+    /// Identifies the environment variable that contains the serialized
+    /// topology definition.
+    /// </summary>
     private const string TopologyConfigurationName =
         "Observability__TopologyDefinition";
 
+    /// <summary>
+    /// Identifies the configuration-key prefix for service health endpoints.
+    /// </summary>
     private const string HealthEndpointConfigurationPrefix =
         "Observability__HealthEndpoints";
 
+    /// <summary>
+    /// Identifies the configuration-key prefix for service liveness endpoints.
+    /// </summary>
     private const string AliveEndpointConfigurationPrefix =
         "Observability__AliveEndpoints";
 
+    /// <summary>
+    /// Identifies the named HTTP endpoint used to construct health and
+    /// liveness endpoint references.
+    /// </summary>
     private const string HttpEndpointName = "http";
 
     /// <summary>
@@ -35,7 +54,25 @@ internal static class TopologyResourceExtensions {
     /// <param name="configure">
     /// Configures topology nodes, dependency edges, and visual groups.
     /// </param>
-    /// <returns>The generated neutral topology definition.</returns>
+    /// <returns>
+    /// A snapshot of the configured neutral topology definition.
+    /// </returns>
+    /// <remarks>
+    /// The configuration callback must register at least one node. Visual
+    /// groups are also registered as Aspire health groups when they contain at
+    /// least one project-backed member. The serialized definition and each
+    /// service's <c>http</c> health and liveness endpoint references are added
+    /// to <paramref name="topologyProvider"/> as environment variables.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="builder"/>, <paramref name="topologyProvider"/>, or
+    /// <paramref name="configure"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The configured topology contains no nodes, or a registered service does
+    /// not expose the named <c>http</c> endpoint required for endpoint
+    /// references.
+    /// </exception>
     public static TopologyDefinition AddTopology(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<ProjectResource> topologyProvider,
@@ -72,6 +109,21 @@ internal static class TopologyResourceExtensions {
         return definition;
     }
 
+    /// <summary>
+    /// Registers topology groups as Aspire health groups.
+    /// </summary>
+    /// <param name="builder">
+    /// The distributed application builder that receives the health groups.
+    /// </param>
+    /// <param name="topology">
+    /// The topology used to resolve project-backed group members.
+    /// </param>
+    /// <param name="groups">The visual groups to register.</param>
+    /// <remarks>
+    /// Non-project members are ignored. Groups without any project-backed
+    /// members are not registered, and duplicate project resources are added
+    /// only once per health group.
+    /// </remarks>
     private static void AddAspireHealthGroups(
         IDistributedApplicationBuilder builder,
         TopologyBuilder topology,
@@ -97,6 +149,22 @@ internal static class TopologyResourceExtensions {
         }
     }
 
+    /// <summary>
+    /// Adds health and liveness endpoint references for each service node to
+    /// the topology-provider resource.
+    /// </summary>
+    /// <param name="topologyProvider">
+    /// The project resource that receives the endpoint environment variables.
+    /// </param>
+    /// <param name="topology">
+    /// The topology used to resolve each service's project resource.
+    /// </param>
+    /// <param name="nodes">The topology nodes to inspect.</param>
+    /// <remarks>
+    /// Non-service nodes are ignored. Service resources must expose an endpoint
+    /// named <c>http</c>. Health and liveness paths are fixed to
+    /// <c>/health</c> and <c>/alive</c>, respectively.
+    /// </remarks>
     private static void AddServiceEndpointConfiguration(
         IResourceBuilder<ProjectResource> topologyProvider,
         TopologyBuilder topology,
@@ -125,6 +193,15 @@ internal static class TopologyResourceExtensions {
         }
     }
 
+    /// <summary>
+    /// Creates a hierarchical environment-variable name for a topology node.
+    /// </summary>
+    /// <param name="prefix">The configuration-key prefix.</param>
+    /// <param name="nodeId">The stable topology node identifier.</param>
+    /// <returns>
+    /// The prefix and node identifier joined with the .NET configuration
+    /// hierarchy delimiter <c>__</c>.
+    /// </returns>
     private static string CreateConfigurationName(
         string prefix,
         string nodeId) {

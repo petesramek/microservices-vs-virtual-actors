@@ -4,50 +4,100 @@ using Aspire.Hosting.ApplicationModel;
 using global::Observability.Topology.Definitions;
 
 /// <summary>
-/// Builds the neutral observability topology from Aspire project resources.
+/// Builds a neutral observability topology from Aspire project resources and
+/// explicitly registered non-project nodes.
 /// </summary>
 /// <remarks>
-/// Nodes, dependency edges, and visual groups are registered independently.
-/// Group membership does not imply dependency direction, and dependency
-/// registration does not affect Aspire grouping.
+/// Nodes, directed dependency edges, and visual groups are registered
+/// independently. Group membership does not imply dependency direction, and
+/// dependency registration does not affect Aspire grouping.
+///
+/// <para>
+/// Registrations are order-dependent. Referenced nodes must already be
+/// registered. Node and group identifiers are case-sensitive and must be
+/// unique. At most one dependency may exist for each source-target pair.
+/// </para>
 /// </remarks>
-internal sealed class TopologyBuilder {
+internal sealed class TopologyBuilder
+{
+    /// <summary>
+    /// Identifies the default health-report entry that represents a service's
+    /// direct health.
+    /// </summary>
     private const string SelfHealthEntryKey = "self";
 
+    /// <summary>
+    /// Separates source and target identifiers in an internal dependency key.
+    /// </summary>
+    private const string EdgeKeySeparator = "\u001f";
+
+    /// <summary>
+    /// Stores topology nodes in registration order for views and snapshots.
+    /// </summary>
     private readonly List<TopologyNodeDefinition> nodes = [];
+
+    /// <summary>
+    /// Stores directed dependency edges in registration order for views and
+    /// snapshots.
+    /// </summary>
     private readonly List<TopologyEdgeDefinition> edges = [];
+
+    /// <summary>
+    /// Stores visual groups in registration order for views and snapshots.
+    /// </summary>
     private readonly List<TopologyGroupDefinition> groups = [];
 
+    /// <summary>
+    /// Maps service-node identifiers to their backing Aspire project
+    /// resources. Non-project nodes are intentionally excluded.
+    /// </summary>
     private readonly Dictionary<string, IResourceBuilder<ProjectResource>>
         projectResources = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Tracks registered node identifiers for case-sensitive uniqueness and
+    /// membership checks.
+    /// </summary>
     private readonly HashSet<string> nodeIds =
         new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Tracks directional source-target pairs to prevent duplicate dependency
+    /// edges.
+    /// </summary>
     private readonly HashSet<string> edgeKeys =
         new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Tracks registered group identifiers for case-sensitive uniqueness
+    /// checks.
+    /// </summary>
     private readonly HashSet<string> groupIds =
         new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Gets the registered neutral topology nodes.
+    /// Gets a read-only view of the registered neutral topology nodes.
     /// </summary>
     internal IReadOnlyList<TopologyNodeDefinition> Nodes => nodes;
 
     /// <summary>
-    /// Gets the registered neutral dependency edges.
+    /// Gets a read-only view of the registered neutral dependency edges.
     /// </summary>
     internal IReadOnlyList<TopologyEdgeDefinition> Edges => edges;
 
     /// <summary>
-    /// Gets the registered neutral visual groups.
+    /// Gets a read-only view of the registered neutral visual groups.
     /// </summary>
     internal IReadOnlyList<TopologyGroupDefinition> Groups => groups;
 
     /// <summary>
-    /// Gets the graph definition produced by the current registrations.
+    /// Creates a snapshot of the currently registered topology.
     /// </summary>
+    /// <remarks>
+    /// Each access creates a new definition and collection snapshots.
+    /// Registrations added afterward are not reflected in the returned
+    /// definition.
+    /// </remarks>
     internal TopologyDefinition Definition =>
         new(
             nodes.ToArray(),
@@ -55,23 +105,35 @@ internal sealed class TopologyBuilder {
             groups.ToArray());
 
     /// <summary>
-    /// Adds a service node backed by an Aspire project resource.
+    /// Registers an Aspire project resource as a service node.
     /// </summary>
     /// <param name="resource">
-    /// The Aspire project resource represented by the node.
+    /// The project resource whose Aspire resource name becomes the node
+    /// identifier.
     /// </param>
     /// <param name="displayName">
-    /// The display name presented in observability views.
+    /// The name displayed in observability views.
     /// </param>
     /// <param name="healthEntryKey">
-    /// The named entry in the service health report that represents the
-    /// service's own direct health.
+    /// The entry in the service health report that represents the service's
+    /// direct health.
     /// </param>
     /// <returns>The current topology builder.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="resource"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="displayName"/> or <paramref name="healthEntryKey"/> is
+    /// empty or whitespace.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// A node with the resource's name is already registered.
+    /// </exception>
     public TopologyBuilder AddService(
         IResourceBuilder<ProjectResource> resource,
         string displayName,
-        string healthEntryKey = SelfHealthEntryKey) {
+        string healthEntryKey = SelfHealthEntryKey)
+    {
         ArgumentNullException.ThrowIfNull(resource);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentException.ThrowIfNullOrWhiteSpace(healthEntryKey);
@@ -93,26 +155,41 @@ internal sealed class TopologyBuilder {
     }
 
     /// <summary>
-    /// Adds a storage node whose direct health is reported by a service.
+    /// Registers a storage node whose direct health is reported by a service.
     /// </summary>
     /// <param name="id">
-    /// The stable storage-node identifier.
+    /// The stable, unique storage-node identifier.
     /// </param>
     /// <param name="displayName">
-    /// The display name presented in observability views.
+    /// The name displayed in observability views.
     /// </param>
     /// <param name="provider">
-    /// The service resource whose health report contains the storage entry.
+    /// The registered service whose health report contains the storage entry.
     /// </param>
     /// <param name="healthEntryKey">
-    /// The named health-report entry representing the storage resource.
+    /// The health-report entry that represents the storage resource.
     /// </param>
     /// <returns>The current topology builder.</returns>
+    /// <remarks>
+    /// The provider must already be registered as a service node.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="provider"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="id"/>, <paramref name="displayName"/>, or
+    /// <paramref name="healthEntryKey"/> is empty or whitespace, or
+    /// <paramref name="provider"/> is not registered as a service node.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// A node with <paramref name="id"/> is already registered.
+    /// </exception>
     public TopologyBuilder AddStorage(
         string id,
         string displayName,
         IResourceBuilder<ProjectResource> provider,
-        string healthEntryKey) {
+        string healthEntryKey)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(provider);
@@ -137,32 +214,51 @@ internal sealed class TopologyBuilder {
     }
 
     /// <summary>
-    /// Adds a directed dependency edge between two service resources.
+    /// Adds a directed dependency from one registered service to another.
     /// </summary>
     /// <param name="source">
-    /// The service that owns and reports the dependency.
+    /// The registered service that owns and reports the dependency.
     /// </param>
     /// <param name="target">
-    /// The service on which the source depends.
+    /// The registered service on which <paramref name="source"/> depends.
     /// </param>
     /// <param name="healthEntryKey">
-    /// The optional named health-report entry emitted by the source for this
+    /// The optional health-report entry emitted by the source for this
     /// dependency.
     /// </param>
     /// <param name="requirement">
     /// Specifies whether the dependency is required or optional.
     /// </param>
     /// <returns>The current topology builder.</returns>
+    /// <remarks>
+    /// Both services must already be registered. Only one dependency may exist
+    /// for a given source-target pair, regardless of its health entry or
+    /// requirement.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="source"/> or <paramref name="target"/> is
+    /// <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// A referenced service is not registered, or
+    /// <paramref name="healthEntryKey"/> is empty or whitespace.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The dependency is a self-reference or its source-target pair is already
+    /// registered.
+    /// </exception>
     public TopologyBuilder AddDependency(
         IResourceBuilder<ProjectResource> source,
         IResourceBuilder<ProjectResource> target,
         string? healthEntryKey = null,
         TopologyDependencyRequirement requirement =
-            TopologyDependencyRequirement.Required) {
+            TopologyDependencyRequirement.Required)
+    {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(target);
 
-        if (healthEntryKey is not null) {
+        if (healthEntryKey is not null)
+        {
             ArgumentException.ThrowIfNullOrWhiteSpace(healthEntryKey);
         }
 
@@ -172,7 +268,6 @@ internal sealed class TopologyBuilder {
         EnsureServiceIsRegistered(
             sourceNodeId,
             nameof(source));
-
         EnsureServiceIsRegistered(
             targetNodeId,
             nameof(target));
@@ -188,33 +283,52 @@ internal sealed class TopologyBuilder {
     }
 
     /// <summary>
-    /// Adds a directed dependency edge from a service to a registered
+    /// Adds a directed dependency from a registered service to a registered
     /// non-project node, such as storage.
     /// </summary>
     /// <param name="source">
-    /// The service that depends on the registered target node.
+    /// The registered service that depends on the target node.
     /// </param>
     /// <param name="targetNodeId">
     /// The stable identifier of the registered target node.
     /// </param>
     /// <param name="healthEntryKey">
-    /// The optional named health-report entry emitted by the source for this
+    /// The optional health-report entry emitted by the source for this
     /// dependency.
     /// </param>
     /// <param name="requirement">
     /// Specifies whether the dependency is required or optional.
     /// </param>
     /// <returns>The current topology builder.</returns>
+    /// <remarks>
+    /// The source and target must already be registered. Only one dependency
+    /// may exist for a given source-target pair, regardless of its health entry
+    /// or requirement.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="source"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="targetNodeId"/> is empty or whitespace, the source or
+    /// target is not registered, or <paramref name="healthEntryKey"/> is empty
+    /// or whitespace.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The dependency is a self-reference or its source-target pair is already
+    /// registered.
+    /// </exception>
     public TopologyBuilder AddDependency(
         IResourceBuilder<ProjectResource> source,
         string targetNodeId,
         string? healthEntryKey = null,
         TopologyDependencyRequirement requirement =
-            TopologyDependencyRequirement.Required) {
+            TopologyDependencyRequirement.Required)
+    {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(targetNodeId);
 
-        if (healthEntryKey is not null) {
+        if (healthEntryKey is not null)
+        {
             ArgumentException.ThrowIfNullOrWhiteSpace(healthEntryKey);
         }
 
@@ -223,7 +337,6 @@ internal sealed class TopologyBuilder {
         EnsureServiceIsRegistered(
             sourceNodeId,
             nameof(source));
-
         EnsureNodeIsRegistered(
             targetNodeId,
             nameof(targetNodeId));
@@ -239,34 +352,53 @@ internal sealed class TopologyBuilder {
     }
 
     /// <summary>
-    /// Adds a visual group containing Aspire project resources.
+    /// Adds a visual group containing registered Aspire project resources.
     /// </summary>
     /// <param name="id">
-    /// The stable group identifier.
+    /// The stable, unique group identifier.
     /// </param>
     /// <param name="displayName">
-    /// The display name presented in observability views.
+    /// The name displayed in observability views.
     /// </param>
     /// <param name="members">
-    /// The registered service resources belonging to the group.
+    /// The registered service resources that belong to the group.
     /// </param>
     /// <returns>The current topology builder.</returns>
+    /// <remarks>
+    /// The group must contain at least one member. Every member must already be
+    /// registered as a service node. Duplicate members are included only once.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="members"/> or one of its elements is
+    /// <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="id"/> or <paramref name="displayName"/> is empty or
+    /// whitespace, the group has no members, or a member is not a registered
+    /// service.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// A group with <paramref name="id"/> is already registered.
+    /// </exception>
     public TopologyBuilder AddGroup(
         string id,
         string displayName,
-        params IResourceBuilder<ProjectResource>[] members) {
+        params IResourceBuilder<ProjectResource>[] members)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(members);
 
-        if (members.Length == 0) {
+        if (members.Length == 0)
+        {
             throw new ArgumentException(
                 "A topology group must contain at least one member.",
                 nameof(members));
         }
 
         string[] memberNodeIds = members
-            .Select(member => {
+            .Select(member =>
+            {
                 ArgumentNullException.ThrowIfNull(member);
 
                 string nodeId = member.Resource.Name;
@@ -291,34 +423,52 @@ internal sealed class TopologyBuilder {
 
     /// <summary>
     /// Adds a visual group containing registered nodes identified by their
-    /// stable IDs.
+    /// stable identifiers.
     /// </summary>
     /// <param name="id">
-    /// The stable group identifier.
+    /// The stable, unique group identifier.
     /// </param>
     /// <param name="displayName">
-    /// The display name presented in observability views.
+    /// The name displayed in observability views.
     /// </param>
     /// <param name="memberNodeIds">
-    /// The stable identifiers of registered group members.
+    /// The stable identifiers of the registered group members.
     /// </param>
     /// <returns>The current topology builder.</returns>
+    /// <remarks>
+    /// The group must contain at least one member. Every member must already be
+    /// registered. Duplicate member identifiers are included only once.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="memberNodeIds"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="id"/>, <paramref name="displayName"/>, or a member
+    /// identifier is empty or whitespace, the group has no members, or a
+    /// member identifier is not registered.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// A group with <paramref name="id"/> is already registered.
+    /// </exception>
     public TopologyBuilder AddGroup(
         string id,
         string displayName,
-        IReadOnlyCollection<string> memberNodeIds) {
+        IReadOnlyCollection<string> memberNodeIds)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(memberNodeIds);
 
-        if (memberNodeIds.Count == 0) {
+        if (memberNodeIds.Count == 0)
+        {
             throw new ArgumentException(
                 "A topology group must contain at least one member.",
                 nameof(memberNodeIds));
         }
 
         string[] normalizedMemberNodeIds = memberNodeIds
-            .Select(nodeId => {
+            .Select(nodeId =>
+            {
                 ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
 
                 EnsureNodeIsRegistered(
@@ -340,22 +490,27 @@ internal sealed class TopologyBuilder {
     }
 
     /// <summary>
-    /// Gets a registered Aspire project resource by topology node ID.
+    /// Gets the Aspire project resource associated with a topology node.
     /// </summary>
     /// <param name="nodeId">
     /// The stable service-node identifier.
     /// </param>
-    /// <returns>The corresponding Aspire project resource.</returns>
+    /// <returns>The associated Aspire project resource.</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="nodeId"/> is empty or whitespace.
+    /// </exception>
     /// <exception cref="InvalidOperationException">
-    /// The node does not represent a registered Aspire project resource.
+    /// The node is not backed by a registered Aspire project resource.
     /// </exception>
     internal IResourceBuilder<ProjectResource> GetProjectResource(
-        string nodeId) {
+        string nodeId)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
 
         if (!projectResources.TryGetValue(
                 nodeId,
-                out IResourceBuilder<ProjectResource>? resource)) {
+                out IResourceBuilder<ProjectResource>? resource))
+        {
             throw new InvalidOperationException(
                 $"Topology node '{nodeId}' does not represent a registered " +
                 "Aspire project resource.");
@@ -376,15 +531,25 @@ internal sealed class TopologyBuilder {
     /// the node is not backed by an Aspire project resource.
     /// </returns>
     internal IResourceBuilder<ProjectResource>? TryGetProjectResource(
-        string nodeId) {
+        string nodeId)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
 
         return projectResources.GetValueOrDefault(nodeId);
     }
 
+    /// <summary>
+    /// Registers a node while enforcing case-sensitive identifier uniqueness.
+    /// </summary>
+    /// <param name="node">The topology node to register.</param>
+    /// <exception cref="InvalidOperationException">
+    /// A node with the same identifier is already registered.
+    /// </exception>
     private void RegisterNode(
-        TopologyNodeDefinition node) {
-        if (!nodeIds.Add(node.Id)) {
+        TopologyNodeDefinition node)
+    {
+        if (!nodeIds.Add(node.Id))
+        {
             throw new InvalidOperationException(
                 $"The topology node ID '{node.Id}' is already registered.");
         }
@@ -392,22 +557,38 @@ internal sealed class TopologyBuilder {
         nodes.Add(node);
     }
 
+    /// <summary>
+    /// Registers a directed dependency while enforcing edge invariants.
+    /// </summary>
+    /// <param name="edge">The dependency edge to register.</param>
+    /// <remarks>
+    /// Edge identity consists only of the case-sensitive source-target pair.
+    /// Health metadata and requirement do not distinguish otherwise identical
+    /// edges.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// The edge is a self-dependency or its source-target pair is already
+    /// registered.
+    /// </exception>
     private void RegisterEdge(
-        TopologyEdgeDefinition edge) {
+        TopologyEdgeDefinition edge)
+    {
         if (string.Equals(
                 edge.SourceNodeId,
                 edge.TargetNodeId,
-                StringComparison.Ordinal)) {
+                StringComparison.Ordinal))
+        {
             throw new InvalidOperationException(
                 $"Topology node '{edge.SourceNodeId}' cannot depend on itself.");
         }
 
         string edgeKey = string.Concat(
             edge.SourceNodeId,
-            "\u001f",
+            EdgeKeySeparator,
             edge.TargetNodeId);
 
-        if (!edgeKeys.Add(edgeKey)) {
+        if (!edgeKeys.Add(edgeKey))
+        {
             throw new InvalidOperationException(
                 $"The topology dependency '{edge.SourceNodeId}' to " +
                 $"'{edge.TargetNodeId}' is already registered.");
@@ -416,9 +597,19 @@ internal sealed class TopologyBuilder {
         edges.Add(edge);
     }
 
+    /// <summary>
+    /// Registers a visual group while enforcing case-sensitive identifier
+    /// uniqueness.
+    /// </summary>
+    /// <param name="group">The topology group to register.</param>
+    /// <exception cref="InvalidOperationException">
+    /// A group with the same identifier is already registered.
+    /// </exception>
     private void RegisterGroup(
-        TopologyGroupDefinition group) {
-        if (!groupIds.Add(group.Id)) {
+        TopologyGroupDefinition group)
+    {
+        if (!groupIds.Add(group.Id))
+        {
             throw new InvalidOperationException(
                 $"The topology group ID '{group.Id}' is already registered.");
         }
@@ -426,10 +617,22 @@ internal sealed class TopologyBuilder {
         groups.Add(group);
     }
 
+    /// <summary>
+    /// Verifies that a topology node has already been registered.
+    /// </summary>
+    /// <param name="nodeId">The case-sensitive node identifier.</param>
+    /// <param name="parameterName">
+    /// The caller parameter to associate with a validation failure.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// No node with <paramref name="nodeId"/> is registered.
+    /// </exception>
     private void EnsureNodeIsRegistered(
         string nodeId,
-        string parameterName) {
-        if (!nodeIds.Contains(nodeId)) {
+        string parameterName)
+    {
+        if (!nodeIds.Contains(nodeId))
+        {
             throw new ArgumentException(
                 $"Topology node '{nodeId}' must be registered before it can " +
                 "be referenced.",
@@ -437,23 +640,36 @@ internal sealed class TopologyBuilder {
         }
     }
 
+    /// <summary>
+    /// Verifies that a service node has already been registered.
+    /// </summary>
+    /// <param name="nodeId">The case-sensitive service-node identifier.</param>
+    /// <param name="parameterName">
+    /// The caller parameter to associate with a validation failure.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// The node is not registered or is not a service node.
+    /// </exception>
     private void EnsureServiceIsRegistered(
         string nodeId,
-        string parameterName) {
+        string parameterName)
+    {
         TopologyNodeDefinition? node = nodes.FirstOrDefault(
             candidate => string.Equals(
                 candidate.Id,
                 nodeId,
                 StringComparison.Ordinal));
 
-        if (node is null) {
+        if (node is null)
+        {
             throw new ArgumentException(
                 $"Topology service '{nodeId}' must be registered before it " +
                 "can be referenced.",
                 parameterName);
         }
 
-        if (node.Kind != TopologyNodeKind.Service) {
+        if (node.Kind != TopologyNodeKind.Service)
+        {
             throw new ArgumentException(
                 $"Topology node '{nodeId}' is not a service node.",
                 parameterName);
