@@ -94,8 +94,8 @@ public abstract class HttpServiceClient(HttpClient httpClient, string name)
 
     private static void AddRequestHeaders(HttpRequestMessage message) {
         message.Headers.TryAddWithoutValidation(
-            ScenarioTelemetry.ScenarioHeaderName,
-            ScenarioTelemetry.ScenarioHeaderValue);
+            ScenarioInstrumentation.Headers.ScenarioRun,
+            ScenarioInstrumentation.Headers.ScenarioRunValue);
 
         string? correlationId = CorrelationIdApplicationBuilderExtensions.CorrelationIdContext.CurrentId;
 

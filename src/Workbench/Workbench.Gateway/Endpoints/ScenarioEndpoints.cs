@@ -1,6 +1,7 @@
 namespace Workbench.Gateway.Endpoints;
 
 using Hosting.ServiceDefaults.Observability;
+using Hosting.ServiceDefaults.Observability.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Diagnostics;
@@ -184,7 +185,7 @@ internal static class ScenarioEndpoints {
         IServiceClient serviceClient,
         RunScenarioRequest request,
         CancellationToken cancellationToken) {
-        using Activity? activity = ScenarioTelemetry.ActivitySource.StartActivity(
+        using Activity? activity = ScenarioInstrumentation.ActivitySource.StartActivity(
             $"Architecture: {serviceClient.Name}",
             ActivityKind.Internal);
 
@@ -215,15 +216,15 @@ internal static class ScenarioEndpoints {
         RunScenarioRequest request,
         string architecture) {
         ActivityTagsCollection tags = new() {
-            [ScenarioTelemetry.ScenarioRunTagName] = true,
-            [ScenarioTelemetry.ScenarioKindTagName] = request.Scenario.ToString(),
-            [ScenarioTelemetry.ArchitectureTagName] = architecture,
-            [ScenarioTelemetry.ProductIdTagName] = request.ProductId,
-            [ScenarioTelemetry.ConcurrentRequestsTagName] = request.ConcurrentRequests,
+            [ScenarioInstrumentation.TagNames.ScenarioRun] = true,
+            [ScenarioInstrumentation.TagNames.ScenarioKind] = request.Scenario.ToString(),
+            [ScenarioInstrumentation.TagNames.Architecture] = architecture,
+            [ScenarioInstrumentation.TagNames.ProductId] = request.ProductId,
+            [ScenarioInstrumentation.TagNames.ConcurrentRequests] = request.ConcurrentRequests,
         };
 
-        return ScenarioTelemetry.ActivitySource.StartActivity(
-            ScenarioTelemetry.GetActivityName(request.Scenario.ToString()),
+        return ScenarioInstrumentation.ActivitySource.StartActivity(
+            ScenarioInstrumentation.GetActivityName(request.Scenario.ToString()),
             ActivityKind.Internal,
             default(ActivityContext),
             tags);

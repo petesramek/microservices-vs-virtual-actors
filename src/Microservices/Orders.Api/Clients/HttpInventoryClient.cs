@@ -75,8 +75,8 @@ public sealed class HttpInventoryClient(HttpClient httpClient)
         var message = new HttpRequestMessage(method, requestUri);
 
         message.Headers.TryAddWithoutValidation(
-            ScenarioTelemetry.ScenarioHeaderName,
-            ScenarioTelemetry.ScenarioHeaderValue);
+            ScenarioInstrumentation.Headers.ScenarioRun,
+            ScenarioInstrumentation.Headers.ScenarioRunValue);
 
         if (content is not null) {
             message.Content = JsonContent.Create(content);

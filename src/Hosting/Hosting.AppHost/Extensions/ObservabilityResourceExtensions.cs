@@ -1,6 +1,6 @@
 namespace Hosting.AppHost.Extensions;
 
-using Hosting.ServiceDefaults.Observability;
+using Hosting.ServiceDefaults.Observability.Configuration;
 using Microsoft.Extensions.Configuration;
 
 /// <summary>

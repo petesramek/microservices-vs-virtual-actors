@@ -56,7 +56,7 @@ public class Program {
         builder.Services
             .AddSingleton<ScenarioMetrics>()
             .AddOpenTelemetry()
-                .WithMetrics(metrics => metrics.AddMeter(ScenarioMetrics.MeterName));
+                .WithMetrics(metrics => metrics.AddMeter(ScenarioInstrumentation.MeterName));
 
         WebApplication app = builder.Build();
 

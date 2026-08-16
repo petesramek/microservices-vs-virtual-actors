@@ -22,8 +22,8 @@ public sealed class HttpPaymentsClient(HttpClient httpClient)
         };
 
         message.Headers.TryAddWithoutValidation(
-            ScenarioTelemetry.ScenarioHeaderName,
-            ScenarioTelemetry.ScenarioHeaderValue);
+            ScenarioInstrumentation.Headers.ScenarioRun,
+            ScenarioInstrumentation.Headers.ScenarioRunValue);
 
         using HttpResponseMessage response = await httpClient
             .SendAsync(message, cancellationToken)
