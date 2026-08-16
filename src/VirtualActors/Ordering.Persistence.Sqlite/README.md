@@ -1,6 +1,6 @@
 ## Ordering.Persistence.Sqlite
 
-Ordering.Persistence.Sqlite provides a named SQLite-backed `IGrainStorage` implementation for the **Microservices vs Virtual Actors** architecture workbench. It persists serialized Orleans grain state through Entity Framework Core, maps provider-managed row versions to Orleans ETags, applies the database schema during silo startup, and exposes one registration extension for the ordering silo.
+Ordering.Persistence.Sqlite provides a named SQLite-backed `IGrainStorage` implementation for the **Microservices vs Virtual Actors** architecture workbench. It persists serialized Orleans grain state through Entity Framework Core, maps provider-managed row versions to Orleans ETags, applies the database schema during silo startup, and exposes registration extensions for the storage provider and its connectivity health check.
 
 This project does not implement grain behavior or application workflow rules. Its responsibility is to adapt Orleans grain persistence to the repository's local SQLite storage model.
 
@@ -17,9 +17,10 @@ See the repository-level README and docs directory for the scenario guide, archi
 
 ### Responsibilities
 
-The project performs six main tasks:
+The project performs seven main tasks:
 
 - Registers a named SQLite-backed Orleans grain storage provider.
+- Registers an optional connectivity-only health check for the grain-state database.
 - Serializes and deserializes grain state through Orleans' configured storage serializer.
 - Stores grain-state identity, payload, provider-managed version, and modification time.
 - Maps the persisted version to the Orleans ETag used for optimistic concurrency.
@@ -44,6 +45,8 @@ Internal/
     SqliteGrainStorage.cs
 
   Observability/
+    Health/
+      SqliteGrainStorageHealthCheck.cs
     Logging/
       LogInformation.cs
 
@@ -55,7 +58,7 @@ Migrations/
 
 ### Registration
 
-Register the provider while configuring the Orleans silo:
+Register storage while configuring the Orleans silo:
 
 ```csharp
 siloBuilder.AddSqliteGrainStorage(
@@ -71,13 +74,56 @@ The extension registers:
 
 Persistent state must reference the same provider name used during registration.
 
+Register the connectivity health check separately, after storage registration:
+
+```csharp
+siloBuilder.AddSqliteGrainStorageHealthCheck(
+    healthCheckName,
+    timeout);
+```
+
+The health-check name and timeout are optional. Their defaults are:
+
+```text
+sqlite-grain-storage
+00:00:02
+```
+
+A typical fluent registration is:
+
+```csharp
+siloBuilder
+    .AddSqliteGrainStorage(
+        storageProviderName,
+        connectionString)
+    .AddSqliteGrainStorageHealthCheck(
+        healthCheckName);
+```
+
 #### Registration boundary
 
 `AddSqliteGrainStorage` registers an unkeyed context factory and a named Orleans storage provider. Call it once for `GrainStateDbContext` in a silo service collection.
 
 Registering the method multiple times with different connection strings would not create independently keyed context factories. Supporting multiple SQLite databases in one silo would require a provider-specific or keyed context-factory design.
 
+`AddSqliteGrainStorageHealthCheck` depends on the context factory registered by `AddSqliteGrainStorage`, so storage must be registered first.
+
 A SQLite connection string can disclose file-system or credential information. Do not write it to logs, telemetry, exception messages, or health-check descriptions.
+
+### Connectivity health check
+
+`SqliteGrainStorageHealthCheck` creates an independent `GrainStateDbContext` and calls `Database.CanConnectAsync` with the health-check cancellation token.
+
+The check intentionally verifies connectivity only. It does not claim that:
+
+- migrations are current;
+- the expected tables exist;
+- every persistence operation will succeed;
+- the database is suitable for production workloads.
+
+Schema creation and updates remain the responsibility of the migration lifecycle in `SqliteGrainStorage`.
+
+The registration timeout is operational policy and is applied by the health-check framework. Caller or framework cancellation is propagated. Other failures produce an unhealthy result with a non-sensitive description.
 
 ### Persistence identity
 
@@ -138,7 +184,7 @@ An existing record:
 6. saves the entity;
 7. returns the new version as the Orleans ETag.
 
-A competing insert for the same composite primary key is translated to `InconsistentStateException`. Other SQLite constraint failures are allowed to remain database errors instead of being misreported as stale grain state.
+A competing insert for the same composite primary key is translated to `InconsistentStateException`. Other SQLite constraint failures remain database errors instead of being misreported as stale grain state.
 
 ### Clear behavior
 
@@ -176,7 +222,7 @@ The mapping defines:
 - required string identity columns;
 - maximum lengths for names and grain identifiers;
 - a required binary payload;
-- a provider-generated integer version configured as an EF Core concurrency token;
+- a provider-managed integer version configured as an EF Core concurrency token;
 - a required UTC modification timestamp.
 
 The `Version` value is not database-generated. `SqliteGrainStorage` initializes and increments it as part of the provider's ETag contract.
@@ -191,7 +237,7 @@ The provider participates in the silo lifecycle at `ApplicationServices` stage. 
 4. releases the process-local write lock;
 5. writes a structured provider-initialized log event.
 
-The initial migration and model snapshot are committed under `Migrations/`. Schema changes should be made through new migrations rather than by editing an already applied migration.
+The initial migration and model snapshot are committed under `Migrations/`. Schema changes should be represented by new migrations rather than edits to an already applied migration.
 
 ### SQLite write-ahead logging
 
@@ -231,7 +277,7 @@ Unexpected serialization, migration, connection, command-timeout, locking, or no
 
 ### Prerequisites
 
-Use the .NET SDK required by the repository. The current project structure targets `net10.0`.
+Use the .NET SDK required by the repository. The current project targets `net10.0`.
 
 Restore dependencies from the repository root:
 
@@ -244,7 +290,8 @@ The consuming silo must provide:
 - Orleans silo hosting;
 - an `IGrainStorageSerializer`;
 - `ClusterOptions` with a stable `ServiceId`;
-- a writable SQLite connection string location.
+- a writable SQLite connection string location;
+- ASP.NET Core health-check services when the optional health check is registered.
 
 ### Validate changes
 
@@ -268,6 +315,7 @@ Persistence changes should cover at least:
 - non-ASCII grain identifiers;
 - serializer round trips;
 - migration startup;
+- connectivity health-check success, failure, and cancellation;
 - SQLite primary-key and non-primary-key constraint behavior.
 
 The Orleans persistence test kit is a useful baseline for validating custom `IGrainStorage` providers, particularly ETag consistency and concurrent operations.
@@ -284,15 +332,18 @@ When modifying this project:
 - Return the new ETag and record-existence state after successful operations.
 - Translate only genuine stale-state and competing-insert conflicts to `InconsistentStateException`.
 - Keep EF Core concurrency-token configuration aligned with the provider's update behavior.
+- Keep the health check connectivity-only unless its contract is explicitly changed.
+- Keep health-check timeout policy at registration.
 - Add a new migration when the entity mapping changes.
 - Do not edit an applied migration to represent a new schema revision.
 - Keep SQLite deployment assumptions explicit.
-- Update this README when registration, schema, ETag behavior, initialization, or deployment constraints change.
+- Update this README when registration, schema, ETag behavior, initialization, health checks, or deployment constraints change.
 
 ### Naming conventions
 
 - Public extension methods use PascalCase.
 - Internal infrastructure types remain under `Internal.Infrastructure`.
+- Health checks remain under `Internal.Observability.Health`.
 - Structured logging helpers remain under `Internal.Observability.Logging`.
 - Orleans storage-provider names are stable configuration identifiers.
 - Entity identity property names follow Orleans storage concepts.
