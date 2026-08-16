@@ -5,7 +5,7 @@ using Orders.Api.Internal.Infrastructure;
 /// <summary>
 /// Configures and runs the Orders API.
 /// </summary>
-internal class Program {
+public class Program {
     /// <summary>
     /// Configures services and the request pipeline, initializes persistence,
     /// maps endpoints, and runs the application.
