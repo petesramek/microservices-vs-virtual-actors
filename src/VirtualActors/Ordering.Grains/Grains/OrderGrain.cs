@@ -5,7 +5,7 @@ using Ordering.Grains.Grains.Abstraction;
 using Ordering.Grains.State;
 using Orleans;
 using Orleans.Runtime;
-using Workbench.Contracts;
+using Workbench.Contracts.Orders;
 
 /// <summary>
 /// Owns and coordinates one order workflow.

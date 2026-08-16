@@ -1,4 +1,4 @@
-namespace Workbench.Contracts;
+namespace Workbench.Contracts.Inventory;
 
 /// <summary>
 /// Represents a request to reserve inventory for an order.

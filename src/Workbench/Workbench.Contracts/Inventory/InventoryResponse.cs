@@ -1,4 +1,4 @@
-namespace Workbench.Contracts;
+namespace Workbench.Contracts.Inventory;
 
 /// <summary>
 /// Represents the current inventory for a product.

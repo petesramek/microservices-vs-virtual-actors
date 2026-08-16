@@ -9,7 +9,9 @@ using Ordering.Api.Logging;
 using Ordering.Grains.Contracts;
 using Ordering.Grains.Grains.Abstraction;
 using Orleans;
-using Workbench.Contracts;
+using Workbench.Contracts.Inventory;
+using Workbench.Contracts.Orders;
+using Workbench.Contracts.Scenarios;
 
 /// <summary>
 /// Provides endpoint-registration methods for the ordering API.

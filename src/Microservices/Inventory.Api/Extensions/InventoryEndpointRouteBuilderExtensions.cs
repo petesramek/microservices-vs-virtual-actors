@@ -5,7 +5,7 @@ using Inventory.Api.Internal.Observability.Logging;
 using Inventory.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Workbench.Contracts;
+using Workbench.Contracts.Inventory;
 
 /// <summary>
 /// Provides endpoint mappings for the inventory service.

@@ -1,7 +1,7 @@
 namespace Workbench.Ui.Models;
 
 using System.ComponentModel.DataAnnotations;
-using Workbench.Contracts;
+using Workbench.Contracts.Scenarios;
 
 /// <summary>
 /// UI form model used by the scenario runner page.

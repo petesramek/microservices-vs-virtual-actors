@@ -1,6 +1,8 @@
 namespace Workbench.Gateway.Clients;
 
-using Workbench.Contracts;
+using Workbench.Contracts.Inventory;
+using Workbench.Contracts.Orders;
+using Workbench.Contracts.Scenarios;
 
 /// <summary>
 /// Provides scenario service operations for the Microservices implementation.

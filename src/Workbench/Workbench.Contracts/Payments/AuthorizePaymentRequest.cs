@@ -1,4 +1,4 @@
-namespace Workbench.Contracts;
+namespace Workbench.Contracts.Payments;
 
 /// <summary>
 /// Represents a request to authorize payment for an order.

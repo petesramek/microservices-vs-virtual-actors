@@ -2,7 +2,9 @@ namespace Workbench.Gateway.Scenarios;
 
 using Hosting.ServiceDefaults.Observability;
 using System.Diagnostics;
-using Workbench.Contracts;
+using Workbench.Contracts.Inventory;
+using Workbench.Contracts.Orders;
+using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Clients;
 
 /// <summary>

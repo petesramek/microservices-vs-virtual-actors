@@ -1,4 +1,4 @@
-namespace Workbench.Contracts;
+namespace Workbench.Contracts.Payments;
 
 /// <summary>
 /// Represents the result of a payment authorization attempt.

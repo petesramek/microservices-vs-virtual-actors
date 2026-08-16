@@ -1,6 +1,6 @@
 namespace Orders.Api.Internal.Clients.Abstraction;
 
-using Workbench.Contracts;
+using Workbench.Contracts.Payments;
 
 /// <summary>
 /// Defines operations for communicating with the Payments API.

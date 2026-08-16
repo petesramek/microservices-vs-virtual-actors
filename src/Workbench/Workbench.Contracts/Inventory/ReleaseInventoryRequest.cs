@@ -1,4 +1,4 @@
-namespace Workbench.Contracts;
+namespace Workbench.Contracts.Inventory;
 
 /// <summary>
 /// Represents a request to release an inventory reservation.

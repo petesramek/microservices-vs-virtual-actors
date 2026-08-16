@@ -3,7 +3,7 @@ namespace Orders.Api.Extensions;
 using Orders.Api.Logging;
 using System.Collections.Concurrent;
 using System.Text.Json;
-using Workbench.Contracts;
+using Workbench.Contracts.Scenarios;
 
 /// <summary>
 /// Provides request-pipeline configuration for the Orders API.

@@ -3,7 +3,7 @@ namespace Orders.Api.Internal.Clients;
 using Hosting.ServiceDefaults.Observability;
 using Orders.Api.Internal.Clients.Abstraction;
 using System.Net.Http.Json;
-using Workbench.Contracts;
+using Workbench.Contracts.Inventory;
 
 /// <summary>
 /// Implements <see cref="IInventoryClient"/> by sending HTTP requests to the

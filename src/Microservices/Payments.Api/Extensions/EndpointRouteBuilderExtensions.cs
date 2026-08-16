@@ -9,6 +9,7 @@ using Payments.Api.Internal.Infrastructure;
 using Payments.Api.Internal.Observability.Logging;
 using Payments.Api.Models;
 using Workbench.Contracts;
+using Workbench.Contracts.Payments;
 
 /// <summary>
 /// Provides endpoint-registration methods for the Payments API.

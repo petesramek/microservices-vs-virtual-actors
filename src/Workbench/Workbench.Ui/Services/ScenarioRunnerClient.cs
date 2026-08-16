@@ -1,7 +1,7 @@
 namespace Workbench.Ui.Services;
 
 using System.Net.Http.Json;
-using Workbench.Contracts;
+using Workbench.Contracts.Scenarios;
 
 /// <summary>
 /// Client used by the Blazor Server UI to run workbench scenarios through the gateway.

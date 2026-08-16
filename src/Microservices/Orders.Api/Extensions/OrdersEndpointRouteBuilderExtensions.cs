@@ -5,7 +5,10 @@ using Orders.Api.Internal.Clients.Abstraction;
 using Orders.Api.Internal.Infrastructure;
 using Orders.Api.Logging;
 using Orders.Api.Models;
-using Workbench.Contracts;
+using Workbench.Contracts.Inventory;
+using Workbench.Contracts.Orders;
+using Workbench.Contracts.Payments;
+using Workbench.Contracts.Scenarios;
 
 /// <summary>
 /// Provides endpoint mappings for the Orders API.

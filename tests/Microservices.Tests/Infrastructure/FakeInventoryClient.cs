@@ -1,7 +1,7 @@
 namespace Microservices.Tests.Infrastructure;
 
 using Orders.Api.Internal.Clients.Abstraction;
-using Workbench.Contracts;
+using Workbench.Contracts.Inventory;
 
 /// <summary>
 /// Thread-safe fake inventory client used by Orders API tests.

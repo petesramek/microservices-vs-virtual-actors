@@ -3,7 +3,7 @@ namespace VirtualActors.Tests;
 using Ordering.Grains.Contracts;
 using Ordering.Grains.Grains.Abstraction;
 using Shouldly;
-using Workbench.Contracts;
+using Workbench.Contracts.Orders;
 using Xunit;
 
 /// <summary>

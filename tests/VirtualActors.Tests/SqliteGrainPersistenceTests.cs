@@ -12,7 +12,7 @@ using Orleans.Storage;
 using Orleans.TestingHost;
 using Shouldly;
 using System.Globalization;
-using Workbench.Contracts;
+using Workbench.Contracts.Orders;
 using Xunit;
 
 /// <summary>

@@ -1,6 +1,6 @@
 namespace Workbench.Gateway.Logging;
 
-using Workbench.Contracts;
+using Workbench.Contracts.Scenarios;
 
 internal static partial class LogInformation {
     private const LogLevel Level = LogLevel.Information;

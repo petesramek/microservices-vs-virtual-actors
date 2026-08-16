@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using System.Diagnostics;
 using Workbench.Contracts;
+using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Clients;
 using Workbench.Gateway.Logging;
 using Workbench.Gateway.Scenarios;
