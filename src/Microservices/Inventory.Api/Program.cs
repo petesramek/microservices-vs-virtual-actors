@@ -60,6 +60,8 @@ internal class Program {
         await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
 
         app.MapInventoryEndpoints();
+        // Map the shared health and aliveness endpoints.
+        app.MapDefaultEndpoints();
 
         await app.RunAsync().ConfigureAwait(false);
     }
