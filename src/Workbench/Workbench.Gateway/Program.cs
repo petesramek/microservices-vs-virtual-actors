@@ -49,7 +49,6 @@ public class Program {
             .AddHealthChecks();
 
         // Configure gateway services.
-        builder.Services.AddSingleton<ServiceStatusClient>();
         builder.Services.AddSingleton<ScenarioRunner>();
 
         // Register workbench metrics
