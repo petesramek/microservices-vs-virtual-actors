@@ -1,4 +1,4 @@
-namespace Workbench.Gateway.Endpoints;
+namespace Workbench.Gateway.Internal.Endpoints;
 
 using Hosting.ServiceDefaults.Observability;
 using Hosting.ServiceDefaults.Observability.Configuration;
@@ -7,24 +7,47 @@ using Microsoft.Extensions.Primitives;
 using System.Diagnostics;
 using Workbench.Contracts;
 using Workbench.Contracts.Scenarios;
-using Workbench.Gateway.Clients;
+using Workbench.Gateway.Internal.Clients;
+using Workbench.Gateway.Internal.Clients.Abstraction;
+using Workbench.Gateway.Internal.Scenarios;
 using Workbench.Gateway.Logging;
-using Workbench.Gateway.Scenarios;
 
 /// <summary>
 /// Provides endpoint mappings for running architecture workbench scenarios.
 /// </summary>
 internal static class ScenarioEndpoints {
+    /// <summary>
+    /// Identifies the request header used to select architecture implementations.
+    /// </summary>
     private const string ArchitectureHeader = "X-Architecture";
+
+    /// <summary>
+    /// Identifies a request to run both architecture implementations.
+    /// </summary>
     private const string BothArchitectures = "both";
+
+    /// <summary>
+    /// Identifies a request to run only the microservices implementation.
+    /// </summary>
     private const string MicroservicesArchitecture = "microservices";
+
+    /// <summary>
+    /// Identifies a request to run only the virtual actor implementation.
+    /// </summary>
     private const string VirtualActorsArchitecture = "virtual-actors";
 
     /// <summary>
     /// Maps the scenario execution endpoint.
     /// </summary>
-    /// <param name="endpoints">The endpoint route builder.</param>
-    /// <returns>The endpoint route builder.</returns>
+    /// <param name="endpoints">
+    /// The endpoint route builder that receives the scenario route.
+    /// </param>
+    /// <returns>
+    /// <paramref name="endpoints"/> so additional endpoints can be mapped.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="endpoints"/> is <see langword="null"/>.
+    /// </exception>
     public static IEndpointRouteBuilder MapScenarioEndpoints(
         this IEndpointRouteBuilder endpoints) {
         ArgumentNullException.ThrowIfNull(endpoints);
@@ -35,17 +58,36 @@ internal static class ScenarioEndpoints {
     }
 
     /// <summary>
-    /// Runs a workbench scenario against the architecture selected by the request header.
+    /// Runs a workbench scenario against the architecture implementations
+    /// selected by the request header.
     /// </summary>
-    /// <param name="request">The scenario request.</param>
-    /// <param name="httpRequest">The current HTTP request containing the architecture selection.</param>
-    /// <param name="scenarioRunner">The scenario runner.</param>
-    /// <param name="microservicesClient">The Microservices service client.</param>
-    /// <param name="virtualActorsClient">The Virtual Actors service client.</param>
+    /// <param name="request">The scenario execution request.</param>
+    /// <param name="httpRequest">
+    /// The HTTP request containing the optional architecture-selection header.
+    /// </param>
+    /// <param name="scenarioRunner">The scenario execution coordinator.</param>
+    /// <param name="microservicesClient">
+    /// The client for the microservices implementation.
+    /// </param>
+    /// <param name="virtualActorsClient">
+    /// The client for the virtual actor implementation.
+    /// </param>
     /// <param name="loggerFactory">The logger factory.</param>
-    /// <param name="observabilityOptions">The observability configuration.</param>
-    /// <param name="cancellationToken">The token used to cancel scenario execution.</param>
-    /// <returns>The scenario result or an error response.</returns>
+    /// <param name="observabilityOptions">
+    /// The observability options controlling scenario-root activity creation.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// The token that cancels scenario execution.
+    /// </param>
+    /// <returns>
+    /// An HTTP 200 response containing the selected execution results, HTTP 400
+    /// for an unsupported architecture value, or HTTP 500 for an unexpected
+    /// execution failure.
+    /// </returns>
+    /// <exception cref="OperationCanceledException">
+    /// <paramref name="cancellationToken"/> is canceled while a scenario is
+    /// running.
+    /// </exception>
     private static async Task<IResult> RunScenarioAsync(
         RunScenarioRequest request,
         HttpRequest httpRequest,
@@ -67,7 +109,6 @@ internal static class ScenarioEndpoints {
             || architecture.Equals(
                 BothArchitectures,
                 StringComparison.OrdinalIgnoreCase);
-
         bool runVirtualActors = architecture.Equals(
                 VirtualActorsArchitecture,
                 StringComparison.OrdinalIgnoreCase)
@@ -87,7 +128,6 @@ internal static class ScenarioEndpoints {
 
         bool createScenarioRoot = observabilityOptions.Value.TraceMode
             == TraceCollectionMode.ScenarioOnly;
-
         Activity? parentActivity = Activity.Current;
 
         if (createScenarioRoot) {
@@ -104,6 +144,7 @@ internal static class ScenarioEndpoints {
 
         try {
             logger.StartingScenario(request.Scenario, architecture);
+
             ScenarioExecutionResult? microservices = null;
             ScenarioExecutionResult? virtualActors = null;
 
@@ -114,7 +155,6 @@ internal static class ScenarioEndpoints {
                         microservicesClient,
                         request,
                         cancellationToken);
-
                 Task<ScenarioExecutionResult> virtualActorsTask =
                     RunArchitectureAsync(
                         scenarioRunner,
@@ -143,7 +183,6 @@ internal static class ScenarioEndpoints {
             }
 
             activity?.SetStatus(ActivityStatusCode.Ok);
-
             logger.ScenarioCompleted(
                 scenarioKind: request.Scenario,
                 architecture: architecture,
@@ -158,13 +197,11 @@ internal static class ScenarioEndpoints {
             activity?.SetStatus(
                 ActivityStatusCode.Error,
                 "Scenario execution was canceled.");
-
             throw;
         } catch (Exception exception) {
             activity?.SetStatus(
                 ActivityStatusCode.Error,
                 exception.Message);
-
             logger.ScenarioExecutionFailed(
                 exception,
                 request.Scenario,
@@ -181,6 +218,25 @@ internal static class ScenarioEndpoints {
         }
     }
 
+    /// <summary>
+    /// Executes a scenario against one architecture implementation and records
+    /// the execution status on a child activity.
+    /// </summary>
+    /// <param name="scenarioRunner">The scenario execution coordinator.</param>
+    /// <param name="serviceClient">
+    /// The client for the architecture implementation being executed.
+    /// </param>
+    /// <param name="request">The scenario execution request.</param>
+    /// <param name="cancellationToken">
+    /// The token that cancels architecture execution.
+    /// </param>
+    /// <returns>
+    /// A task whose result contains the architecture execution outcome.
+    /// </returns>
+    /// <exception cref="OperationCanceledException">
+    /// <paramref name="cancellationToken"/> is canceled while the architecture
+    /// is executing.
+    /// </exception>
     private static async Task<ScenarioExecutionResult> RunArchitectureAsync(
         ScenarioRunner scenarioRunner,
         IServiceClient serviceClient,
@@ -202,17 +258,28 @@ internal static class ScenarioEndpoints {
             activity?.SetStatus(
                 ActivityStatusCode.Error,
                 $"{serviceClient.Name} execution was canceled.");
-
             throw;
         } catch (Exception exception) {
             activity?.SetStatus(
                 ActivityStatusCode.Error,
                 exception.Message);
-
             throw;
         }
     }
 
+    /// <summary>
+    /// Starts the root activity used to trace a scenario execution.
+    /// </summary>
+    /// <param name="request">
+    /// The scenario request that provides activity name and tag values.
+    /// </param>
+    /// <param name="architecture">
+    /// The normalized architecture selection recorded on the activity.
+    /// </param>
+    /// <returns>
+    /// The started activity, or <see langword="null"/> when no listener samples
+    /// the activity.
+    /// </returns>
     private static Activity? StartScenarioActivity(
         RunScenarioRequest request,
         string architecture) {

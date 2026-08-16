@@ -1,14 +1,15 @@
-namespace Workbench.Gateway.Clients;
+namespace Workbench.Gateway.Internal.Clients;
 
 using Workbench.Contracts.Inventory;
 using Workbench.Contracts.Orders;
 using Workbench.Contracts.Scenarios;
+using Workbench.Gateway.Internal.Clients.Abstraction;
 
 /// <summary>
 /// Provides scenario service operations for the Microservices implementation.
 /// </summary>
 /// <param name="httpClient">The HTTP client configured for Orders API.</param>
-public sealed class MicroservicesServiceClient(HttpClient httpClient)
+internal sealed class MicroservicesServiceClient(HttpClient httpClient)
     : HttpServiceClient(httpClient, "Microservices") {
     /// <inheritdoc />
     public override IReadOnlyList<ScenarioEvent> CreateTimeline(

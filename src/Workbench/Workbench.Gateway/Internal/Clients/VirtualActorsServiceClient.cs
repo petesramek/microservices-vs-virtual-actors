@@ -1,14 +1,15 @@
-namespace Workbench.Gateway.Clients;
+namespace Workbench.Gateway.Internal.Clients;
 
 using Workbench.Contracts.Inventory;
 using Workbench.Contracts.Orders;
 using Workbench.Contracts.Scenarios;
+using Workbench.Gateway.Internal.Clients.Abstraction;
 
 /// <summary>
 /// Provides scenario service operations for the Virtual Actors implementation.
 /// </summary>
 /// <param name="httpClient">The HTTP client configured for Ordering API.</param>
-public sealed class VirtualActorsServiceClient(HttpClient httpClient)
+internal sealed class VirtualActorsServiceClient(HttpClient httpClient)
     : HttpServiceClient(httpClient, "Virtual Actors") {
     /// <inheritdoc />
     public override IReadOnlyList<ScenarioEvent> CreateTimeline(

@@ -1,4 +1,4 @@
-namespace Workbench.Ui.Extensions;
+namespace Workbench.Ui.Internal.Extensions;
 
 using global::Observability.Topology.Evaluation;
 using Workbench.Ui.Observability.Health;

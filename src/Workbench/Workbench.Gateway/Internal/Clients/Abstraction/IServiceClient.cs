@@ -1,4 +1,4 @@
-namespace Workbench.Gateway.Clients;
+namespace Workbench.Gateway.Internal.Clients.Abstraction;
 
 using Workbench.Contracts.Inventory;
 using Workbench.Contracts.Orders;

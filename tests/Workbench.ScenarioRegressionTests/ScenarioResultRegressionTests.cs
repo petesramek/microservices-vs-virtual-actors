@@ -10,8 +10,8 @@ using System.Text.Json;
 using Workbench.Contracts.Inventory;
 using Workbench.Contracts.Orders;
 using Workbench.Contracts.Scenarios;
-using Workbench.Gateway.Clients;
-using Workbench.Gateway.Scenarios;
+using Workbench.Gateway.Internal.Clients.Abstraction;
+using Workbench.Gateway.Internal.Scenarios;
 using Xunit;
 
 /// <summary>

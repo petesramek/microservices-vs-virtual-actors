@@ -10,6 +10,7 @@ using Workbench.Contracts.Inventory;
 using Workbench.Contracts.Orders;
 using Workbench.Contracts.Scenarios;
 using Workbench.Gateway;
+using Workbench.Gateway.Internal.Clients;
 using Xunit;
 
 /// <summary>
@@ -66,10 +67,10 @@ public sealed class WorkbenchGatewayAcceptanceTests {
         return new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder => {
                 builder.ConfigureTestServices(services => {
-                    services.AddHttpClient<Workbench.Gateway.Clients.MicroservicesServiceClient>()
+                    services.AddHttpClient<MicroservicesServiceClient>()
                         .ConfigurePrimaryHttpMessageHandler(() => new FakeArchitectureHandler());
 
-                    services.AddHttpClient<Workbench.Gateway.Clients.VirtualActorsServiceClient>()
+                    services.AddHttpClient<VirtualActorsServiceClient>()
                         .ConfigurePrimaryHttpMessageHandler(() => new FakeArchitectureHandler());
                 });
             });

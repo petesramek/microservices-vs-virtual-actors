@@ -1,15 +1,29 @@
 using Hosting.ServiceDefaults.Extensions;
 using Hosting.ServiceDefaults.Observability;
 using Microsoft.Extensions.Options;
-using Workbench.Gateway.Clients;
-using Workbench.Gateway.Configuration;
-using Workbench.Gateway.Endpoints;
-using Workbench.Gateway.Extensions;
-using Workbench.Gateway.Scenarios;
+using Workbench.Gateway.Internal.Clients;
+using Workbench.Gateway.Internal.Configuration;
+using Workbench.Gateway.Internal.Endpoints;
+using Workbench.Gateway.Internal.Extensions;
+using Workbench.Gateway.Internal.Scenarios;
 
 namespace Workbench.Gateway;
 
+/// <summary>
+/// Provides the entry point and application composition for the workbench
+/// gateway.
+/// </summary>
 public class Program {
+    /// <summary>
+    /// Configures gateway services and the HTTP request pipeline, maps the
+    /// gateway endpoints, and runs the application host.
+    /// </summary>
+    /// <param name="args">
+    /// The command-line arguments passed to the web application builder.
+    /// </param>
+    /// <returns>
+    /// A task that represents the lifetime of the running application host.
+    /// </returns>
     private static async Task Main(string[] args) {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -22,40 +36,39 @@ public class Program {
         // Configure and validate downstream architecture endpoints.
         builder.Services
             .AddOptions<ServiceEndpointOptions>()
-            .Bind(builder.Configuration.GetSection(ServiceEndpointOptions.SectionName))
+            .Bind(builder.Configuration.GetSection(
+                ServiceEndpointOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
         // Configure microservices service client.
-        builder.Services.AddHttpClient<MicroservicesServiceClient>((services, client) => {
-            ServiceEndpointOptions options = services
-                .GetRequiredService<IOptions<ServiceEndpointOptions>>()
-                .Value;
+        builder.Services.AddHttpClient<MicroservicesServiceClient>(
+            (services, client) => {
+                ServiceEndpointOptions options = services
+                    .GetRequiredService<IOptions<ServiceEndpointOptions>>()
+                    .Value;
 
-            client.BaseAddress = new Uri(options.MicroservicesBaseUrl);
-        });
+                client.BaseAddress = new Uri(options.MicroservicesBaseUrl);
+            });
 
         // Configure virtual actor service client.
-        builder.Services.AddHttpClient<VirtualActorsServiceClient>((services, client) => {
-            ServiceEndpointOptions options = services
-                .GetRequiredService<IOptions<ServiceEndpointOptions>>()
-                .Value;
+        builder.Services.AddHttpClient<VirtualActorsServiceClient>(
+            (services, client) => {
+                ServiceEndpointOptions options = services
+                    .GetRequiredService<IOptions<ServiceEndpointOptions>>()
+                    .Value;
 
-            client.BaseAddress = new Uri(options.VirtualActorsBaseUrl);
-        });
+                client.BaseAddress = new Uri(options.VirtualActorsBaseUrl);
+            });
 
         // Register caller-specific downstream dependency health checks.
-        builder.Services
-            .AddHealthChecks();
+        builder.Services.AddHealthChecks();
 
         // Configure gateway services.
         builder.Services.AddSingleton<ScenarioRunner>();
 
-        // Register workbench metrics
-        builder.Services
-            .AddSingleton<ScenarioMetrics>()
-            .AddOpenTelemetry()
-                .WithMetrics(metrics => metrics.AddMeter(ScenarioInstrumentation.MeterName));
+        // Register workbench metrics.
+        builder.Services.AddSingleton<ScenarioMetrics>();
 
         WebApplication app = builder.Build();
 

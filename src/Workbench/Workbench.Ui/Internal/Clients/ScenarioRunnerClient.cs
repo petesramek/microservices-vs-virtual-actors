@@ -1,4 +1,4 @@
-namespace Workbench.Ui.Services;
+namespace Workbench.Ui.Internal.Clients;
 
 using System.Net.Http.Json;
 using Workbench.Contracts.Scenarios;

@@ -29,7 +29,7 @@ internal sealed class SystemHealthService(
     private static readonly JsonSerializerOptions SerializerOptions =
         CreateSerializerOptions();
 
-    private readonly IReadOnlyDictionary<string, string> healthEndpoints =
+    private readonly HealthEndpointOptions healthEndpoints =
         healthEndpointOptions.Value;
 
     private readonly IReadOnlyDictionary<string, string> aliveEndpoints =
