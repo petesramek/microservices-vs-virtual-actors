@@ -1,14 +1,29 @@
-namespace Inventory.Api.Logging;
+namespace Inventory.Api.Internal.Observability.Logging;
 
+using Microsoft.Extensions.Logging;
+
+/// <summary>
+/// Defines source-generated informational log messages for inventory operations.
+/// </summary>
 internal static partial class LogInformation {
-    const LogLevel Level = LogLevel.Information;
-    const int EventIdBase = (int)Level * 100;
+    /// <summary>
+    /// Defines the log level shared by the messages in this class.
+    /// </summary>
+    private const LogLevel Level = LogLevel.Information;
 
     /// <summary>
-    /// Logs that a request with a correlation identifier is being handled.
+    /// Defines the first event ID reserved for inventory informational events.
     /// </summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="correlationId">The correlation identifier.</param>
+    private const int EventIdBase = (int)Level * 100;
+
+    /// <summary>
+    /// Logs that a request is being handled with its correlation identifier.
+    /// </summary>
+    /// <param name="logger">The logger used to write the event.</param>
+    /// <param name="correlationId">
+    /// The correlation identifier, or <see langword="null"/> when none was
+    /// supplied.
+    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 1,
         Level = Level,
@@ -20,9 +35,9 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that inventory for a product is being reset.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="quantity">The requested quantity.</param>
+    /// <param name="quantity">The requested inventory quantity.</param>
     [LoggerMessage(
         EventId = EventIdBase + 2,
         Level = Level,
@@ -35,9 +50,11 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that inventory for a product was reset.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="availableQuantity">The available quantity after the reset.</param>
+    /// <param name="availableQuantity">
+    /// The inventory quantity available after the reset.
+    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 3,
         Level = Level,
@@ -50,9 +67,11 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that inventory for a product was retrieved.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="availableQuantity">The available quantity.</param>
+    /// <param name="availableQuantity">
+    /// The currently available inventory quantity.
+    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 4,
         Level = Level,
@@ -65,11 +84,11 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that inventory is being reserved for an order.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="orderId">The order identifier.</param>
+    /// <param name="orderId">The associated order identifier.</param>
     /// <param name="reservationId">The reservation identifier.</param>
-    /// <param name="quantity">The requested quantity.</param>
+    /// <param name="quantity">The requested inventory quantity.</param>
     [LoggerMessage(
         EventId = EventIdBase + 5,
         Level = Level,
@@ -84,12 +103,17 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that an inventory reservation completed.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="orderId">The order identifier.</param>
+    /// <param name="orderId">The associated order identifier.</param>
     /// <param name="reservationId">The reservation identifier.</param>
-    /// <param name="reserved">Whether the inventory was reserved.</param>
-    /// <param name="availableQuantity">The remaining available quantity.</param>
+    /// <param name="reserved">
+    /// <see langword="true"/> when inventory was reserved; otherwise
+    /// <see langword="false"/>.
+    /// </param>
+    /// <param name="availableQuantity">
+    /// The inventory quantity available after the reservation attempt.
+    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 6,
         Level = Level,
@@ -105,7 +129,7 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that an inventory reservation is being released.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="productId">The product identifier.</param>
     /// <param name="reservationId">The reservation identifier.</param>
     [LoggerMessage(
@@ -120,10 +144,12 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that an inventory reservation was released.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="productId">The product identifier.</param>
     /// <param name="reservationId">The reservation identifier.</param>
-    /// <param name="availableQuantity">The available quantity after the release.</param>
+    /// <param name="availableQuantity">
+    /// The inventory quantity available after the release.
+    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 8,
         Level = Level,

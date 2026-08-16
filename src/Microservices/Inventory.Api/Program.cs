@@ -1,327 +1,84 @@
 using Hosting.ServiceDefaults.Extensions;
-using Inventory.Api.Data;
-using Inventory.Api.Logging;
-using Inventory.Api.Models;
-using Inventory.Api.Observability.Health;
+using Inventory.Api.Extensions;
+using Inventory.Api.Internal.Infrastructure;
+using Inventory.Api.Internal.Observability.Health;
+using Inventory.Api.Internal.Observability.Logging;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
-using Workbench.Contracts;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+/// <summary>
+/// Configures and runs the inventory microservice.
+/// </summary>
+internal class Program {
+    /// <summary>
+    /// Configures service defaults, persistence, health checks, middleware, and
+    /// inventory endpoints, then runs the web application.
+    /// </summary>
+    /// <param name="args">
+    /// Command-line arguments forwarded to the web application builder.
+    /// </param>
+    /// <returns>
+    /// A task that represents the lifetime of the running web application.
+    /// </returns>
+    private static async Task Main(string[] args) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Add shared Aspire service discovery, resilience, health checks, and OpenTelemetry.
-builder.AddServiceDefaults();
+        builder.AddServiceDefaults();
 
-builder.Services.AddDbContext<InventoryDbContext>(options => {
-    var connectionString = builder.Configuration.GetConnectionString("Default")
-        ?? "Data Source=inventory.db";
+        builder.Services.AddDbContext<InventoryDbContext>(options => {
+            string connectionString =
+                builder.Configuration.GetConnectionString("Default")
+                ?? "Data Source=inventory.db";
 
-    options.UseSqlite(connectionString);
-});
-
-builder.Services
-    .AddHealthChecks()
-    .AddCheck<InventoryDatabaseHealthCheck>("inventory-database");
-
-WebApplication app = builder.Build();
-
-// correlation-id-logging
-app.Use(async (context, next) => {
-    var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault();
-
-    if (string.IsNullOrWhiteSpace(correlationId)) {
-        await next().ConfigureAwait(false);
-        return;
-    }
-
-    using IDisposable? scope = app.Logger.BeginScope(
-        new Dictionary<string, object>(StringComparer.Ordinal) {
-            ["CorrelationId"] = correlationId,
+            options.UseSqlite(connectionString);
         });
 
-    app.Logger.HandlingRequestWithCorrelationId(correlationId);
+        builder.Services
+            .AddHealthChecks()
+            .AddCheck<InventoryDatabaseHealthCheck>("inventory-database");
 
-    await next().ConfigureAwait(false);
-});
+        WebApplication app = builder.Build();
 
-await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
+        app.Use(async (context, next) => {
+            string? correlationId = context.Request
+                .Headers["X-Correlation-ID"]
+                .FirstOrDefault();
 
-app.MapGet("/", () => Results.Ok(new {
-    Name = "Inventory API",
-    Phase = "Microservices",
-}));
-
-app.MapPost("/api/inventory/reset", async (
-    ResetInventoryRequest request,
-    InventoryDbContext db,
-    ILoggerFactory loggerFactory,
-    CancellationToken cancellationToken) => {
-        ILogger logger = loggerFactory.CreateLogger("Inventory.Reset");
-        logger.ResettingInventory(request.ProductId, request.Quantity);
-
-        try {
-            InventoryItem? item = await db.Items.SingleOrDefaultAsync(
-                item => item.ProductId == request.ProductId,
-                cancellationToken).ConfigureAwait(false);
-
-            if (item is null) {
-                item = new InventoryItem { ProductId = request.ProductId };
-                db.Items.Add(item);
+            if (string.IsNullOrWhiteSpace(correlationId)) {
+                await next().ConfigureAwait(false);
+                return;
             }
 
-            item.AvailableQuantity = request.Quantity;
-
-            List<InventoryReservation> reservations = await db.Reservations
-                .Where(reservation => reservation.ProductId == request.ProductId)
-                .ToListAsync(cancellationToken).ConfigureAwait(false);
-
-            db.Reservations.RemoveRange(reservations);
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-            logger.InventoryReset(item.ProductId, item.AvailableQuantity);
-
-            return Results.Ok(new InventoryResponse(
-                item.ProductId,
-                item.AvailableQuantity));
-        } catch (OperationCanceledException) {
-            throw;
-        } catch (Exception exception) {
-            logger.InventoryResetFailed(
-                exception,
-                request.ProductId,
-                request.Quantity);
-
-            return Results.Problem(
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
-    });
-
-app.MapGet("/api/inventory/{productId}", async (
-    string productId,
-    InventoryDbContext db,
-    ILoggerFactory loggerFactory,
-    CancellationToken cancellationToken) => {
-        ILogger logger = loggerFactory.CreateLogger("Inventory.Get");
-
-        try {
-            InventoryItem? item = await db.Items
-                .AsNoTracking()
-                .SingleOrDefaultAsync(
-                    item => item.ProductId == productId,
-                    cancellationToken)
-                .ConfigureAwait(false);
-
-            var response = item is null
-                ? new InventoryResponse(productId, 0)
-                : new InventoryResponse(
-                    item.ProductId,
-                    item.AvailableQuantity);
-
-            logger.InventoryRetrieved(
-                response.ProductId,
-                response.AvailableQuantity);
-
-            return Results.Ok(response);
-        } catch (OperationCanceledException) {
-            throw;
-        } catch (Exception exception) {
-            logger.InventoryRetrievalFailed(exception, productId);
-
-            return Results.Problem(
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
-    });
-
-app.MapPost("/api/inventory/{productId}/reserve", async (
-    string productId,
-    ReserveInventoryRequest request,
-    InventoryDbContext db,
-    ILoggerFactory loggerFactory,
-    CancellationToken cancellationToken) => {
-        ILogger logger = loggerFactory.CreateLogger("Inventory.Reserve");
-
-        logger.ReservingInventory(
-            productId,
-            request.OrderId,
-            request.ReservationId,
-            request.Quantity);
-
-        try {
-            InventoryReservation? existingReservation = await db.Reservations
-                .AsNoTracking()
-                .SingleOrDefaultAsync(
-                    reservation =>
-                        reservation.ReservationId == request.ReservationId,
-                    cancellationToken)
-                .ConfigureAwait(false);
-
-            if (existingReservation is not null) {
-                InventoryItem current = await db.Items
-                    .AsNoTracking()
-                    .SingleAsync(
-                        item => item.ProductId == productId,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-
-                logger.InventoryReservationCompleted(
-                    productId,
-                    request.OrderId,
-                    request.ReservationId,
-                    reserved: true,
-                    current.AvailableQuantity);
-
-                return Results.Ok(new ReserveInventoryResponse(
-                    Reserved: true,
-                    Reason: null,
-                    current.AvailableQuantity));
-            }
-
-            IDbContextTransaction transaction = await db.Database
-                .BeginTransactionAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            await using (transaction.ConfigureAwait(false)) {
-                InventoryItem? item = await db.Items.SingleOrDefaultAsync(
-                    item => item.ProductId == productId,
-                    cancellationToken).ConfigureAwait(false);
-
-                if (item is null || item.AvailableQuantity < request.Quantity) {
-                    var availableQuantity = item?.AvailableQuantity ?? 0;
-
-                    logger.InventoryReservationCompleted(
-                        productId,
-                        request.OrderId,
-                        request.ReservationId,
-                        reserved: false,
-                        availableQuantity);
-
-                    return Results.Ok(new ReserveInventoryResponse(
-                        Reserved: false,
-                        "InsufficientInventory",
-                        availableQuantity));
-                }
-
-                item.AvailableQuantity -= request.Quantity;
-
-                db.Reservations.Add(new InventoryReservation {
-                    ReservationId = request.ReservationId,
-                    OrderId = request.OrderId,
-                    ProductId = productId,
-                    Quantity = request.Quantity,
+            using IDisposable? scope = app.Logger.BeginScope(
+                new Dictionary<string, object>(StringComparer.Ordinal) {
+                    ["CorrelationId"] = correlationId,
                 });
 
-                await db.SaveChangesAsync(cancellationToken)
-                    .ConfigureAwait(false);
-                await transaction.CommitAsync(cancellationToken)
-                    .ConfigureAwait(false);
+            app.Logger.HandlingRequestWithCorrelationId(correlationId);
+            await next().ConfigureAwait(false);
+        });
 
-                logger.InventoryReservationCompleted(
-                    productId,
-                    request.OrderId,
-                    request.ReservationId,
-                    reserved: true,
-                    item.AvailableQuantity);
+        await EnsureDatabaseAsync(app.Services).ConfigureAwait(false);
 
-                return Results.Ok(new ReserveInventoryResponse(
-                    Reserved: true,
-                    Reason: null,
-                    item.AvailableQuantity));
-            }
-        } catch (OperationCanceledException) {
-            throw;
-        } catch (Exception exception) {
-            logger.InventoryReservationFailed(
-                exception,
-                productId,
-                request.OrderId,
-                request.ReservationId,
-                request.Quantity);
+        app.MapInventoryEndpoints();
 
-            return Results.Problem(
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
-    });
+        await app.RunAsync().ConfigureAwait(false);
+    }
 
-app.MapPost("/api/inventory/{productId}/release", async (
-    string productId,
-    ReleaseInventoryRequest request,
-    InventoryDbContext db,
-    ILoggerFactory loggerFactory,
-    CancellationToken cancellationToken) => {
-        ILogger logger = loggerFactory.CreateLogger("Inventory.Release");
-        logger.ReleasingInventory(productId, request.ReservationId);
+    /// <summary>
+    /// Ensures that the inventory database has been created before the service
+    /// starts accepting requests.
+    /// </summary>
+    /// <param name="services">
+    /// The application service provider used to resolve the database context.
+    /// </param>
+    /// <returns>A task that represents the database initialization operation.</returns>
+    private static async Task EnsureDatabaseAsync(IServiceProvider services) {
+        ArgumentNullException.ThrowIfNull(services);
 
-        try {
-            InventoryReservation? reservation = await db.Reservations
-                .SingleOrDefaultAsync(
-                    reservation =>
-                        reservation.ReservationId == request.ReservationId
-                        && reservation.ProductId == productId,
-                    cancellationToken)
-                .ConfigureAwait(false);
+        using IServiceScope scope = services.CreateScope();
+        InventoryDbContext db = scope.ServiceProvider
+            .GetRequiredService<InventoryDbContext>();
 
-            if (reservation is null) {
-                InventoryItem? current = await db.Items
-                    .AsNoTracking()
-                    .SingleOrDefaultAsync(
-                        item => item.ProductId == productId,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-
-                var availableQuantity = current?.AvailableQuantity ?? 0;
-
-                logger.InventoryReleased(
-                    productId,
-                    request.ReservationId,
-                    availableQuantity);
-
-                return Results.Ok(new InventoryResponse(
-                    productId,
-                    availableQuantity));
-            }
-
-            InventoryItem item = await db.Items.SingleAsync(
-                item => item.ProductId == productId,
-                cancellationToken).ConfigureAwait(false);
-
-            item.AvailableQuantity += reservation.Quantity;
-            db.Reservations.Remove(reservation);
-
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-            logger.InventoryReleased(
-                productId,
-                request.ReservationId,
-                item.AvailableQuantity);
-
-            return Results.Ok(new InventoryResponse(
-                productId,
-                item.AvailableQuantity));
-        } catch (OperationCanceledException) {
-            throw;
-        } catch (Exception exception) {
-            logger.InventoryReleaseFailed(
-                exception,
-                productId,
-                request.ReservationId);
-
-            return Results.Problem(
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
-    });
-
-// Map the shared health and aliveness endpoints.
-app.MapDefaultEndpoints();
-
-await app.RunAsync().ConfigureAwait(false);
-
-static async Task EnsureDatabaseAsync(IServiceProvider services) {
-    using IServiceScope scope = services.CreateScope();
-
-    InventoryDbContext db = scope.ServiceProvider
-        .GetRequiredService<InventoryDbContext>();
-
-    await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
+        await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
+    }
 }
-
-public partial class Program;
