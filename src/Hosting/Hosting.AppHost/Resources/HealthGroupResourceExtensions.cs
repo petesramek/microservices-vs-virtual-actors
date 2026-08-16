@@ -39,6 +39,7 @@ internal static class HealthGroupResourceExtensions
     /// </exception>
     public static IResourceBuilder<HealthGroupResource> AddHealthGroup(
         this IDistributedApplicationBuilder builder,
+        IHealthStatusEvaluator healthStatusEvaluator,
         string name,
         string displayName,
         params IResourceBuilder<ProjectResource>[] children)
@@ -83,6 +84,7 @@ internal static class HealthGroupResourceExtensions
                     group,
                     childResources,
                     notificationService,
+                    healthStatusEvaluator,
                     cancellationToken);
 
                 return Task.CompletedTask;
@@ -118,6 +120,7 @@ internal static class HealthGroupResourceExtensions
         HealthGroupResource group,
         IReadOnlyCollection<IResource> children,
         ResourceNotificationService notificationService,
+        IHealthStatusEvaluator healthStatusEvaluator,
         CancellationToken cancellationToken)
     {
         HashSet<string> childNames = children
@@ -140,7 +143,8 @@ internal static class HealthGroupResourceExtensions
 
             HealthGroupState state = EvaluateState(
                 childNames,
-                childSnapshots);
+                childSnapshots,
+                healthStatusEvaluator);
 
             await notificationService
                 .PublishUpdateAsync(
@@ -168,7 +172,8 @@ internal static class HealthGroupResourceExtensions
     /// </remarks>
     private static HealthGroupState EvaluateState(
         IReadOnlyCollection<string> childNames,
-        IReadOnlyDictionary<string, CustomResourceSnapshot> childSnapshots)
+        IReadOnlyDictionary<string, CustomResourceSnapshot> childSnapshots,
+        IHealthStatusEvaluator healthStatusEvaluator)
     {
         if (childSnapshots.Count == 0)
         {
@@ -179,7 +184,7 @@ internal static class HealthGroupResourceExtensions
             .Select(name => ResolveStatus(name, childSnapshots))
             .ToArray();
 
-        return MapGroupState(HealthStatusEvaluator.Instance.Evaluate(statuses));
+        return MapGroupState(healthStatusEvaluator.Evaluate(statuses));
     }
 
     /// <summary>

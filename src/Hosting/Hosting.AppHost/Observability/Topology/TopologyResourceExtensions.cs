@@ -2,6 +2,7 @@ namespace Hosting.AppHost.Observability.Topology;
 
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using global::Observability.Health;
 using global::Observability.Topology.Definitions;
 using Hosting.AppHost.Resources;
 using System.Text.Json;
@@ -75,6 +76,7 @@ internal static class TopologyResourceExtensions {
     /// </exception>
     public static TopologyDefinition AddTopology(
         this IDistributedApplicationBuilder builder,
+        IHealthStatusEvaluator healthStatusEvaluator,
         IResourceBuilder<ProjectResource> topologyProvider,
         Action<TopologyBuilder> configure) {
         ArgumentNullException.ThrowIfNull(builder);
@@ -95,7 +97,8 @@ internal static class TopologyResourceExtensions {
         AddAspireHealthGroups(
             builder,
             topology,
-            definition.Groups);
+            definition.Groups,
+            healthStatusEvaluator);
 
         topologyProvider.WithEnvironment(
             TopologyConfigurationName,
@@ -127,7 +130,8 @@ internal static class TopologyResourceExtensions {
     private static void AddAspireHealthGroups(
         IDistributedApplicationBuilder builder,
         TopologyBuilder topology,
-        IReadOnlyCollection<TopologyGroupDefinition> groups) {
+        IReadOnlyCollection<TopologyGroupDefinition> groups,
+        IHealthStatusEvaluator healthStatusEvaluator) {
         foreach (TopologyGroupDefinition group in groups) {
             IResourceBuilder<ProjectResource>[] resources = group.NodeIds
                 .Select(topology.TryGetProjectResource)
@@ -143,6 +147,7 @@ internal static class TopologyResourceExtensions {
             }
 
             builder.AddHealthGroup(
+                healthStatusEvaluator,
                 group.Id,
                 group.DisplayName,
                 resources);

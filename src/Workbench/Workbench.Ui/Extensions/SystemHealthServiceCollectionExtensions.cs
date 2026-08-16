@@ -1,6 +1,5 @@
 namespace Workbench.Ui.Extensions;
 
-using global::Observability.Health;
 using global::Observability.Topology.Evaluation;
 using Workbench.Ui.Observability.Health;
 
@@ -39,7 +38,6 @@ internal static class SystemHealthServiceCollectionExtensions {
             .ValidateOnStart();
 
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton(HealthStatusEvaluator.Instance);
         services.AddSingleton<GroupHealthEvaluator>();
         services.AddSingleton<DependencyHealthEvaluator>();
 

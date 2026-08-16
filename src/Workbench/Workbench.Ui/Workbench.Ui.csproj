@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <ProjectReference Include="..\..\Observability\Observability.Health\Observability.Health.csproj" />
     <ProjectReference Include="..\Workbench.Contracts\Workbench.Contracts.csproj" />
     <ProjectReference Include="..\..\Hosting\Hosting.ServiceDefaults\Hosting.ServiceDefaults.csproj" />
   </ItemGroup>

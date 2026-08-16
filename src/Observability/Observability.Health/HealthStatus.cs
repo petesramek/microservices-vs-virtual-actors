@@ -1,31 +1,40 @@
 namespace Observability.Health;
 
+using System.Text.Json.Serialization;
+
 /// <summary>
-/// Represents the health state of a topology node or an aggregate of health observations.
+/// Defines the health state of a resource or an aggregate health observation.
 /// </summary>
+/// <remarks>
+/// Values are serialized as their names to keep the cross-API JSON contract
+/// readable and independent of the underlying numeric representation.
+/// </remarks>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum HealthStatus {
     /// <summary>
-    /// Health has not yet been determined.
+    /// Indicates that health has not been determined.
     /// </summary>
-    Unknown,
+    Unknown = 0,
 
     /// <summary>
-    /// Health is still being established and the observed resource is not yet ready.
+    /// Indicates that the resource is still establishing readiness.
     /// </summary>
-    Starting,
+    Starting = 1,
 
     /// <summary>
-    /// All observed parts are healthy.
+    /// Indicates that the resource or aggregate is operating normally.
     /// </summary>
-    Healthy,
+    Healthy = 2,
 
     /// <summary>
-    /// At least part of the observed system remains available with reduced functionality.
+    /// Indicates that the resource or aggregate remains available with reduced
+    /// health or functionality.
     /// </summary>
-    Degraded,
+    Degraded = 3,
 
     /// <summary>
-    /// No observed part of the system is available.
+    /// Indicates that the resource or aggregate is not healthy enough to serve
+    /// its intended purpose.
     /// </summary>
-    Unhealthy,
+    Unhealthy = 4,
 }

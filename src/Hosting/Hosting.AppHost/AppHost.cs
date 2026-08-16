@@ -1,5 +1,6 @@
 using Hosting.AppHost.Extensions;
 using Hosting.AppHost.Observability.Topology;
+using Observability.Health;
 
 /// <summary>
 /// Defines and runs the distributed application model for the Workbench host.
@@ -19,6 +20,8 @@ internal static class Program {
     private static void Main(string[] args) {
         IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
+        HealthStatusEvaluator healthStatusEvaluator = new HealthStatusEvaluator();
+
         Microservices microservices = AddMicroservices(builder);
         VirtualActorServices virtualActors = AddVirtualActorServices(builder);
         WorkbenchServices workbench = AddWorkbenchServices(
@@ -30,7 +33,8 @@ internal static class Program {
             builder,
             workbench,
             microservices,
-            virtualActors);
+            virtualActors,
+            healthStatusEvaluator);
 
         builder.Build().Run();
     }
@@ -206,8 +210,10 @@ internal static class Program {
         IDistributedApplicationBuilder builder,
         WorkbenchServices workbench,
         Microservices microservices,
-        VirtualActorServices virtualActors) {
+        VirtualActorServices virtualActors,
+        IHealthStatusEvaluator healthStatusEvaluator) {
         builder.AddTopology(
+            healthStatusEvaluator,
             workbench.Ui,
             topology => {
                 AddTopologyNodes(
