@@ -1,16 +1,31 @@
 namespace Orders.Api.Logging;
 
+using Microsoft.Extensions.Logging;
+
+/// <summary>
+/// Defines source-generated error log messages for order orchestration and
+/// inventory operations initiated by the Orders API.
+/// </summary>
 internal static partial class LogError {
-    const LogLevel Level = LogLevel.Error;
-    const int EventIdBase = (int)Level * 100;
+    /// <summary>
+    /// Defines the log level shared by the messages in this class.
+    /// </summary>
+    private const LogLevel Level = LogLevel.Error;
+
+    /// <summary>
+    /// Defines the first event ID reserved for Orders API error events.
+    /// </summary>
+    private const int EventIdBase = (int)Level * 100;
 
     /// <summary>
     /// Logs that resetting inventory for a product failed.
     /// </summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="exception">The exception that caused the inventory reset to fail.</param>
+    /// <param name="logger">The logger used to write the event.</param>
+    /// <param name="exception">
+    /// The exception that caused the inventory reset to fail.
+    /// </param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="quantity">The requested quantity.</param>
+    /// <param name="quantity">The requested inventory quantity.</param>
     [LoggerMessage(
         EventId = EventIdBase + 1,
         Level = Level,
@@ -24,8 +39,10 @@ internal static partial class LogError {
     /// <summary>
     /// Logs that retrieving inventory for a product failed.
     /// </summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="exception">The exception that caused inventory retrieval to fail.</param>
+    /// <param name="logger">The logger used to write the event.</param>
+    /// <param name="exception">
+    /// The exception that caused inventory retrieval to fail.
+    /// </param>
     /// <param name="productId">The product identifier.</param>
     [LoggerMessage(
         EventId = EventIdBase + 2,
@@ -39,11 +56,13 @@ internal static partial class LogError {
     /// <summary>
     /// Logs that placing an order failed.
     /// </summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="exception">The exception that caused order placement to fail.</param>
+    /// <param name="logger">The logger used to write the event.</param>
+    /// <param name="exception">
+    /// The exception that caused order placement to fail.
+    /// </param>
     /// <param name="orderId">The order identifier.</param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="quantity">The requested quantity.</param>
+    /// <param name="quantity">The requested order quantity.</param>
     [LoggerMessage(
         EventId = EventIdBase + 3,
         Level = Level,
@@ -58,8 +77,10 @@ internal static partial class LogError {
     /// <summary>
     /// Logs that retrieving an order failed.
     /// </summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="exception">The exception that caused order retrieval to fail.</param>
+    /// <param name="logger">The logger used to write the event.</param>
+    /// <param name="exception">
+    /// The exception that caused order retrieval to fail.
+    /// </param>
     /// <param name="orderId">The order identifier.</param>
     [LoggerMessage(
         EventId = EventIdBase + 4,

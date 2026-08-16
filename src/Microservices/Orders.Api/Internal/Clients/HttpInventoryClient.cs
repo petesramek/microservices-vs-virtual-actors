@@ -1,14 +1,18 @@
-namespace Orders.Api.Clients;
+namespace Orders.Api.Internal.Clients;
 
 using Hosting.ServiceDefaults.Observability;
-using Orders.Api.Clients.Abstraction;
+using Orders.Api.Internal.Clients.Abstraction;
 using System.Net.Http.Json;
 using Workbench.Contracts;
 
 /// <summary>
-/// HTTP implementation of the inventory service client.
+/// Implements <see cref="IInventoryClient"/> by sending HTTP requests to the
+/// Inventory API.
 /// </summary>
-/// <param name="httpClient">The HTTP client.</param>
+/// <param name="httpClient">
+/// The HTTP client configured with the Inventory API base address and request
+/// pipeline.
+/// </param>
 public sealed class HttpInventoryClient(HttpClient httpClient)
     : IInventoryClient {
     /// <inheritdoc />
@@ -68,12 +72,27 @@ public sealed class HttpInventoryClient(HttpClient httpClient)
             cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Creates an HTTP request and marks it as architecture-workbench scenario
+    /// traffic.
+    /// </summary>
+    /// <param name="method">The HTTP method used by the request.</param>
+    /// <param name="requestUri">The relative URI of the target endpoint.</param>
+    /// <param name="content">
+    /// The optional value serialized as JSON request content.
+    /// </param>
+    /// <returns>
+    /// A request message containing the scenario header and optional JSON body.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="method"/> or <paramref name="requestUri"/> is
+    /// <see langword="null"/>.
+    /// </exception>
     private static HttpRequestMessage CreateScenarioRequest(
         HttpMethod method,
         string requestUri,
         object? content = null) {
-        var message = new HttpRequestMessage(method, requestUri);
-
+        HttpRequestMessage message = new(method, requestUri);
         message.Headers.TryAddWithoutValidation(
             ScenarioInstrumentation.Headers.ScenarioRun,
             ScenarioInstrumentation.Headers.ScenarioRunValue);
@@ -85,6 +104,28 @@ public sealed class HttpInventoryClient(HttpClient httpClient)
         return message;
     }
 
+    /// <summary>
+    /// Sends an HTTP request, verifies that it succeeded, and deserializes its
+    /// JSON response body.
+    /// </summary>
+    /// <typeparam name="TResponse">The expected response-body type.</typeparam>
+    /// <param name="message">The request message to send.</param>
+    /// <param name="cancellationToken">
+    /// The token that cancels request transmission or response deserialization.
+    /// </param>
+    /// <returns>
+    /// A task whose result is the deserialized response body.
+    /// </returns>
+    /// <exception cref="HttpRequestException">
+    /// The request fails, or the response has a non-success status code.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// <paramref name="cancellationToken"/> is canceled while the operation is
+    /// in progress.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The successful response does not contain a deserializable body.
+    /// </exception>
     private async Task<TResponse> SendAsync<TResponse>(
         HttpRequestMessage message,
         CancellationToken cancellationToken) {

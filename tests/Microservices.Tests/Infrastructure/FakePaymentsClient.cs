@@ -1,6 +1,6 @@
 namespace Microservices.Tests.Infrastructure;
 
-using Orders.Api.Clients.Abstraction;
+using Orders.Api.Internal.Clients.Abstraction;
 using Workbench.Contracts;
 
 /// <summary>
