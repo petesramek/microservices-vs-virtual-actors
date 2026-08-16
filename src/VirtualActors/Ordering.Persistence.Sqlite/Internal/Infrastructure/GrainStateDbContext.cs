@@ -3,8 +3,11 @@ namespace Ordering.Persistence.Sqlite.Internal.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 /// <summary>
-/// Provides access to persisted Orleans grain states.
+/// Provides Entity Framework Core access to persisted Orleans grain states.
 /// </summary>
+/// <param name="options">
+/// The options that configure the database context and its SQLite connection.
+/// </param>
 internal sealed class GrainStateDbContext(
     DbContextOptions<GrainStateDbContext> options)
     : DbContext(options) {

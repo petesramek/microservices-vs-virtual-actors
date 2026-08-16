@@ -4,12 +4,25 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 /// <summary>
-/// Configures the persisted Orleans grain state entity.
+/// Configures the SQLite persistence mapping for
+/// <see cref="GrainStateEntity"/>.
 /// </summary>
 internal sealed class GrainStateEntityConfiguration
     : IEntityTypeConfiguration<GrainStateEntity> {
+    /// <summary>
+    /// Defines the maximum length of service, provider, and state names.
+    /// </summary>
+    private const int NameMaxLength = 150;
+
+    /// <summary>
+    /// Defines the maximum length of grain type and grain identifiers.
+    /// </summary>
+    private const int GrainIdentifierMaxLength = 512;
+
     /// <inheritdoc />
     public void Configure(EntityTypeBuilder<GrainStateEntity> builder) {
+        ArgumentNullException.ThrowIfNull(builder);
+
         builder.ToTable("GrainStates");
 
         builder.HasKey(entity => new {
@@ -22,27 +35,27 @@ internal sealed class GrainStateEntityConfiguration
 
         builder
             .Property(entity => entity.ServiceId)
-            .HasMaxLength(150)
+            .HasMaxLength(NameMaxLength)
             .IsRequired();
 
         builder
             .Property(entity => entity.ProviderName)
-            .HasMaxLength(150)
+            .HasMaxLength(NameMaxLength)
             .IsRequired();
 
         builder
             .Property(entity => entity.StateName)
-            .HasMaxLength(150)
+            .HasMaxLength(NameMaxLength)
             .IsRequired();
 
         builder
             .Property(entity => entity.GrainType)
-            .HasMaxLength(512)
+            .HasMaxLength(GrainIdentifierMaxLength)
             .IsRequired();
 
         builder
             .Property(entity => entity.GrainId)
-            .HasMaxLength(512)
+            .HasMaxLength(GrainIdentifierMaxLength)
             .IsRequired();
 
         builder
@@ -51,6 +64,7 @@ internal sealed class GrainStateEntityConfiguration
 
         builder
             .Property(entity => entity.Version)
+            .ValueGeneratedNever()
             .IsConcurrencyToken();
 
         builder
