@@ -1,38 +1,60 @@
-namespace Ordering.Api.Logging;
+namespace Ordering.Api.Internal.Observability.Logging;
 
+using Microsoft.Extensions.Logging;
+
+/// <summary>
+/// Defines source-generated informational log messages for ordering API
+/// operations.
+/// </summary>
 internal static partial class LogInformation {
-    const LogLevel Level = LogLevel.Information;
-    const int EventIdBase = (int)Level * 100;
+    /// <summary>
+    /// Defines the log level shared by the messages in this class.
+    /// </summary>
+    private const LogLevel Level = LogLevel.Information;
 
     /// <summary>
-    /// Logs that a request with a correlation identifier is being handled.
+    /// Defines the first event ID reserved for ordering API informational events.
     /// </summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="correlationId">The correlation identifier.</param>
+    private const int EventIdBase = (int)Level * 100;
+
+    /// <summary>
+    /// Logs that a request is being handled with its correlation identifier.
+    /// </summary>
+    /// <param name="logger">The logger used to write the event.</param>
+    /// <param name="correlationId">
+    /// The correlation identifier, when one is available.
+    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 1,
         Level = Level,
         Message = "Handling request with correlation id {CorrelationId}.")]
-    public static partial void HandlingRequestWithCorrelationId(this ILogger logger, string? correlationId);
+    public static partial void HandlingRequestWithCorrelationId(
+        this ILogger logger,
+        string? correlationId);
 
     /// <summary>
-    /// Logs that an order completed with a status.
+    /// Logs that an order completed with its resulting status.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="orderId">The order identifier.</param>
     /// <param name="status">The resulting order status.</param>
     [LoggerMessage(
         EventId = EventIdBase + 2,
         Level = Level,
         Message = "Order {OrderId} completed with status {Status}.")]
-    public static partial void OrderCompletedWithStatus(this ILogger logger, Guid orderId, string status);
+    public static partial void OrderCompletedWithStatus(
+        this ILogger logger,
+        Guid orderId,
+        string status);
 
     /// <summary>
     /// Logs that inventory for a product was reset.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="availableQuantity">The available quantity after the reset.</param>
+    /// <param name="availableQuantity">
+    /// The inventory quantity available after the reset.
+    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 3,
         Level = Level,
@@ -45,9 +67,11 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that inventory for a product was retrieved.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="availableQuantity">The available quantity.</param>
+    /// <param name="availableQuantity">
+    /// The currently available inventory quantity.
+    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 4,
         Level = Level,
@@ -60,11 +84,11 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that an order is being placed.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="orderId">The order identifier.</param>
     /// <param name="customerId">The customer identifier.</param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="quantity">The requested quantity.</param>
+    /// <param name="quantity">The requested product quantity.</param>
     [LoggerMessage(
         EventId = EventIdBase + 5,
         Level = Level,
@@ -79,7 +103,7 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that an order was retrieved with its current status.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="orderId">The order identifier.</param>
     /// <param name="status">The current order status.</param>
     [LoggerMessage(
@@ -94,9 +118,9 @@ internal static partial class LogInformation {
     /// <summary>
     /// Logs that inventory for a product is being reset.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="productId">The product identifier.</param>
-    /// <param name="quantity">The requested quantity.</param>
+    /// <param name="quantity">The requested inventory quantity.</param>
     [LoggerMessage(
         EventId = EventIdBase + 7,
         Level = Level,
@@ -106,11 +130,10 @@ internal static partial class LogInformation {
         string productId,
         int quantity);
 
-
     /// <summary>
     /// Logs that an order was not found.
     /// </summary>
-    /// <param name="logger">The logger.</param>
+    /// <param name="logger">The logger used to write the event.</param>
     /// <param name="orderId">The order identifier.</param>
     [LoggerMessage(
         EventId = EventIdBase + 8,
