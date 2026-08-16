@@ -3,11 +3,19 @@ namespace Ordering.Grains.Contracts;
 using Orleans;
 
 /// <summary>
-/// Order result returned by an order grain.
+/// Represents the terminal result returned by an order grain.
 /// </summary>
-/// <param name="OrderId">The order identifier.</param>
-/// <param name="Status">The final order status.</param>
-/// <param name="Reason">The reason the order failed, when applicable.</param>
+/// <param name="OrderId">The identifier of the order.</param>
+/// <param name="Status">
+/// The terminal order status represented by its stable contract value.
+/// </param>
+/// <param name="Reason">
+/// Optional details explaining why the order did not complete successfully.
+/// </param>
+/// <remarks>
+/// The Orleans alias and member identifiers form part of the serialized grain
+/// contract. Existing identifiers must remain stable when this type evolves.
+/// </remarks>
 [GenerateSerializer]
 [Alias("Ordering.Grains.Contracts.GrainOrderResult")]
 public sealed record GrainOrderResult(

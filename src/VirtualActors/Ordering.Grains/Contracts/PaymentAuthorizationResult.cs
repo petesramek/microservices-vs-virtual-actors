@@ -3,10 +3,20 @@ namespace Ordering.Grains.Contracts;
 using Orleans;
 
 /// <summary>
-/// Payment authorization result returned by a payment account grain.
+/// Represents a payment authorization result returned by a payment-account
+/// grain.
 /// </summary>
-/// <param name="Authorized">Indicates whether the payment was authorized.</param>
-/// <param name="Reason">The reason authorization failed, when applicable.</param>
+/// <param name="Authorized">
+/// <see langword="true"/> when the payment was authorized; otherwise
+/// <see langword="false"/>.
+/// </param>
+/// <param name="Reason">
+/// Optional details explaining why authorization was rejected.
+/// </param>
+/// <remarks>
+/// The Orleans alias and member identifiers form part of the serialized grain
+/// contract. Existing identifiers must remain stable when this type evolves.
+/// </remarks>
 [GenerateSerializer]
 [Alias("Ordering.Grains.Contracts.PaymentAuthorizationResult")]
 public sealed record PaymentAuthorizationResult(
