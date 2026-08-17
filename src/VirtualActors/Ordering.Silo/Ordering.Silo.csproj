@@ -23,9 +23,7 @@
 		<ProjectReference Include="..\Ordering.Persistence.Sqlite\Ordering.Persistence.Sqlite.csproj" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design">
 		<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>
-				runtime; build; native; contentfiles; analyzers; buildtransitive
-			</IncludeAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 	</ItemGroup>
 	<ItemGroup>

@@ -1,5 +1,8 @@
 <Project>
   <ItemGroup>
-	<PackageReference Include="Meziantou.Analyzer" />
+	  <PackageReference
+		  Include="Meziantou.Analyzer"
+		  PrivateAssets="all"
+		  IncludeAssets="runtime; build; native; contentfiles; analyzers" />
   </ItemGroup>
 </Project>
