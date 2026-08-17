@@ -5,6 +5,7 @@ using Aspire.Hosting.ApplicationModel;
 using global::Observability.Health;
 using global::Observability.Health.Abstraction;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.CodeAnalysis;
 using FrameworkHealthStatus = Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus;
 
 /// <summary>
@@ -167,6 +168,10 @@ internal static class HealthGroupResourceExtensions {
     /// is available. After monitoring begins, a child without a snapshot is
     /// evaluated as starting.
     /// </remarks>
+    [SuppressMessage(
+    "Performance",
+    "CA1859:Use concrete types when possible for improved performance",
+    Justification = "Prioritizing design clarity, encapsulation, and abstractions over micro-optimization.")]
     private static HealthGroupState EvaluateState(
         IReadOnlyCollection<string> childNames,
         IReadOnlyDictionary<string, CustomResourceSnapshot> childSnapshots,

@@ -4,6 +4,7 @@ using global::Observability.Health;
 using global::Observability.Topology.Definitions;
 using global::Observability.Topology.Snapshots;
 using Microsoft.Extensions.Options;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -255,6 +256,10 @@ internal sealed class ServiceHealthProbe {
     /// <see langword="true"/> when a non-blank endpoint exists; otherwise,
     /// <see langword="false"/>.
     /// </returns>
+    [SuppressMessage(
+        "Performance",
+        "CA1859:Use concrete types when possible for improved performance",
+        Justification = "Prioritizing design clarity, encapsulation, and abstractions over micro-optimization.")]
     private static bool TryGetEndpoint(
         IReadOnlyDictionary<string, string> endpoints,
         string nodeId,

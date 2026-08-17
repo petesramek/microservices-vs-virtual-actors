@@ -28,10 +28,7 @@ public sealed class PaymentAccountState {
     /// authorization results before persisting them.
     /// </remarks>
     [Id(0)]
-    [SuppressMessage(
-        "Design",
-        "MA0016:Prefer using collection abstraction instead of implementation",
-        Justification = "Persistent grain state requires a concrete mutable collection.")]
+    [SuppressMessage("Design", "MA0016:Prefer using collection abstraction instead of implementation", Justification = "Persistent grain state requires a concrete mutable collection.")]
     public Dictionary<string, PaymentAuthorizationResult> Authorizations {
         get;
         set;

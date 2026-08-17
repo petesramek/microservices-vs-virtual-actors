@@ -4,6 +4,7 @@ using global::Observability.Health;
 using global::Observability.Topology.Definitions;
 using global::Observability.Topology.Evaluators.Abstraction;
 using global::Observability.Topology.Snapshots;
+using System.Diagnostics.CodeAnalysis;
 using Workbench.Ui.Internal.Observability.Health.Probing.Results;
 
 /// <summary>
@@ -278,6 +279,10 @@ internal sealed class TopologySnapshotBuilder(
     /// <summary>
     /// Applies evaluated dependency health to one node observation.
     /// </summary>
+    [SuppressMessage(
+    "Performance",
+    "CA1859:Use concrete types when possible for improved performance",
+    Justification = "Prioritizing design clarity, encapsulation, and abstractions over micro-optimization.")]
     private TopologyNodeSnapshot ApplyDependencyHealth(
         TopologyNodeSnapshot node,
         IReadOnlyCollection<TopologyEdgeDefinition> edgeDefinitions,

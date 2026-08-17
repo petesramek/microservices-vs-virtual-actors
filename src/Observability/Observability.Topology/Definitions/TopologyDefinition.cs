@@ -1,6 +1,7 @@
 namespace Observability.Topology.Definitions;
 
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Defines an immutable snapshot of the complete static observability topology.
@@ -61,6 +62,10 @@ public sealed record TopologyDefinition {
     /// <typeparam name="T">The definition element type.</typeparam>
     /// <param name="items">The source items to copy.</param>
     /// <returns>An ordered, read-only snapshot of <paramref name="items"/>.</returns>
+    [SuppressMessage(
+    "Performance",
+    "CA1859:Use concrete types when possible for improved performance",
+    Justification = "Prioritizing design clarity, encapsulation, and abstractions over micro-optimization.")]
     private static IReadOnlyList<T> Snapshot<T>(IReadOnlyList<T> items) {
         return new ReadOnlyCollection<T>(items.ToArray());
     }

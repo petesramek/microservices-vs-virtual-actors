@@ -4,6 +4,7 @@ using global::Observability.Health;
 using global::Observability.Health.Abstraction;
 using Hosting.AppHost.Extensions;
 using Hosting.AppHost.Observability.Topology;
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Defines and runs the distributed application model for the Workbench host.
@@ -12,7 +13,10 @@ using Hosting.AppHost.Observability.Topology;
 /// Resource registration, service wiring, and topology publication are kept in
 /// separate methods so that changes to one concern do not obscure the others.
 /// </remarks>
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0048:File name must match type name")]
+[SuppressMessage(
+    "Design",
+    "MA0048:File name must match type name",
+    Justification = "AppHost.cs is default filename for Aspire hosting project.")]
 internal static class Program {
     /// <summary>
     /// Builds the distributed application model and runs the AppHost.

@@ -1,5 +1,6 @@
 namespace Workbench.Gateway.Internal.Runners;
 
+using System.Diagnostics.CodeAnalysis;
 using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Internal.Runners.Abstraction;
 
@@ -10,6 +11,10 @@ internal sealed class ScenarioRunnerProvider {
     /// <summary>
     /// Stores registered runners indexed by scenario kind.
     /// </summary>
+    [SuppressMessage(
+    "Performance",
+    "CA1859:Use concrete types when possible for improved performance",
+    Justification = "Prioritizing design clarity, encapsulation, and abstractions over micro-optimization.")]
     private readonly IReadOnlyDictionary<ScenarioKind, IScenarioRunner> _runners;
 
     /// <summary>

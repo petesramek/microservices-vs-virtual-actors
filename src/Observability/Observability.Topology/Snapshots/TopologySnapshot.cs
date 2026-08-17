@@ -71,7 +71,7 @@ public sealed record TopologySnapshot {
     /// <typeparam name="T">The snapshot element type.</typeparam>
     /// <param name="items">The source items to copy.</param>
     /// <returns>An ordered, read-only copy of <paramref name="items"/>.</returns>
-    private static IReadOnlyList<T> Snapshot<T>(IReadOnlyList<T> items) {
+    private static ReadOnlyCollection<T> Snapshot<T>(IReadOnlyList<T> items) {
         return new ReadOnlyCollection<T>(items.ToArray());
     }
 }
