@@ -1,0 +1,58 @@
+name: Feature request
+description: Suggest an improvement to the architecture workbench.
+title: "[Feature]: "
+labels:
+  - enhancement
+assignees: 'petesramek'
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the limitation, gap, or use case behind the request.
+      placeholder: Tell us what is difficult or missing today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to see?
+      description: Describe the improvement or behavior you are proposing.
+      placeholder: Explain the desired outcome without needing to design the full implementation.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Aspire hosting
+        - Microservices
+        - Virtual actors
+        - Workbench UI
+        - Workbench Gateway
+        - Health or topology
+        - Observability
+        - Build or tests
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add examples, alternatives, screenshots, or links that help explain the request.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues before submitting this request.
+          required: true

@@ -1,6 +1,4 @@
----
 name: Bug report
-about: Create a report to help us improve
 title: "[Bug]: "
 description: Report a problem with the architecture workbench.
 labels:
@@ -61,4 +59,3 @@ body:
       options:
         - label: I searched the existing issues before submitting this report.
           required: true
----

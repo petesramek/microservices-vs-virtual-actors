@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and discussions
+    url: https://github.com/petesramek/microservices-vs-virtual-actors/discussions/1
+    about: Ask questions and discuss architecture ideas with the community.
