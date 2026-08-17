@@ -358,7 +358,6 @@ internal sealed class ScenarioRunner {
     /// result.
     /// </summary>
     /// <param name="serviceName">The architecture implementation name.</param>
-    /// <param name="request">The prepared scenario request.</param>
     /// <param name="order">The observed order result.</param>
     /// <param name="inventory">The observed inventory result.</param>
     /// <param name="elapsedMilliseconds">
