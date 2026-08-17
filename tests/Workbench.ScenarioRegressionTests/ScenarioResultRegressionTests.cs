@@ -1,6 +1,6 @@
 namespace Workbench.ScenarioRegressionTests;
 
-using Hosting.ServiceDefaults.Observability;
+using Hosting.ServiceDefaults.Observability.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using System.Collections.Concurrent;
@@ -11,7 +11,7 @@ using Workbench.Contracts.Inventory;
 using Workbench.Contracts.Orders;
 using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Internal.Clients.Abstraction;
-using Workbench.Gateway.Internal.Scenarios;
+using Workbench.Gateway.Internal.Runners;
 using Xunit;
 
 /// <summary>

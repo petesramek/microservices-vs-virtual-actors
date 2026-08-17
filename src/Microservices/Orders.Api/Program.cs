@@ -1,3 +1,5 @@
+namespace Orders.Api;
+
 using Hosting.ServiceDefaults.Extensions;
 using Orders.Api.Extensions;
 using Orders.Api.Internal.Infrastructure;
@@ -52,10 +54,13 @@ public class Program {
     private static async Task EnsureDatabaseAsync(IServiceProvider services) {
         ArgumentNullException.ThrowIfNull(services);
 
-        using IServiceScope scope = services.CreateScope();
-        OrdersDbContext db = scope.ServiceProvider
-            .GetRequiredService<OrdersDbContext>();
+        AsyncServiceScope scope = services.CreateAsyncScope();
+        
+        await using (scope.ConfigureAwait(false)) {
+            OrdersDbContext db = scope.ServiceProvider
+                .GetRequiredService<OrdersDbContext>();
 
         await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
+        }
     }
 }

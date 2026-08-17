@@ -1,6 +1,8 @@
+namespace Hosting.AppHost;
+
+using global::Observability.Health;
 using Hosting.AppHost.Extensions;
 using Hosting.AppHost.Observability.Topology;
-using Observability.Health;
 
 /// <summary>
 /// Defines and runs the distributed application model for the Workbench host.
@@ -9,6 +11,7 @@ using Observability.Health;
 /// Resource registration, service wiring, and topology publication are kept in
 /// separate methods so that changes to one concern do not obscure the others.
 /// </remarks>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "MA0048:File name must match type name")]
 internal static class Program {
     /// <summary>
     /// Builds the distributed application model and runs the AppHost.
@@ -20,7 +23,7 @@ internal static class Program {
     private static void Main(string[] args) {
         IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
-        HealthStatusEvaluator healthStatusEvaluator = new HealthStatusEvaluator();
+        HealthStatusEvaluator healthStatusEvaluator = new();
 
         Microservices microservices = AddMicroservices(builder);
         VirtualActorServices virtualActors = AddVirtualActorServices(builder);
@@ -202,6 +205,7 @@ internal static class Program {
     /// <param name="virtualActors">
     /// The registered virtual-actor resources.
     /// </param>
+    /// <param name="healthStatusEvaluator"></param>
     /// <remarks>
     /// The Workbench UI receives the serialized topology and service endpoint
     /// configuration.

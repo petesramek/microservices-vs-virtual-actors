@@ -7,7 +7,7 @@ using Workbench.Contracts.Inventory;
 /// Thread-safe fake inventory client used by Orders API tests.
 /// </summary>
 public sealed class FakeInventoryClient : IInventoryClient {
-    private readonly object _syncRoot = new();
+    private readonly Lock _syncRoot = new();
     private readonly Dictionary<string, int> _available = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<Guid, (string ProductId, int Quantity)> _reservations = [];
 

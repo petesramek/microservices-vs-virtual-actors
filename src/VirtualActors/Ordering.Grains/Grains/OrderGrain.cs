@@ -72,7 +72,7 @@ public sealed class OrderGrain : Grain, IOrderGrain {
             return await SaveResultAsync(
                 new GrainOrderResult(
                     orderId,
-                    OrderStatus.Rejected.ToString(),
+nameof(OrderStatus.Rejected),
                     reservation.Reason)).ConfigureAwait(true);
         }
 
@@ -95,14 +95,14 @@ public sealed class OrderGrain : Grain, IOrderGrain {
             return await SaveResultAsync(
                 new GrainOrderResult(
                     orderId,
-                    OrderStatus.Rejected.ToString(),
+nameof(OrderStatus.Rejected),
                     authorization.Reason)).ConfigureAwait(true);
         }
 
         return await SaveResultAsync(
             new GrainOrderResult(
                 orderId,
-                OrderStatus.Completed.ToString(),
+nameof(OrderStatus.Completed),
                 Reason: null)).ConfigureAwait(true);
     }
 

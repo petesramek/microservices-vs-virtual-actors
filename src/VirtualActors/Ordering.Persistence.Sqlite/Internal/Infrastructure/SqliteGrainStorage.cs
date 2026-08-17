@@ -467,7 +467,7 @@ internal sealed class SqliteGrainStorage :
         Exception? innerException = null) {
         string message =
             $"Grain state {operation} failed because its ETag is inconsistent. "
-            + $"GrainId={grainId}.";
+            + string.Create(CultureInfo.InvariantCulture, $"GrainId={grainId}.");
 
         return innerException is null
             ? new InconsistentStateException(

@@ -9,7 +9,7 @@ using Workbench.Contracts;
 using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Internal.Clients;
 using Workbench.Gateway.Internal.Clients.Abstraction;
-using Workbench.Gateway.Internal.Scenarios;
+using Workbench.Gateway.Internal.Runners;
 using Workbench.Gateway.Logging;
 
 /// <summary>

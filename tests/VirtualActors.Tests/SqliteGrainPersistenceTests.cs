@@ -31,7 +31,7 @@ public sealed class SqliteGrainPersistenceTests {
         await using PersistenceTestContext context = await CreateContextAsync();
 
         IInventoryItemGrain inventory = context.Cluster.Client
-            .GetGrain<IInventoryItemGrain>(context.CreateProductId());
+            .GetGrain<IInventoryItemGrain>(PersistenceTestContext.CreateProductId());
 
         int availableQuantity = (await inventory.GetAsync()).AvailableQuantity;
 
@@ -44,7 +44,7 @@ public sealed class SqliteGrainPersistenceTests {
     [Fact]
     public async Task WritingMissingInventoryStateInsertsNewRecord() {
         await using PersistenceTestContext context = await CreateContextAsync();
-        string productId = context.CreateProductId();
+        string productId = PersistenceTestContext.CreateProductId();
 
         IInventoryItemGrain inventory = context.Cluster.Client
             .GetGrain<IInventoryItemGrain>(productId);
@@ -64,7 +64,7 @@ public sealed class SqliteGrainPersistenceTests {
     [Fact]
     public async Task UpdatingExistingInventoryStateUpdatesRecord() {
         await using PersistenceTestContext context = await CreateContextAsync();
-        string productId = context.CreateProductId();
+        string productId = PersistenceTestContext.CreateProductId();
 
         IInventoryItemGrain inventory = context.Cluster.Client
             .GetGrain<IInventoryItemGrain>(productId);
@@ -87,7 +87,7 @@ public sealed class SqliteGrainPersistenceTests {
     [Fact]
     public async Task StaleVersionRejectsWrite() {
         await using PersistenceTestContext context = await CreateContextAsync();
-        string productId = context.CreateProductId();
+        string productId = PersistenceTestContext.CreateProductId();
 
         IInventoryItemGrain inventory = context.Cluster.Client
             .GetGrain<IInventoryItemGrain>(productId);
@@ -109,8 +109,8 @@ public sealed class SqliteGrainPersistenceTests {
     [Fact]
     public async Task DifferentGrainIdsPersistIsolatedState() {
         await using PersistenceTestContext context = await CreateContextAsync();
-        string firstProductId = context.CreateProductId();
-        string secondProductId = context.CreateProductId();
+        string firstProductId = PersistenceTestContext.CreateProductId();
+        string secondProductId = PersistenceTestContext.CreateProductId();
 
         IInventoryItemGrain firstInventory = context.Cluster.Client
             .GetGrain<IInventoryItemGrain>(firstProductId);
@@ -259,7 +259,7 @@ public sealed class SqliteGrainPersistenceTests {
     [Fact]
     public async Task SuccessfulPaymentRemainsAuthoritativeForNewOrder() {
         await using PersistenceTestContext context = await CreateContextAsync();
-        string productId = context.CreateProductId();
+        string productId = PersistenceTestContext.CreateProductId();
         string customerId = CreateIdentifier("customer");
         string idempotencyKey = CreateIdentifier("payment");
 
@@ -299,7 +299,7 @@ public sealed class SqliteGrainPersistenceTests {
     [Fact]
     public async Task FailedPaymentRemainsAuthoritativeForNewOrder() {
         await using PersistenceTestContext context = await CreateContextAsync();
-        string productId = context.CreateProductId();
+        string productId = PersistenceTestContext.CreateProductId();
         string customerId = CreateIdentifier("customer");
         string idempotencyKey = CreateIdentifier("payment");
 
@@ -340,7 +340,7 @@ public sealed class SqliteGrainPersistenceTests {
     [Fact]
     public async Task SamePaymentKeyAcrossCustomersRemainsIsolated() {
         await using PersistenceTestContext context = await CreateContextAsync();
-        string productId = context.CreateProductId();
+        string productId = PersistenceTestContext.CreateProductId();
         string firstCustomerId = CreateIdentifier("customer");
         string secondCustomerId = CreateIdentifier("customer");
         string idempotencyKey = CreateIdentifier("payment");
@@ -381,7 +381,7 @@ public sealed class SqliteGrainPersistenceTests {
     [Fact]
     public async Task RepeatedDuplicateRequestRunReservesInventoryOncePerOrder() {
         await using PersistenceTestContext context = await CreateContextAsync();
-        string productId = context.CreateProductId();
+        string productId = PersistenceTestContext.CreateProductId();
         string customerId = CreateIdentifier("customer");
         string idempotencyKey = CreateIdentifier("payment");
 
@@ -498,7 +498,7 @@ public sealed class SqliteGrainPersistenceTests {
     public async Task ClearingExistingStateRemovesRecord() {
         await using PersistenceTestContext context = await CreateContextAsync();
         IGrainStorage storage = GetStorage(context);
-        GrainId grainId = GrainId.Create("test-inventory", context.CreateProductId());
+        GrainId grainId = GrainId.Create("test-inventory", PersistenceTestContext.CreateProductId());
         var grainState = new GrainState<InventoryItemState>(
             new InventoryItemState {
                 AvailableQuantity = 10,
@@ -526,7 +526,7 @@ public sealed class SqliteGrainPersistenceTests {
     public async Task ClearingMissingStateLeavesStateMissing() {
         await using PersistenceTestContext context = await CreateContextAsync();
         IGrainStorage storage = GetStorage(context);
-        GrainId grainId = GrainId.Create("test-inventory", context.CreateProductId());
+        GrainId grainId = GrainId.Create("test-inventory", PersistenceTestContext.CreateProductId());
         var grainState = new GrainState<InventoryItemState>(
             new InventoryItemState());
 
@@ -544,7 +544,7 @@ public sealed class SqliteGrainPersistenceTests {
     public async Task SameGrainKeyAcrossDifferentTypesPersistsIsolatedState() {
         await using PersistenceTestContext context = await CreateContextAsync();
         IGrainStorage storage = GetStorage(context);
-        string grainKey = context.CreateProductId();
+        string grainKey = PersistenceTestContext.CreateProductId();
         GrainId firstGrainId = GrainId.Create("first-inventory", grainKey);
         GrainId secondGrainId = GrainId.Create("second-inventory", grainKey);
         var firstState = new GrainState<InventoryItemState>(
@@ -592,7 +592,7 @@ public sealed class SqliteGrainPersistenceTests {
         IGrainStorage storage = GetStorage(context);
         GrainId grainId = GrainId.Create(
             "test-inventory",
-            context.CreateProductId());
+            PersistenceTestContext.CreateProductId());
         var firstState = new GrainState<InventoryItemState>(
             new InventoryItemState {
                 AvailableQuantity = 10,
@@ -696,7 +696,7 @@ public sealed class SqliteGrainPersistenceTests {
             SecondaryStorageProviderName);
         GrainId grainId = GrainId.Create(
             "test-inventory",
-            context.CreateProductId());
+            PersistenceTestContext.CreateProductId());
         var primaryState = new GrainState<InventoryItemState>(
             new InventoryItemState {
                 AvailableQuantity = 10,
@@ -742,7 +742,7 @@ public sealed class SqliteGrainPersistenceTests {
         IGrainStorage storage = GetStorage(context);
         GrainId grainId = GrainId.Create(
             "test-inventory",
-            context.CreateProductId());
+            PersistenceTestContext.CreateProductId());
         var firstState = new GrainState<InventoryItemState>(
             new InventoryItemState {
                 AvailableQuantity = 10,
@@ -787,7 +787,7 @@ public sealed class SqliteGrainPersistenceTests {
         IGrainStorage storage = GetStorage(context);
         GrainId grainId = GrainId.Create(
             "test-inventory",
-            context.CreateProductId());
+            PersistenceTestContext.CreateProductId());
         var initialState = new GrainState<InventoryItemState>(
             new InventoryItemState {
                 AvailableQuantity = 10,
@@ -849,7 +849,7 @@ public sealed class SqliteGrainPersistenceTests {
         IGrainStorage storage = GetStorage(context);
         GrainId grainId = GrainId.Create(
             "test-inventory",
-            context.CreateProductId());
+            PersistenceTestContext.CreateProductId());
         var initialState = new GrainState<InventoryItemState>(
             new InventoryItemState {
                 AvailableQuantity = 10,
@@ -1009,7 +1009,7 @@ public sealed class SqliteGrainPersistenceTests {
         IGrainStorage storage = GetStorage(context);
         GrainId grainId = GrainId.Create(
             "test-inventory",
-            context.CreateProductId());
+            PersistenceTestContext.CreateProductId());
         var state = new GrainState<InventoryItemState>(
             new InventoryItemState {
                 AvailableQuantity = 10,
@@ -1406,7 +1406,7 @@ public sealed class SqliteGrainPersistenceTests {
 
         public string ServiceId { get; } = serviceId;
 
-        public string CreateProductId() {
+        public static string CreateProductId() {
             return CreateIdentifier("product");
         }
 

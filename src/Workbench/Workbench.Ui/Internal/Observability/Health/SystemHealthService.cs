@@ -1,4 +1,4 @@
-namespace Workbench.Ui.Observability.Health;
+namespace Workbench.Ui.Internal.Observability.Health;
 
 using global::Observability.Health;
 using global::Observability.Topology.Definitions;
@@ -6,10 +6,11 @@ using global::Observability.Topology.Evaluators.Abstraction;
 using global::Observability.Topology.Snapshots;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Workbench.Ui.Observability.Topology;
+using Workbench.Ui.Internal.Observability.Topology;
 
 /// <summary>
 /// Collects service availability and detailed health observations and builds
@@ -172,12 +173,12 @@ internal sealed class SystemHealthService(
                 ? new AvailabilityObservation(
                     ResourceAvailability.Available,
                     checkedAtUtc,
-                    null)
+                    Description: null)
                 : new AvailabilityObservation(
                     ResourceAvailability.Unavailable,
                     checkedAtUtc,
                     $"The alive endpoint returned HTTP " +
-                    $"{(int)response.StatusCode}.");
+                    string.Create(CultureInfo.InvariantCulture, $"{(int)response.StatusCode}."));
         } catch (OperationCanceledException)
               when (!cancellationToken.IsCancellationRequested) {
             return new AvailabilityObservation(
@@ -238,7 +239,7 @@ internal sealed class SystemHealthService(
                 response.IsSuccessStatusCode
                     ? null
                     : $"The health endpoint returned HTTP " +
-                      $"{(int)response.StatusCode}.",
+                      string.Create(CultureInfo.InvariantCulture, $"{(int)response.StatusCode}."),
                 entries);
         } catch (OperationCanceledException)
               when (!cancellationToken.IsCancellationRequested) {
@@ -278,7 +279,7 @@ internal sealed class SystemHealthService(
                 availability,
                 HealthStatus.Unknown,
                 checkedAtUtc,
-                null,
+Duration: null,
                 "The node health source is unavailable.");
         }
 
@@ -290,7 +291,7 @@ internal sealed class SystemHealthService(
                 availability,
                 HealthStatus.Unknown,
                 provider.Health.CheckedAtUtc,
-                null,
+Duration: null,
                 $"Health entry '{node.HealthSource.EntryKey}' was not " +
                 "reported.");
         }
@@ -331,7 +332,7 @@ internal sealed class SystemHealthService(
                 edge.TargetNodeId,
                 HealthStatus.Unknown,
                 checkedAtUtc,
-                null,
+Duration: null,
                 "No current target service observation is available.");
         }
 
@@ -368,7 +369,7 @@ internal sealed class SystemHealthService(
                 edge.TargetNodeId,
                 HealthStatus.Unknown,
                 checkedAtUtc,
-                null,
+Duration: null,
                 "The dependency source health report is unavailable.");
         }
 
@@ -380,7 +381,7 @@ internal sealed class SystemHealthService(
                 edge.TargetNodeId,
                 HealthStatus.Unknown,
                 source.Health.CheckedAtUtc,
-                null,
+Duration: null,
                 $"Health entry '{edge.HealthEntryKey}' was not reported.");
         }
 
@@ -502,7 +503,7 @@ internal sealed class SystemHealthService(
             return new HealthObservation(
                 HealthStatus.Unknown,
                 checkedAtUtc,
-                null,
+Duration: null,
                 description,
                 new Dictionary<string, EntryObservation>(
                     StringComparer.Ordinal));

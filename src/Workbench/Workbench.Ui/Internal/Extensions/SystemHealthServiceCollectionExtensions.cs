@@ -3,7 +3,7 @@ namespace Workbench.Ui.Internal.Extensions;
 using global::Observability.Health;
 using global::Observability.Topology.Evaluators;
 using global::Observability.Topology.Evaluators.Abstraction;
-using Workbench.Ui.Observability.Health;
+using Workbench.Ui.Internal.Observability.Health;
 
 /// <summary>
 /// Provides registration methods for Workbench system health services.

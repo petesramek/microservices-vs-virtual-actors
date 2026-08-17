@@ -1,4 +1,4 @@
-namespace Workbench.Ui.Observability.Topology;
+namespace Workbench.Ui.Internal.Observability.Topology;
 
 using global::Observability.Topology.Definitions;
 using Microsoft.Extensions.Options;

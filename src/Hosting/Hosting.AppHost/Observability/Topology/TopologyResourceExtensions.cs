@@ -123,7 +123,7 @@ internal static class TopologyResourceExtensions {
     /// </exception>
     private static void EnsureValid(TopologyDefinition definition) {
         TopologyValidator validator = new();
-        TopologyValidationResult result = validator.Validate(definition);
+        TopologyValidationResult result = TopologyValidator.Validate(definition);
 
         if (result.IsValid) {
             return;

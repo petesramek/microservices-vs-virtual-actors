@@ -4,7 +4,7 @@ using Hosting.ServiceDefaults.Extensions;
 using Ordering.Api.Extensions;
 using Ordering.Api.Internal.Observability.Logging;
 
-internal class Program {
+internal sealed class Program {
     private static async Task Main(string[] args) {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -47,8 +47,3 @@ internal class Program {
             .ConfigureAwait(false);
     }
 }
-
-/// <summary>
-/// Provides the entry point marker used by integration tests and hosting tools.
-/// </summary>
-

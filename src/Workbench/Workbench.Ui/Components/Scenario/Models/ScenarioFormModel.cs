@@ -1,4 +1,4 @@
-namespace Workbench.Ui.Models;
+namespace Workbench.Ui.Components.Scenario.Models;
 
 using System.ComponentModel.DataAnnotations;
 using Workbench.Contracts.Scenarios;

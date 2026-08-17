@@ -1,7 +1,8 @@
-namespace Workbench.Gateway.Internal.Scenarios;
+namespace Workbench.Gateway.Internal.Runners;
 
-using Hosting.ServiceDefaults.Observability;
+using Hosting.ServiceDefaults.Observability.Metrics;
 using System.Diagnostics;
+using System.Globalization;
 using Workbench.Contracts.Inventory;
 using Workbench.Contracts.Orders;
 using Workbench.Contracts.Scenarios;
@@ -183,7 +184,7 @@ internal sealed class ScenarioRunner {
             .Range(1, prepared.ConcurrentRequests)
             .Select(index => serviceClient.PlaceOrderAsync(prepared with {
                 OrderId = Guid.NewGuid(),
-                IdempotencyKey = $"{prepared.IdempotencyKey}-{index}",
+                IdempotencyKey = string.Create(CultureInfo.InvariantCulture, $"{prepared.IdempotencyKey}-{index}"),
             }, cancellationToken))
             .ToArray();
 
@@ -372,7 +373,6 @@ internal sealed class ScenarioRunner {
     /// <returns>The corresponding scenario execution result.</returns>
     private static ScenarioExecutionResult ToResult(
         string serviceName,
-        RunScenarioRequest request,
         OrderResponse order,
         InventoryResponse inventory,
         long elapsedMilliseconds,
@@ -406,19 +406,19 @@ internal sealed class ScenarioRunner {
             return [
                 new ScenarioEvent("Ordering.Api", "Received order request."),
                 new ScenarioEvent("OrderGrain", "Started order workflow."),
-                new ScenarioEvent("InventoryItemGrain", $"Reserved inventory for quantity {request.Quantity}."),
+                new ScenarioEvent("InventoryItemGrain", string.Create(CultureInfo.InvariantCulture, $"Reserved inventory for quantity {request.Quantity}.")),
                 new ScenarioEvent("PaymentAccountGrain", "Payment authorization timed out."),
                 new ScenarioEvent("InventoryItemGrain", "Released inventory reservation after timeout."),
-                new ScenarioEvent("OrderGrain", $"Rejected order after payment timeout. Remaining inventory is {inventory.AvailableQuantity}."),
+                new ScenarioEvent("OrderGrain", string.Create(CultureInfo.InvariantCulture, $"Rejected order after payment timeout. Remaining inventory is {inventory.AvailableQuantity}.")),
             ];
         }
 
         return [
             new ScenarioEvent("Orders.Api", "Received order request."),
-            new ScenarioEvent("Inventory.Api", $"Reserved inventory for quantity {request.Quantity}."),
+            new ScenarioEvent("Inventory.Api", string.Create(CultureInfo.InvariantCulture, $"Reserved inventory for quantity {request.Quantity}.")),
             new ScenarioEvent("Payments.Api", "Payment authorization timed out."),
             new ScenarioEvent("Inventory.Api", "Released inventory reservation after timeout."),
-            new ScenarioEvent("Orders.Api", $"Rejected order after payment timeout. Remaining inventory is {inventory.AvailableQuantity}."),
+            new ScenarioEvent("Orders.Api", string.Create(CultureInfo.InvariantCulture, $"Rejected order after payment timeout. Remaining inventory is {inventory.AvailableQuantity}.")),
         ];
     }
 
@@ -441,20 +441,20 @@ internal sealed class ScenarioRunner {
 
         if (IsVirtualActors(serviceName)) {
             return [
-                new ScenarioEvent("Ordering.Api", $"Received {totalSubmissions} concurrent order submissions."),
+                new ScenarioEvent("Ordering.Api", string.Create(CultureInfo.InvariantCulture, $"Received {totalSubmissions} concurrent order submissions.")),
                 new ScenarioEvent("InventoryItemGrain", $"Serialized reservation attempts for hot product '{request.ProductId}'."),
-                new ScenarioEvent("InventoryItemGrain", $"Reserved inventory for {completed} submissions."),
-                new ScenarioEvent("InventoryItemGrain", $"Rejected {rejected} submissions after stock was exhausted."),
-                new ScenarioEvent("OrderGrain", $"Completed {completed} submissions and rejected {rejected} submissions. Remaining inventory is {remainingInventory}."),
+                new ScenarioEvent("InventoryItemGrain", string.Create(CultureInfo.InvariantCulture, $"Reserved inventory for {completed} submissions.")),
+                new ScenarioEvent("InventoryItemGrain", string.Create(CultureInfo.InvariantCulture, $"Rejected {rejected} submissions after stock was exhausted.")),
+                new ScenarioEvent("OrderGrain", string.Create(CultureInfo.InvariantCulture, $"Completed {completed} submissions and rejected {rejected} submissions. Remaining inventory is {remainingInventory}.")),
             ];
         }
 
         return [
-            new ScenarioEvent("Orders.Api", $"Received {totalSubmissions} concurrent order submissions."),
+            new ScenarioEvent("Orders.Api", string.Create(CultureInfo.InvariantCulture, $"Received {totalSubmissions} concurrent order submissions.")),
             new ScenarioEvent("Inventory.Api", $"Protected reservation attempts for hot product '{request.ProductId}'."),
-            new ScenarioEvent("Inventory.Api", $"Reserved inventory for {completed} submissions."),
-            new ScenarioEvent("Inventory.Api", $"Rejected {rejected} submissions after stock was exhausted."),
-            new ScenarioEvent("Orders.Api", $"Completed {completed} submissions and rejected {rejected} submissions. Remaining inventory is {remainingInventory}."),
+            new ScenarioEvent("Inventory.Api", string.Create(CultureInfo.InvariantCulture, $"Reserved inventory for {completed} submissions.")),
+            new ScenarioEvent("Inventory.Api", string.Create(CultureInfo.InvariantCulture, $"Rejected {rejected} submissions after stock was exhausted.")),
+            new ScenarioEvent("Orders.Api", string.Create(CultureInfo.InvariantCulture, $"Completed {completed} submissions and rejected {rejected} submissions. Remaining inventory is {remainingInventory}.")),
         ];
     }
 
@@ -483,20 +483,20 @@ internal sealed class ScenarioRunner {
         int remainingInventory) {
         if (IsVirtualActors(serviceName)) {
             return [
-                new ScenarioEvent("Ordering.Api", $"Received {request.ConcurrentRequests} duplicate request submissions."),
+                new ScenarioEvent("Ordering.Api", string.Create(CultureInfo.InvariantCulture, $"Received {request.ConcurrentRequests} duplicate request submissions.")),
                 new ScenarioEvent("OrderGrain", "Serialized duplicate submissions for one order identity."),
-                new ScenarioEvent("InventoryItemGrain", $"Reserved inventory once for quantity {request.Quantity}."),
-                new ScenarioEvent("OrderGrain", $"Created {uniqueCompletedOrders} unique successful order and returned {idempotentResponses} idempotent duplicate responses."),
-                new ScenarioEvent("Ordering.Api", $"Rejected submissions: {uniqueRejectedOrders}. Remaining inventory is {remainingInventory}."),
+                new ScenarioEvent("InventoryItemGrain", string.Create(CultureInfo.InvariantCulture, $"Reserved inventory once for quantity {request.Quantity}.")),
+                new ScenarioEvent("OrderGrain", string.Create(CultureInfo.InvariantCulture, $"Created {uniqueCompletedOrders} unique successful order and returned {idempotentResponses} idempotent duplicate responses.")),
+                new ScenarioEvent("Ordering.Api", string.Create(CultureInfo.InvariantCulture, $"Rejected submissions: {uniqueRejectedOrders}. Remaining inventory is {remainingInventory}.")),
             ];
         }
 
         return [
-            new ScenarioEvent("Orders.Api", $"Received {request.ConcurrentRequests} duplicate request submissions."),
+            new ScenarioEvent("Orders.Api", string.Create(CultureInfo.InvariantCulture, $"Received {request.ConcurrentRequests} duplicate request submissions.")),
             new ScenarioEvent("Orders.Api", "Created one unique order for the idempotency key."),
-            new ScenarioEvent("Inventory.Api", $"Reserved inventory once for quantity {request.Quantity}."),
-            new ScenarioEvent("Orders.Api", $"Returned {idempotentResponses} idempotent duplicate responses."),
-            new ScenarioEvent("Orders.Api", $"Rejected submissions: {uniqueRejectedOrders}. Remaining inventory is {remainingInventory}."),
+            new ScenarioEvent("Inventory.Api", string.Create(CultureInfo.InvariantCulture, $"Reserved inventory once for quantity {request.Quantity}.")),
+            new ScenarioEvent("Orders.Api", string.Create(CultureInfo.InvariantCulture, $"Returned {idempotentResponses} idempotent duplicate responses.")),
+            new ScenarioEvent("Orders.Api", string.Create(CultureInfo.InvariantCulture, $"Rejected submissions: {uniqueRejectedOrders}. Remaining inventory is {remainingInventory}.")),
         ];
     }
 

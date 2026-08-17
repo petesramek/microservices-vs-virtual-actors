@@ -82,12 +82,15 @@ public class Program {
     private static async Task EnsureDatabaseAsync(IServiceProvider services) {
         ArgumentNullException.ThrowIfNull(services);
 
-        await using AsyncServiceScope scope = services.CreateAsyncScope();
-        PaymentsDbContext db = scope.ServiceProvider
+        AsyncServiceScope scope = services.CreateAsyncScope();
+
+        await using (scope.ConfigureAwait(false)) {
+            PaymentsDbContext db = scope.ServiceProvider
             .GetRequiredService<PaymentsDbContext>();
 
         await db.Database
             .EnsureCreatedAsync()
             .ConfigureAwait(false);
+        }
     }
 }

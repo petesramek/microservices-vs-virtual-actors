@@ -1,4 +1,4 @@
-namespace Workbench.Ui.Observability.Health;
+namespace Workbench.Ui.Internal.Observability.Health;
 
 /// <summary>
 /// Defines the service health endpoints supplied by the AppHost.

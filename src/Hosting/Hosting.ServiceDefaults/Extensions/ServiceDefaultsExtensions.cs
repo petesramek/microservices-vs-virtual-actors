@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FrameworkHealthCheckOptions = Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions;
@@ -368,8 +369,8 @@ public static class ServiceDefaultsExtensions {
         TEnum value,
         TEnum all)
         where TEnum : struct, Enum {
-        ulong valueBits = Convert.ToUInt64(value);
-        ulong allBits = Convert.ToUInt64(all);
+        ulong valueBits = Convert.ToUInt64(value, CultureInfo.InvariantCulture);
+        ulong allBits = Convert.ToUInt64(all, CultureInfo.InvariantCulture);
         return (valueBits & ~allBits) == 0;
     }
 

@@ -1,5 +1,7 @@
 namespace Observability.Health;
 
+using Observability.Health.Abstraction;
+
 /// <summary>
 /// Evaluates aggregate health from a collection of health observations.
 /// </summary>

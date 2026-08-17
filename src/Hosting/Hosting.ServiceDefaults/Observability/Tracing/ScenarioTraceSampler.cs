@@ -7,7 +7,7 @@ using OpenTelemetry.Trace;
 /// </summary>
 /// <remarks>
 /// A root span is selected only when its initial attributes contain
-/// <see cref="ScenarioInstrumentation.ScenarioRunTagName"/> with the Boolean value
+/// <see cref="ScenarioInstrumentation.TagNames.ScenarioRun"/> with the Boolean value
 /// <see langword="true"/>. Other roots are dropped.
 ///
 /// <para>

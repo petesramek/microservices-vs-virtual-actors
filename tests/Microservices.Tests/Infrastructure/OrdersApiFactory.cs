@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Orders.Api;
 using Orders.Api.Internal.Clients.Abstraction;
 using Orders.Api.Internal.Infrastructure;
 

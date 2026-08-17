@@ -22,7 +22,7 @@ public sealed class TopologyValidator {
     /// <exception cref="ArgumentNullException">
     /// <paramref name="topology"/> is <see langword="null"/>.
     /// </exception>
-    public TopologyValidationResult Validate(
+    public static TopologyValidationResult Validate(
         TopologyDefinition topology) {
         ArgumentNullException.ThrowIfNull(topology);
 
@@ -99,7 +99,7 @@ public sealed class TopologyValidator {
         IEnumerable<string> duplicateNodeIds = topology.Nodes
             .Where(static node => !string.IsNullOrWhiteSpace(node.Id))
             .GroupBy(static node => node.Id, StringComparer.Ordinal)
-            .Where(static group => group.Count() > 1)
+            .Where(static group => group.Skip(1).Any())
             .Select(static group => group.Key);
 
         foreach (string nodeId in duplicateNodeIds) {
@@ -166,7 +166,7 @@ public sealed class TopologyValidator {
                     && !string.IsNullOrWhiteSpace(edge.TargetNodeId))
                 .GroupBy(static edge =>
                     (edge.SourceNodeId, edge.TargetNodeId))
-                .Where(static group => group.Count() > 1)
+                .Where(static group => group.Skip(1).Any())
                 .Select(static group => group.Key);
 
         foreach ((string sourceNodeId, string targetNodeId) in duplicateEdges) {
@@ -218,7 +218,7 @@ public sealed class TopologyValidator {
             IEnumerable<string> duplicateMembers = group.NodeIds
                 .Where(static nodeId => !string.IsNullOrWhiteSpace(nodeId))
                 .GroupBy(static nodeId => nodeId, StringComparer.Ordinal)
-                .Where(static members => members.Count() > 1)
+                .Where(static members => members.Skip(1).Any())
                 .Select(static members => members.Key);
 
             foreach (string nodeId in duplicateMembers) {
@@ -230,7 +230,7 @@ public sealed class TopologyValidator {
         IEnumerable<string> duplicateGroupIds = topology.Groups
             .Where(static group => !string.IsNullOrWhiteSpace(group.Id))
             .GroupBy(static group => group.Id, StringComparer.Ordinal)
-            .Where(static group => group.Count() > 1)
+            .Where(static group => group.Skip(1).Any())
             .Select(static group => group.Key);
 
         foreach (string groupId in duplicateGroupIds) {

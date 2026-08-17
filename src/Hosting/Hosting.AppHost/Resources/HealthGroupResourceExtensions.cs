@@ -107,6 +107,7 @@ internal static class HealthGroupResourceExtensions
     /// <param name="notificationService">
     /// The service used to observe child changes and publish group updates.
     /// </param>
+    /// <param name="healthStatusEvaluator"></param>
     /// <param name="cancellationToken">
     /// The token that stops monitoring when resource initialization ends.
     /// </param>
@@ -164,6 +165,7 @@ internal static class HealthGroupResourceExtensions
     /// <param name="childSnapshots">
     /// The latest snapshots received for child resources.
     /// </param>
+    /// <param name="healthStatusEvaluator"></param>
     /// <returns>The aggregate health group state.</returns>
     /// <remarks>
     /// Returns <see cref="HealthGroupState.Unknown"/> until any child snapshot
@@ -211,12 +213,12 @@ internal static class HealthGroupResourceExtensions
             return HealthStatus.Starting;
         }
 
-        return snapshot.HealthStatus switch
-        {
+        return snapshot.HealthStatus switch {
             FrameworkHealthStatus.Healthy => HealthStatus.Healthy,
             FrameworkHealthStatus.Degraded => HealthStatus.Degraded,
             FrameworkHealthStatus.Unhealthy => HealthStatus.Unhealthy,
             null => HealthStatus.Unknown,
+            _ => HealthStatus.Unknown,
         };
     }
 
@@ -234,7 +236,7 @@ internal static class HealthGroupResourceExtensions
         string? state = snapshot.State?.Text;
 
         return snapshot.HealthStatus is null
-            && !KnownResourceStates.TerminalStates.Contains(state);
+            && !KnownResourceStates.TerminalStates.Contains(state, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>

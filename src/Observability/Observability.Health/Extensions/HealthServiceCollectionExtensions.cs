@@ -2,6 +2,7 @@ namespace Observability.Health.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
 using Observability.Health;
+using Observability.Health.Abstraction;
 
 /// <summary>
 /// Provides dependency-injection registration extensions for health-status

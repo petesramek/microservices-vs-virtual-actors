@@ -173,7 +173,7 @@ internal static class OrdersEndpointRouteBuilderExtensions {
                 ProductId = request.ProductId,
                 Quantity = request.Quantity,
                 ReservationId = reservationId,
-                Status = OrderStatus.Created.ToString(),
+                Status = nameof(OrderStatus.Created),
             };
 
             db.Orders.Add(order);
@@ -190,7 +190,7 @@ internal static class OrdersEndpointRouteBuilderExtensions {
                 .ConfigureAwait(false);
 
             if (!reservation.Reserved) {
-                order.Status = OrderStatus.Rejected.ToString();
+                order.Status = nameof(OrderStatus.Rejected);
                 order.Reason = reservation.Reason;
                 await db.SaveChangesAsync(cancellationToken)
                     .ConfigureAwait(false);
@@ -199,7 +199,7 @@ internal static class OrdersEndpointRouteBuilderExtensions {
                 return Results.Ok(ToResponse(order));
             }
 
-            order.Status = OrderStatus.InventoryReserved.ToString();
+            order.Status = nameof(OrderStatus.InventoryReserved);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             AuthorizePaymentResponse payment = await paymentsClient
@@ -219,7 +219,7 @@ internal static class OrdersEndpointRouteBuilderExtensions {
                     new ReleaseInventoryRequest(reservationId),
                     cancellationToken).ConfigureAwait(false);
 
-                order.Status = OrderStatus.Rejected.ToString();
+                order.Status = nameof(OrderStatus.Rejected);
                 order.Reason = payment.Reason;
                 await db.SaveChangesAsync(cancellationToken)
                     .ConfigureAwait(false);
@@ -228,7 +228,7 @@ internal static class OrdersEndpointRouteBuilderExtensions {
                 return Results.Ok(ToResponse(order));
             }
 
-            order.Status = OrderStatus.Completed.ToString();
+            order.Status = nameof(OrderStatus.Completed);
             order.Reason = null;
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

@@ -1,11 +1,11 @@
 using Hosting.ServiceDefaults.Extensions;
-using Hosting.ServiceDefaults.Observability;
+using Hosting.ServiceDefaults.Observability.Metrics;
 using Microsoft.Extensions.Options;
 using Workbench.Gateway.Internal.Clients;
 using Workbench.Gateway.Internal.Configuration;
 using Workbench.Gateway.Internal.Endpoints;
 using Workbench.Gateway.Internal.Extensions;
-using Workbench.Gateway.Internal.Scenarios;
+using Workbench.Gateway.Internal.Runners;
 
 namespace Workbench.Gateway;
 

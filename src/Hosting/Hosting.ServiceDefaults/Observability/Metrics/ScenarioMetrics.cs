@@ -1,4 +1,6 @@
-namespace Hosting.ServiceDefaults.Observability;
+namespace Hosting.ServiceDefaults.Observability.Metrics;
+
+using Hosting.ServiceDefaults.Observability;
 
 using System.Diagnostics;
 using System.Diagnostics.Metrics;

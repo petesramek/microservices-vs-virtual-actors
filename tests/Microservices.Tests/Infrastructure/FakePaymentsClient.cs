@@ -7,7 +7,7 @@ using Workbench.Contracts.Payments;
 /// Fake payments client used by Orders API tests.
 /// </summary>
 public sealed class FakePaymentsClient : IPaymentsClient {
-    private readonly object _syncRoot = new();
+    private readonly Lock _syncRoot = new();
     private readonly Dictionary<string, AuthorizePaymentResponse> _responses = new(StringComparer.OrdinalIgnoreCase);
 
     public Task<AuthorizePaymentResponse> AuthorizeAsync(AuthorizePaymentRequest request, CancellationToken cancellationToken) {

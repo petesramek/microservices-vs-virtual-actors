@@ -658,15 +658,10 @@ internal sealed class TopologyBuilder
             candidate => string.Equals(
                 candidate.Id,
                 nodeId,
-                StringComparison.Ordinal));
-
-        if (node is null)
-        {
-            throw new ArgumentException(
+                StringComparison.Ordinal)) ?? throw new ArgumentException(
                 $"Topology service '{nodeId}' must be registered before it " +
                 "can be referenced.",
                 parameterName);
-        }
 
         if (node.Kind != TopologyNodeKind.Service)
         {

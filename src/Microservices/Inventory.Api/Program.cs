@@ -1,3 +1,5 @@
+namespace Inventory.Api;
+
 using Hosting.ServiceDefaults.Extensions;
 using Inventory.Api.Extensions;
 using Inventory.Api.Internal.Infrastructure;
@@ -8,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 /// <summary>
 /// Configures and runs the inventory microservice.
 /// </summary>
-internal class Program {
+internal sealed class Program {
     /// <summary>
     /// Configures service defaults, persistence, health checks, middleware, and
     /// inventory endpoints, then runs the web application.
@@ -75,12 +77,13 @@ internal class Program {
     /// </param>
     /// <returns>A task that represents the database initialization operation.</returns>
     private static async Task EnsureDatabaseAsync(IServiceProvider services) {
-        ArgumentNullException.ThrowIfNull(services);
+        AsyncServiceScope scope = services.CreateAsyncScope();
 
-        using IServiceScope scope = services.CreateScope();
-        InventoryDbContext db = scope.ServiceProvider
-            .GetRequiredService<InventoryDbContext>();
+        await using (scope.ConfigureAwait(false)) {
+            InventoryDbContext db = scope.ServiceProvider
+                .GetRequiredService<InventoryDbContext>();
 
-        await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
+            await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
+        }
     }
 }
