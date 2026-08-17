@@ -25,7 +25,7 @@
             <div class="system-health-node-fact">
                 <span>Availability</span>
 
-                <AvailabilityBadge Value="@Availability" />
+                <ResourceAvailabilityBadge Value="@Availability" />
             </div>
         </div>
     }
@@ -52,7 +52,7 @@
                             out TopologyNodeDefinition? target))
                     {
                         <li>
-                            <SystemHealthDependency
+                            <DependencyHealthCard
                                 Definition="@edge"
                                 Snapshot="@GetEdgeSnapshot(edge)"
                                 Target="@target" />
@@ -90,56 +90,117 @@
 
 @code {
     /// <summary>
-    /// Gets or sets the static node definition being rendered.
+    /// Gets or sets the static definition of the topology node rendered by the
+    /// card.
     /// </summary>
+    /// <value>
+    /// The node identity, display name, and kind used to render the card.
+    /// </value>
     [Parameter]
     public required TopologyNodeDefinition Definition { get; set; }
 
     /// <summary>
-    /// Gets or sets the current direct observation for the node.
+    /// Gets or sets the current direct health observation for the node.
     /// </summary>
+    /// <value>
+    /// The current node observation, or <see langword="null"/> when the node
+    /// has not been observed.
+    /// </value>
     [Parameter]
     public TopologyNodeSnapshot? Snapshot { get; set; }
 
     /// <summary>
-    /// Gets or sets the dependency edges originating from this node.
+    /// Gets or sets the dependency-edge definitions originating from the node.
     /// </summary>
+    /// <value>
+    /// The ordered collection of outgoing dependencies rendered by the card.
+    /// </value>
     [Parameter]
     public required IReadOnlyList<TopologyEdgeDefinition>
         OutgoingEdges { get; set; }
 
     /// <summary>
-    /// Gets or sets edge snapshots indexed by source and target node IDs.
+    /// Gets or sets dependency observations indexed by source and target node
+    /// identifiers.
     /// </summary>
+    /// <value>
+    /// The lookup used to resolve the current observation for each outgoing
+    /// dependency.
+    /// </value>
     [Parameter]
     public required IReadOnlyDictionary<
         (string SourceNodeId, string TargetNodeId),
         TopologyEdgeSnapshot> EdgeSnapshots { get; set; }
 
     /// <summary>
-    /// Gets or sets node definitions indexed by stable node ID.
+    /// Gets or sets topology node definitions indexed by stable node
+    /// identifier.
     /// </summary>
+    /// <value>
+    /// The lookup used to resolve each dependency target definition.
+    /// </value>
     [Parameter]
     public required IReadOnlyDictionary<string, TopologyNodeDefinition>
         NodeDefinitions { get; set; }
 
+    /// <summary>
+    /// Gets the HTML identifier used by the node heading and its container.
+    /// </summary>
+    /// <value>
+    /// A stable identifier composed from the sanitized node identifier.
+    /// </value>
     private string HeadingId =>
         $"system-health-node-{SanitizeHtmlId(Definition.Id)}";
 
+    /// <summary>
+    /// Gets the HTML identifier used by the dependencies heading.
+    /// </summary>
+    /// <value>The node heading identifier with a dependency suffix.</value>
     private string DependenciesHeadingId =>
         $"{HeadingId}-dependencies";
 
+    /// <summary>
+    /// Gets the observed health status for the node.
+    /// </summary>
+    /// <value>
+    /// The snapshot health, or <see cref="HealthStatus.Unknown"/> when no
+    /// snapshot is available.
+    /// </value>
     private HealthStatus Health =>
         Snapshot?.Health ?? HealthStatus.Unknown;
 
+    /// <summary>
+    /// Gets the observed availability for the node.
+    /// </summary>
+    /// <value>
+    /// The snapshot availability, or
+    /// <see cref="ResourceAvailability.Unknown"/> when no snapshot is
+    /// available.
+    /// </value>
     private ResourceAvailability Availability =>
         Snapshot?.Availability ?? ResourceAvailability.Unknown;
 
+    /// <summary>
+    /// Gets a value indicating whether the current observation description
+    /// should be displayed.
+    /// </summary>
+    /// <value>
+    /// <see langword="true"/> when a non-healthy snapshot contains a non-blank
+    /// description; otherwise, <see langword="false"/>.
+    /// </value>
     private bool ShouldShowDescription =>
         Snapshot is not null &&
         Snapshot.Health != HealthStatus.Healthy &&
         !string.IsNullOrWhiteSpace(Snapshot.Description);
 
+    /// <summary>
+    /// Gets the current observation for an outgoing dependency edge.
+    /// </summary>
+    /// <param name="edge">The dependency edge whose observation to resolve.</param>
+    /// <returns>
+    /// The matching edge observation, or <see langword="null"/> when no
+    /// observation exists.
+    /// </returns>
     private TopologyEdgeSnapshot? GetEdgeSnapshot(
         TopologyEdgeDefinition edge)
     {
@@ -148,6 +209,14 @@
             edge.TargetNodeId));
     }
 
+    /// <summary>
+    /// Formats a topology node kind for display.
+    /// </summary>
+    /// <param name="kind">The topology node kind to format.</param>
+    /// <returns>
+    /// <c>Service</c>, <c>Storage</c>, or the string representation of an
+    /// unsupported value.
+    /// </returns>
     private static string FormatKind(TopologyNodeKind kind)
     {
         return kind switch
@@ -158,6 +227,11 @@
         };
     }
 
+    /// <summary>
+    /// Formats a timestamp as local time for compact display.
+    /// </summary>
+    /// <param name="value">The timestamp to format.</param>
+    /// <returns>The local time in hours, minutes, and seconds.</returns>
     private static string FormatTime(DateTimeOffset value)
     {
         return value
@@ -165,6 +239,11 @@
             .ToString("HH:mm:ss");
     }
 
+    /// <summary>
+    /// Formats a timestamp as a complete local date and time.
+    /// </summary>
+    /// <param name="value">The timestamp to format.</param>
+    /// <returns>The local date, time, and UTC offset.</returns>
     private static string FormatFullTimestamp(DateTimeOffset value)
     {
         return value
@@ -172,6 +251,16 @@
             .ToString("yyyy-MM-dd HH:mm:ss zzz");
     }
 
+    /// <summary>
+    /// Converts a value into a stable string suitable for use in an HTML
+    /// identifier.
+    /// </summary>
+    /// <param name="value">The value to sanitize.</param>
+    /// <returns>
+    /// <c>unknown</c> for a blank value; otherwise, the value with characters
+    /// other than letters, digits, hyphens, and underscores replaced by
+    /// hyphens.
+    /// </returns>
     private static string SanitizeHtmlId(string value)
     {
         if (string.IsNullOrWhiteSpace(value))

@@ -1,5 +1,6 @@
 @page "/system-health"
 
+@using Workbench.Ui.Components.Health.Fragments
 @using global::Observability.Health
 @using global::Observability.Topology.Definitions
 @using global::Observability.Topology.Snapshots
@@ -18,7 +19,6 @@
 <section class="health-page"
          aria-labelledby="health-page-title">
     <header class="page-heading health-page-header">
-        <span class="state-kicker">Observability</span>
         <h2 id="health-page-title">System Health</h2>
         <p>
             Review service availability, direct resource health,
@@ -30,11 +30,6 @@
              aria-labelledby="health-page-title"
              aria-busy="@isLoading.ToString().ToLowerInvariant()">
         <header class="system-health-header">
-            <div>
-                <span class="state-kicker">System health</span>
-                <h2>Live dependency health</h2>
-            </div>
-
             <div class="system-health-actions">
                 @if (snapshot is not null) {
                     <span class="system-health-updated"
@@ -53,80 +48,40 @@
         </header>
 
         @if (isLoading && snapshot is null) {
-            <section class="card state-card running-state"
-                     role="status"
-                     aria-live="polite">
-                <strong>Checking system health…</strong>
-
-                <p>
-                    Collecting service, storage, and dependency observations.
-                </p>
-            </section>
-        } else if (!string.IsNullOrWhiteSpace(errorMessage) &&
-                   snapshot is null) {
-            <section class="card status-error-card"
-                     role="alert">
-                <strong>System health is unavailable.</strong>
-
-                <p>@errorMessage</p>
-            </section>
+            <HealthMessageCard CssClass="state-card running-state"
+                               Role="status"
+                               AriaLive="polite"
+                               Title="Checking system health…"
+                               Message="Collecting service, storage, and dependency observations." />
+        } else if (!string.IsNullOrWhiteSpace(errorMessage) && snapshot is null) {
+            <HealthMessageCard CssClass="status-error-card"
+                               Role="alert"
+                               Title="System health is unavailable."
+                               Message="@errorMessage" />
         } else if (snapshot is null || snapshot.Nodes.Count == 0) {
-            <section class="card state-card empty-state">
-                <strong>No health snapshot is available.</strong>
-
-                <p>
-                    Refresh to inspect the current system state.
-                </p>
-            </section>
+            <HealthMessageCard CssClass="state-card empty-state"
+                               Title="No health snapshot is available."
+                               Message="Refresh to inspect the current system state." />
         } else {
-            @if (!string.IsNullOrWhiteSpace(errorMessage)) {
-                <section class="card status-error-card"
-                         role="alert">
-                    <strong>
-                        Showing the last available snapshot.
-                    </strong>
-
-                    <p>@errorMessage</p>
-                </section>
+            if (!string.IsNullOrWhiteSpace(errorMessage)) {
+                <HealthMessageCard CssClass="status-error-card"
+                                   Role="alert"
+                                   Title="Showing the last available snapshot."
+                                   Message="@errorMessage" />
             }
 
-            <section class="health-summary"
-                     aria-label="System health summary">
-                <article class="card">
-                    <span>Services available</span>
+            <HealthSummary AvailableServiceCount="@AvailableServiceCount"
+                           ServiceCount="@ServiceCount"
+                           HealthyNodeCount="@HealthyNodeCount"
+                           NodeCount="@NodeCount"
+                           ResourceIssueCount="@ResourceIssueCount"
+                           DependencyIssueCount="@DependencyIssueCount" />
 
-                    <strong>
-                        @AvailableServiceCount / @ServiceCount
-                    </strong>
-                </article>
-
-                <article class="card">
-                    <span>Healthy resources</span>
-
-                    <strong>
-                        @HealthyNodeCount / @NodeCount
-                    </strong>
-                </article>
-
-                <article class="card">
-                    <span>Resource issues</span>
-
-                    <strong>@ResourceIssueCount</strong>
-                </article>
-
-                <article class="card">
-                    <span>Dependency issues</span>
-
-                    <strong>@DependencyIssueCount</strong>
-                </article>
-            </section>
-
-            @if (UnmonitoredDependencyCount > 0) {
+            if (UnmonitoredDependencyCount > 0) {
                 <section class="card system-health-warning"
                          role="status">
                     <strong>
-                        @FormatUnmonitoredDependencyCount(
-                            UnmonitoredDependencyCount)
+                        @FormatUnmonitoredDependencyCount(UnmonitoredDependencyCount)
                     </strong>
 
                     <p>
@@ -138,11 +93,9 @@
 
             <div class="system-health-groups">
                 @foreach (TopologyGroupDefinition group in Definition.Groups) {
-                    GroupSnapshots.TryGetValue(
-                        group.Id,
-                        out TopologyGroupSnapshot? groupSnapshot);
+                    GroupSnapshots.TryGetValue(group.Id, out TopologyGroupSnapshot? groupSnapshot);
 
-                    <SystemHealthGroup Definition="@group"
+                    <GroupHealthCard Definition="@group"
                                        Snapshot="@groupSnapshot"
                                        NodeDefinitions="@NodeDefinitions"
                                        NodeSnapshots="@NodeSnapshots"
@@ -155,28 +108,54 @@
 </section>
 
 @code {
+    /// <summary>
+    /// Stores the most recently loaded system topology snapshot.
+    /// </summary>
     private TopologySnapshot? snapshot;
+
+    /// <summary>
+    /// Stores the user-facing message for the most recent refresh failure.
+    /// </summary>
     private string? errorMessage;
+
+    /// <summary>
+    /// Indicates whether a health snapshot refresh is currently running.
+    /// </summary>
     private bool isLoading;
 
+    /// <summary>
+    /// Gets the static topology definition used to interpret snapshots.
+    /// </summary>
     private TopologyDefinition Definition =>
         TopologyProvider.Definition;
 
+    /// <summary>
+    /// Gets or sets topology node definitions indexed by node identifier.
+    /// </summary>
     private IReadOnlyDictionary<string, TopologyNodeDefinition>
         NodeDefinitions { get; set; } =
             new Dictionary<string, TopologyNodeDefinition>(
                 StringComparer.Ordinal);
 
+    /// <summary>
+    /// Gets or sets node observations indexed by node identifier.
+    /// </summary>
     private IReadOnlyDictionary<string, TopologyNodeSnapshot>
         NodeSnapshots { get; set; } =
             new Dictionary<string, TopologyNodeSnapshot>(
                 StringComparer.Ordinal);
 
+    /// <summary>
+    /// Gets or sets group observations indexed by group identifier.
+    /// </summary>
     private IReadOnlyDictionary<string, TopologyGroupSnapshot>
         GroupSnapshots { get; set; } =
             new Dictionary<string, TopologyGroupSnapshot>(
                 StringComparer.Ordinal);
 
+    /// <summary>
+    /// Gets or sets dependency observations indexed by source and target node.
+    /// </summary>
     private IReadOnlyDictionary<
         (string SourceNodeId, string TargetNodeId),
         TopologyEdgeSnapshot> EdgeSnapshots { get; set; } =
@@ -184,49 +163,76 @@
                 (string SourceNodeId, string TargetNodeId),
                 TopologyEdgeSnapshot>();
 
+    /// <summary>
+    /// Gets or sets outgoing dependency definitions grouped by source node.
+    /// </summary>
     private ILookup<string, TopologyEdgeDefinition>
         OutgoingEdgeDefinitions { get; set; } =
             Array.Empty<TopologyEdgeDefinition>()
                 .ToLookup(
-                    edge => edge.SourceNodeId,
+                    static edge => edge.SourceNodeId,
                     StringComparer.Ordinal);
 
+    /// <summary>
+    /// Gets or sets the identifiers of topology nodes that represent services.
+    /// </summary>
     private IReadOnlySet<string> ServiceNodeIds { get; set; } =
         new HashSet<string>(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Gets the number of service nodes in the topology definition.
+    /// </summary>
     private int ServiceCount =>
         ServiceNodeIds.Count;
 
+    /// <summary>
+    /// Gets the total number of nodes in the topology definition.
+    /// </summary>
     private int NodeCount =>
         Definition.Nodes.Count;
 
+    /// <summary>
+    /// Gets the number of observed service nodes that are available.
+    /// </summary>
     private int AvailableServiceCount =>
         NodeSnapshots.Values.Count(
             node =>
                 ServiceNodeIds.Contains(node.Id) &&
                 node.Availability == ResourceAvailability.Available);
 
+    /// <summary>
+    /// Gets the number of observed nodes that are healthy.
+    /// </summary>
     private int HealthyNodeCount =>
         NodeSnapshots.Values.Count(
-            node => node.Health == HealthStatus.Healthy);
+            static node => node.Health == HealthStatus.Healthy);
 
+    /// <summary>
+    /// Gets the number of unavailable, degraded, or unhealthy resources.
+    /// </summary>
     private int ResourceIssueCount =>
         NodeSnapshots.Values.Count(
-            node =>
+            static node =>
                 node.Availability == ResourceAvailability.Unavailable ||
                 node.Health is
                     HealthStatus.Degraded or
                     HealthStatus.Unhealthy);
 
+    /// <summary>
+    /// Gets the number of degraded or unhealthy observed dependencies.
+    /// </summary>
     private int DependencyIssueCount =>
         EdgeSnapshots.Values.Count(
-            edge => edge.Health is
+            static edge => edge.Health is
                 HealthStatus.Degraded or
                 HealthStatus.Unhealthy);
 
+    /// <summary>
+    /// Gets the number of dependencies whose health is unknown.
+    /// </summary>
     private int UnmonitoredDependencyCount =>
         EdgeSnapshots.Values.Count(
-            edge => edge.Health == HealthStatus.Unknown);
+            static edge => edge.Health == HealthStatus.Unknown);
 
     /// <inheritdoc />
     protected override async Task OnInitializedAsync() {
@@ -234,21 +240,29 @@
         await RefreshAsync();
     }
 
+    /// <summary>
+    /// Builds lookup structures from the static topology definition.
+    /// </summary>
     private void BuildDefinitionIndexes() {
         NodeDefinitions = Definition.Nodes.ToDictionary(
-            node => node.Id,
+            static node => node.Id,
             StringComparer.Ordinal);
 
         ServiceNodeIds = Definition.Nodes
-            .Where(node => node.Kind == TopologyNodeKind.Service)
-            .Select(node => node.Id)
+            .Where(static node => node.Kind == TopologyNodeKind.Service)
+            .Select(static node => node.Id)
             .ToHashSet(StringComparer.Ordinal);
 
         OutgoingEdgeDefinitions = Definition.Edges.ToLookup(
-            edge => edge.SourceNodeId,
+            static edge => edge.SourceNodeId,
             StringComparer.Ordinal);
     }
 
+    /// <summary>
+    /// Loads the latest system health snapshot unless a refresh is already
+    /// running.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous refresh operation.</returns>
     private async Task RefreshAsync() {
         if (isLoading) {
             return;
@@ -274,22 +288,31 @@
         }
     }
 
+    /// <summary>
+    /// Builds lookup structures from a newly loaded topology snapshot.
+    /// </summary>
+    /// <param name="latestSnapshot">The snapshot to index.</param>
     private void BuildSnapshotIndexes(
         TopologySnapshot latestSnapshot) {
         NodeSnapshots = latestSnapshot.Nodes.ToDictionary(
-            node => node.Id,
+            static node => node.Id,
             StringComparer.Ordinal);
 
         GroupSnapshots = latestSnapshot.Groups.ToDictionary(
-            group => group.Id,
+            static group => group.Id,
             StringComparer.Ordinal);
 
         EdgeSnapshots = latestSnapshot.Edges.ToDictionary(
-            edge => (
+            static edge => (
                 edge.SourceNodeId,
                 edge.TargetNodeId));
     }
 
+    /// <summary>
+    /// Formats the number of dependencies whose health is unknown.
+    /// </summary>
+    /// <param name="count">The number of unmonitored dependencies.</param>
+    /// <returns>A grammatically appropriate status message.</returns>
     private static string FormatUnmonitoredDependencyCount(
         int count) {
         return count == 1
@@ -297,6 +320,11 @@
             : $"{count} dependencies are not currently monitored.";
     }
 
+    /// <summary>
+    /// Formats a timestamp as local time for compact display.
+    /// </summary>
+    /// <param name="value">The timestamp to format.</param>
+    /// <returns>The local time in hours, minutes, and seconds.</returns>
     private static string FormatTime(
         DateTimeOffset value) {
         return value
@@ -304,6 +332,11 @@
             .ToString("HH:mm:ss");
     }
 
+    /// <summary>
+    /// Formats a timestamp as a complete local date and time.
+    /// </summary>
+    /// <param name="value">The timestamp to format.</param>
+    /// <returns>The local date, time, and UTC offset.</returns>
     private static string FormatFullTimestamp(
         DateTimeOffset value) {
         return value

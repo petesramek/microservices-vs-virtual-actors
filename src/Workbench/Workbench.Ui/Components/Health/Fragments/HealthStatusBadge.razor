@@ -1,0 +1,61 @@
+@using global::Observability.Health
+
+<span class="health-status-badge @Presentation.CssClass"
+      aria-label="Health status: @Presentation.Label"
+      title="@Presentation.Label">
+    <span class="health-status-indicator" aria-hidden="true"></span>
+    <span class="health-status-text">@Presentation.Label</span>
+</span>
+
+@code {
+    /// <summary>
+    /// Gets or sets the health status displayed by the badge.
+    /// </summary>
+    /// <value>The health status to present.</value>
+    [Parameter]
+    public HealthStatus Status { get; set; }
+
+    /// <summary>
+    /// Gets the visual presentation associated with the current health status.
+    /// </summary>
+    /// <value>
+    /// The matching CSS class and label, or the unknown presentation when
+    /// <see cref="Status"/> contains an unsupported value.
+    /// </value>
+    private StatusPresentation Presentation => Status switch
+    {
+        HealthStatus.Unknown => new(
+            "health-status-badge--unknown",
+            "Unknown"),
+        HealthStatus.Starting => new(
+            "health-status-badge--starting",
+            "Starting"),
+        HealthStatus.Healthy => new(
+            "health-status-badge--healthy",
+            "Healthy"),
+        HealthStatus.Degraded => new(
+            "health-status-badge--degraded",
+            "Degraded"),
+        HealthStatus.Unhealthy => new(
+            "health-status-badge--unhealthy",
+            "Unhealthy"),
+        _ => new(
+            "health-status-badge--unknown",
+            "Unknown")
+    };
+
+    /// <summary>
+    /// Represents the CSS class and user-facing label used to display a health
+    /// status.
+    /// </summary>
+    /// <param name="CssClass">
+    /// The CSS class that applies the status-specific badge styling.
+    /// </param>
+    /// <param name="Label">
+    /// The concise health-status label displayed by the badge and exposed to
+    /// assistive technology.
+    /// </param>
+    private readonly record struct StatusPresentation(
+        string CssClass,
+        string Label);
+}

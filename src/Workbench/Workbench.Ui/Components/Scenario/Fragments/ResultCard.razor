@@ -55,8 +55,8 @@
             @foreach (var scenarioEvent in Result.Events)
             {
                 <li>
-                    <span>@GetEventTitle(scenarioEvent)</span>
-                    <p>@GetEventMessage(scenarioEvent)</p>
+                    <span>@scenarioEvent.Source</span>
+                    <p>@scenarioEvent.Message)</p>
                 </li>
             }
         </ol>
@@ -64,18 +64,54 @@
 </article>
 
 @code {
+    /// <summary>
+    /// Gets or sets the architecture or result-set title displayed by the
+    /// card.
+    /// </summary>
+    /// <value>The title rendered above the outcome label.</value>
     [Parameter]
     public required string Title { get; set; }
 
+    /// <summary>
+    /// Gets or sets the scenario execution result displayed by the card.
+    /// </summary>
+    /// <value>
+    /// The execution outcome, metrics, reason, and timeline events to render.
+    /// </value>
     [Parameter]
     public required ScenarioExecutionResult Result { get; set; }
 
+    /// <summary>
+    /// Gets the total number of request submissions represented by the result.
+    /// </summary>
+    /// <value>
+    /// <see cref="ScenarioExecutionResult.TotalRequestSubmissions"/> when it is
+    /// greater than zero; otherwise, the sum of completed orders, rejected
+    /// orders, and idempotent responses.
+    /// </value>
     private int TotalRequestSubmissions => Result.TotalRequestSubmissions > 0
         ? Result.TotalRequestSubmissions
         : Result.CompletedOrders + Result.RejectedOrders + Result.IdempotentResponses;
 
+    /// <summary>
+    /// Gets a value indicating whether the result contains both completed and
+    /// rejected orders.
+    /// </summary>
+    /// <value>
+    /// <see langword="true"/> when at least one order completed and at least
+    /// one order was rejected; otherwise, <see langword="false"/>.
+    /// </value>
     private bool HasMixedOutcome => Result.CompletedOrders > 0 && Result.RejectedOrders > 0;
 
+    /// <summary>
+    /// Gets the user-facing label for the execution outcome.
+    /// </summary>
+    /// <returns>
+    /// <c>Partially fulfilled</c> for mixed outcomes, <c>Fulfilled</c> when at
+    /// least one order completed, <c>Rejected</c> when at least one order was
+    /// rejected, or the execution status name when no order counts are
+    /// available.
+    /// </returns>
     private string GetOutcomeLabel()
     {
         if (HasMixedOutcome)
@@ -96,6 +132,13 @@
         return Result.Status.ToString();
     }
 
+    /// <summary>
+    /// Gets the CSS class associated with the execution outcome.
+    /// </summary>
+    /// <returns>
+    /// The partial, completed, rejected, or neutral status class selected from
+    /// the order counts and execution status.
+    /// </returns>
     private string GetStatusClass()
     {
         if (HasMixedOutcome)
@@ -121,6 +164,14 @@
         };
     }
 
+    /// <summary>
+    /// Gets the user-facing explanation for the execution result reason.
+    /// </summary>
+    /// <returns>
+    /// A descriptive label for a recognized reason, an empty string when the
+    /// reason is <see langword="null"/>, or the original reason when no mapping
+    /// is defined.
+    /// </returns>
     private string GetReasonLabel()
     {
         return Result.Reason switch
@@ -131,28 +182,4 @@
             _ => Result.Reason
         };
     }
-
-    private static string GetEventTitle(object scenarioEvent)
-    {
-        return GetStringProperty(scenarioEvent, "Source")
-            ?? GetStringProperty(scenarioEvent, "Actor")
-            ?? GetStringProperty(scenarioEvent, "Component")
-            ?? GetStringProperty(scenarioEvent, "Name")
-            ?? "Scenario";
-    }
-
-    private static string GetEventMessage(object scenarioEvent)
-    {
-        return GetStringProperty(scenarioEvent, "Message")
-            ?? GetStringProperty(scenarioEvent, "Description")
-            ?? GetStringProperty(scenarioEvent, "Text")
-            ?? scenarioEvent.ToString()
-            ?? string.Empty;
-    }
-
-    private static string? GetStringProperty(object source, string propertyName)
-    {
-        return source.GetType().GetProperty(propertyName)?.GetValue(source) as string;
-    }
 }
-

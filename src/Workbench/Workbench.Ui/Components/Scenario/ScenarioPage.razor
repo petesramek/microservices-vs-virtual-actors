@@ -1,8 +1,9 @@
 @page "/"
-@rendermode InteractiveServer
+
 @inject ScenarioRunnerClient Client
 @using Workbench.Contracts.Orders
 @using Workbench.Contracts.Scenarios
+@using Workbench.Ui.Internal.Clients
 @using Workbench.Ui.Models
 
 <section class="page-heading">
@@ -179,17 +180,66 @@
 </section>
 
 @code {
+    /// <summary>
+    /// Stores the architecture selection sent to the scenario runner.
+    /// </summary>
     private string architecture = "both";
-    private ScenarioFormModel model = ScenarioFormModel.Create(ScenarioKind.SuccessfulOrder);
+
+    /// <summary>
+    /// Stores the editable form values for the selected scenario.
+    /// </summary>
+    private ScenarioFormModel model =
+        ScenarioFormModel.Create(ScenarioKind.SuccessfulOrder);
+
+    /// <summary>
+    /// Stores the response from the most recently completed scenario run.
+    /// </summary>
     private RunScenarioResponse? response;
+
+    /// <summary>
+    /// Stores the user-visible error produced by the most recent failed run.
+    /// </summary>
     private string? errorMessage;
+
+    /// <summary>
+    /// Indicates whether a scenario request is currently running.
+    /// </summary>
     private bool isRunning;
+
+    /// <summary>
+    /// Indicates whether the advanced scenario settings are visible.
+    /// </summary>
     private bool showAdvancedSettings;
+
+    /// <summary>
+    /// Stores the zero-based index of the currently displayed progress step.
+    /// </summary>
     private int currentProgressStep;
+
+    /// <summary>
+    /// Stores the progress labels for the selected architecture.
+    /// </summary>
     private IReadOnlyList<string> progressSteps = Array.Empty<string>();
+
+    /// <summary>
+    /// Stores the local completion time of the most recent successful run.
+    /// </summary>
     private DateTimeOffset? lastRunCompletedAt;
+
+    /// <summary>
+    /// Stores the UI-observed duration of the most recent successful request, in
+    /// milliseconds.
+    /// </summary>
     private long? lastUiElapsedMilliseconds;
 
+    /// <summary>
+    /// Gets or sets the scenario selected by the user.
+    /// </summary>
+    /// <value>The scenario represented by the current form model.</value>
+    /// <remarks>
+    /// Changing the scenario resets advanced settings to that scenario's
+    /// defaults.
+    /// </remarks>
     private ScenarioKind selectedScenario
     {
         get => model.Scenario;
@@ -205,16 +255,31 @@
         }
     }
 
+    /// <summary>
+    /// Toggles the visibility of the advanced scenario settings.
+    /// </summary>
     private void ToggleAdvancedSettings()
     {
         showAdvancedSettings = !showAdvancedSettings;
     }
 
+    /// <summary>
+    /// Restores advanced form values to the defaults for the selected scenario.
+    /// </summary>
     private void ResetAdvancedSettings()
     {
         model.ResetAdvancedSettings();
     }
 
+    /// <summary>
+    /// Runs the selected scenario and updates the progress, result, timing, and
+    /// error state displayed by the page.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous scenario run.</returns>
+    /// <remarks>
+    /// A minimum display delay keeps the running state visible for very fast
+    /// responses. A second submission is ignored while a run is active.
+    /// </remarks>
     private async Task RunAsync()
     {
         if (isRunning)
@@ -228,8 +293,10 @@
         progressSteps = GetProgressSteps(architecture);
         currentProgressStep = 0;
 
-        using var progressCancellationTokenSource = new CancellationTokenSource();
-        var progressTask = AdvanceProgressAsync(progressCancellationTokenSource.Token);
+        using var progressCancellationTokenSource =
+            new CancellationTokenSource();
+        var progressTask = AdvanceProgressAsync(
+            progressCancellationTokenSource.Token);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         try
@@ -266,13 +333,26 @@
         }
     }
 
-    private async Task AdvanceProgressAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Advances the visual progress indicator until scenario execution finishes.
+    /// </summary>
+    /// <param name="cancellationToken">
+    /// The token used to stop the visual progress loop.
+    /// </param>
+    /// <returns>A task that represents the asynchronous progress loop.</returns>
+    /// <exception cref="OperationCanceledException">
+    /// <paramref name="cancellationToken"/> is canceled while a delay is
+    /// pending.
+    /// </exception>
+    private async Task AdvanceProgressAsync(
+        CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             await Task.Delay(300, cancellationToken);
 
-            if (progressSteps.Count > 0 && currentProgressStep < progressSteps.Count - 1)
+            if (progressSteps.Count > 0 &&
+                currentProgressStep < progressSteps.Count - 1)
             {
                 currentProgressStep++;
                 await InvokeAsync(StateHasChanged);
@@ -280,9 +360,21 @@
         }
     }
 
-    private IReadOnlyList<string> GetProgressSteps(string selectedArchitecture)
+    /// <summary>
+    /// Creates the progress labels shown for an architecture selection.
+    /// </summary>
+    /// <param name="selectedArchitecture">
+    /// The architecture value selected by the user.
+    /// </param>
+    /// <returns>
+    /// A read-only ordered collection of progress-step labels.
+    /// </returns>
+    private IReadOnlyList<string> GetProgressSteps(
+        string selectedArchitecture)
     {
-        if (selectedArchitecture.Equals("microservices", StringComparison.OrdinalIgnoreCase))
+        if (selectedArchitecture.Equals(
+                "microservices",
+                StringComparison.OrdinalIgnoreCase))
         {
             return
             [
@@ -293,7 +385,9 @@
             ];
         }
 
-        if (selectedArchitecture.Equals("virtual-actors", StringComparison.OrdinalIgnoreCase))
+        if (selectedArchitecture.Equals(
+                "virtual-actors",
+                StringComparison.OrdinalIgnoreCase))
         {
             return
             [
@@ -313,16 +407,29 @@
         ];
     }
 
+    /// <summary>
+    /// Gets the running-state description for the selected architecture.
+    /// </summary>
+    /// <returns>A user-visible description of the active scenario run.</returns>
     private string GetRunningDescription()
     {
         return architecture switch
         {
-            "microservices" => "Running the workflow through the microservice-style backend.",
-            "virtual-actors" => "Running the workflow through the virtual actor-style backend.",
+            "microservices" =>
+                "Running the workflow through the microservice-style backend.",
+            "virtual-actors" =>
+                "Running the workflow through the virtual actor-style backend.",
             _ => "Running the workflow through both architecture styles."
         };
     }
 
+    /// <summary>
+    /// Gets the CSS class representing a progress step's current state.
+    /// </summary>
+    /// <param name="index">The zero-based progress-step index.</param>
+    /// <returns>
+    /// The completed, active, or pending progress-state CSS class.
+    /// </returns>
     private string GetProgressStepClass(int index)
     {
         if (index < currentProgressStep)
@@ -330,9 +437,16 @@
             return "progress-completed";
         }
 
-        return index == currentProgressStep ? "progress-active" : "progress-pending";
+        return index == currentProgressStep
+            ? "progress-active"
+            : "progress-pending";
     }
 
+    /// <summary>
+    /// Gets the symbol representing a progress step's current state.
+    /// </summary>
+    /// <param name="index">The zero-based progress-step index.</param>
+    /// <returns>The completed, active, or pending progress symbol.</returns>
     private string GetProgressStepIcon(int index)
     {
         if (index < currentProgressStep)
@@ -343,38 +457,66 @@
         return index == currentProgressStep ? "●" : "○";
     }
 
+    /// <summary>
+    /// Gets a concise description of the default values for a scenario.
+    /// </summary>
+    /// <param name="scenario">The scenario whose defaults are described.</param>
+    /// <returns>A user-visible summary of the scenario defaults.</returns>
     private static string GetDefaultHint(ScenarioKind scenario)
     {
         var defaults = ScenarioDefaults.For(scenario);
-        var baseHint = $"initial stock {defaults.InitialStock}, quantity {defaults.Quantity}";
+        var baseHint =
+            $"initial stock {defaults.InitialStock}, quantity {defaults.Quantity}";
+
         return scenario switch
         {
-            ScenarioKind.ConcurrentOrders => $"{baseHint}, concurrent requests {defaults.ConcurrentRequests}",
-            ScenarioKind.HotProductContention => $"{baseHint}, concurrent requests {defaults.ConcurrentRequests}; all orders target one hot product.",
-            ScenarioKind.DuplicateRequest => $"{baseHint}, concurrent requests {defaults.ConcurrentRequests}; all submissions reuse the same idempotency key.",
+            ScenarioKind.ConcurrentOrders =>
+                $"{baseHint}, concurrent requests {defaults.ConcurrentRequests}",
+            ScenarioKind.HotProductContention =>
+                $"{baseHint}, concurrent requests {defaults.ConcurrentRequests}; all orders target one hot product.",
+            ScenarioKind.DuplicateRequest =>
+                $"{baseHint}, concurrent requests {defaults.ConcurrentRequests}; all submissions reuse the same idempotency key.",
             _ => $"{baseHint}; concurrent requests is ignored."
         };
     }
 
+    /// <summary>
+    /// Gets guidance for the concurrent-request field for a scenario.
+    /// </summary>
+    /// <param name="scenario">The scenario being configured.</param>
+    /// <returns>
+    /// A user-visible note explaining whether and how the field is used.
+    /// </returns>
     private static string GetConcurrentRequestsNote(ScenarioKind scenario)
     {
         return scenario switch
         {
-            ScenarioKind.ConcurrentOrders => "Used by this scenario. Must be between 1 and 50 for local demo safety.",
-            ScenarioKind.HotProductContention => "Used by this scenario. All requests target the same product. Must be between 1 and 50 for local demo safety.",
-            ScenarioKind.DuplicateRequest => "Used by this scenario. All submissions reuse the same order identity and idempotency key. Must be between 1 and 100 for local demo safety.",
-            _ => "Not used by this scenario. This value is ignored when the scenario runs."
+            ScenarioKind.ConcurrentOrders =>
+                "Used by this scenario. Must be between 1 and 50 for local demo safety.",
+            ScenarioKind.HotProductContention =>
+                "Used by this scenario. All requests target the same product. Must be between 1 and 50 for local demo safety.",
+            ScenarioKind.DuplicateRequest =>
+                "Used by this scenario. All submissions reuse the same order identity and idempotency key. Must be between 1 and 100 for local demo safety.",
+            _ =>
+                "Not used by this scenario. This value is ignored when the scenario runs."
         };
     }
 
+    /// <summary>
+    /// Converts a scenario value to its user-visible display name.
+    /// </summary>
+    /// <param name="scenario">The scenario to format.</param>
+    /// <returns>The display name for the scenario.</returns>
     private static string FormatScenario(ScenarioKind scenario)
     {
         return scenario switch
         {
             ScenarioKind.SuccessfulOrder => "Successful order",
             ScenarioKind.InsufficientInventory => "Insufficient inventory",
-            ScenarioKind.PaymentFailureCompensation => "Payment failure compensation",
-            ScenarioKind.PaymentTimeoutAfterReservation => "Payment timeout after reservation",
+            ScenarioKind.PaymentFailureCompensation =>
+                "Payment failure compensation",
+            ScenarioKind.PaymentTimeoutAfterReservation =>
+                "Payment timeout after reservation",
             ScenarioKind.ConcurrentOrders => "Concurrent orders",
             ScenarioKind.DuplicateRequest => "Duplicate request",
             ScenarioKind.HotProductContention => "Hot product contention",
@@ -382,36 +524,66 @@
         };
     }
 
+    /// <summary>
+    /// Creates the headline summary for a completed scenario response.
+    /// </summary>
+    /// <param name="result">The completed scenario response.</param>
+    /// <returns>A user-visible summary of the scenario outcome.</returns>
     private static string GetScenarioSummary(RunScenarioResponse result)
     {
-        var completed = new[] { result.Microservices, result.VirtualActors }
+        var completed = new[]
+            {
+                result.Microservices,
+                result.VirtualActors
+            }
             .Where(item => item is not null)
-            .All(item => item!.CompletedOrders > 0 || item.Status == OrderStatus.Completed);
+            .All(item =>
+                item!.CompletedOrders > 0 ||
+                item.Status == OrderStatus.Completed);
 
         return result.Scenario switch
         {
-            ScenarioKind.SuccessfulOrder when completed => "Both implementations completed the happy path.",
-            ScenarioKind.InsufficientInventory => "The order is rejected when inventory is unavailable.",
-            ScenarioKind.PaymentFailureCompensation => "Inventory is released after payment failure.",
-            ScenarioKind.PaymentTimeoutAfterReservation => "Inventory is released after payment timeout.",
-            ScenarioKind.ConcurrentOrders => "Concurrent requests are processed without over-reserving inventory.",
-            ScenarioKind.HotProductContention => "Concurrent requests are concentrated on one hot product without over-reserving inventory.",
-            ScenarioKind.DuplicateRequest => "Duplicate requests return an idempotent result.",
+            ScenarioKind.SuccessfulOrder when completed =>
+                "Both implementations completed the happy path.",
+            ScenarioKind.InsufficientInventory =>
+                "The order is rejected when inventory is unavailable.",
+            ScenarioKind.PaymentFailureCompensation =>
+                "Inventory is released after payment failure.",
+            ScenarioKind.PaymentTimeoutAfterReservation =>
+                "Inventory is released after payment timeout.",
+            ScenarioKind.ConcurrentOrders =>
+                "Concurrent requests are processed without over-reserving inventory.",
+            ScenarioKind.HotProductContention =>
+                "Concurrent requests are concentrated on one hot product without over-reserving inventory.",
+            ScenarioKind.DuplicateRequest =>
+                "Duplicate requests return an idempotent result.",
             _ => "Scenario completed."
         };
     }
 
+    /// <summary>
+    /// Gets the explanatory text for a scenario kind.
+    /// </summary>
+    /// <param name="scenario">The scenario to describe.</param>
+    /// <returns>A user-visible description of the scenario behavior.</returns>
     private static string GetScenarioDescription(ScenarioKind scenario)
     {
         return scenario switch
         {
-            ScenarioKind.SuccessfulOrder => "Inventory is available, payment succeeds, and the order completes.",
-            ScenarioKind.InsufficientInventory => "The requested quantity is greater than available inventory, so payment is not attempted.",
-            ScenarioKind.PaymentFailureCompensation => "Inventory is reserved first, payment fails, and the reservation is released.",
-            ScenarioKind.PaymentTimeoutAfterReservation => "Inventory is reserved first, payment authorization times out, and the reservation is released. Payment timeout is treated as failed in this demo.",
-            ScenarioKind.ConcurrentOrders => "Multiple orders compete for the same product stock at the same time.",
-            ScenarioKind.HotProductContention => "Many orders target the same product, showing that both designs still have a contention point for one hot inventory identity.",
-            ScenarioKind.DuplicateRequest => "The same idempotency key is submitted multiple times concurrently and should only reserve inventory once.",
+            ScenarioKind.SuccessfulOrder =>
+                "Inventory is available, payment succeeds, and the order completes.",
+            ScenarioKind.InsufficientInventory =>
+                "The requested quantity is greater than available inventory, so payment is not attempted.",
+            ScenarioKind.PaymentFailureCompensation =>
+                "Inventory is reserved first, payment fails, and the reservation is released.",
+            ScenarioKind.PaymentTimeoutAfterReservation =>
+                "Inventory is reserved first, payment authorization times out, and the reservation is released. Payment timeout is treated as failed in this demo.",
+            ScenarioKind.ConcurrentOrders =>
+                "Multiple orders compete for the same product stock at the same time.",
+            ScenarioKind.HotProductContention =>
+                "Many orders target the same product, showing that both designs still have a contention point for one hot inventory identity.",
+            ScenarioKind.DuplicateRequest =>
+                "The same idempotency key is submitted multiple times concurrently and should only reserve inventory once.",
             _ => "The selected scenario was executed."
         };
     }

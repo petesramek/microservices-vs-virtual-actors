@@ -1,0 +1,59 @@
+<section class="card @CssClass"
+         role="@Role"
+         aria-live="@AriaLive">
+    <strong>@Title</strong>
+
+    <p>@Message</p>
+</section>
+
+@code {
+    /// <summary>
+    /// Gets or sets the additional CSS classes applied to the card.
+    /// </summary>
+    /// <value>
+    /// A space-separated list of CSS classes appended to the base
+    /// <c>card</c> class. The default value is an empty string.
+    /// </value>
+    [Parameter]
+    public string CssClass { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the optional ARIA role applied to the card.
+    /// </summary>
+    /// <value>
+    /// The ARIA role, or <see langword="null"/> when the card does not require
+    /// an explicit role.
+    /// </value>
+    [Parameter]
+    public string? Role { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional ARIA live-region behavior applied to the card.
+    /// </summary>
+    /// <value>
+    /// The ARIA live-region politeness value, or <see langword="null"/> when
+    /// the card is not an ARIA live region.
+    /// </value>
+    [Parameter]
+    public string? AriaLive { get; set; }
+
+    /// <summary>
+    /// Gets or sets the heading displayed by the card.
+    /// </summary>
+    /// <value>
+    /// The heading rendered in the card's <c>strong</c> element. The default
+    /// value is an empty string.
+    /// </value>
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the explanatory message displayed by the card.
+    /// </summary>
+    /// <value>
+    /// The text rendered in the card's paragraph element. The default value is
+    /// an empty string.
+    /// </value>
+    [Parameter]
+    public string Message { get; set; } = string.Empty;
+}

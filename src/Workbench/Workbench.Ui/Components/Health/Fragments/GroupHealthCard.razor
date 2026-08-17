@@ -32,7 +32,7 @@
                         nodeId,
                         out TopologyNodeSnapshot? nodeSnapshot);
 
-                    <SystemHealthNode
+                    <NodeHealthCard
                         Definition="@nodeDefinition"
                         Snapshot="@nodeSnapshot"
                         OutgoingEdges="@GetOutgoingEdges(nodeId)"
@@ -70,58 +70,119 @@
 
 @code {
     /// <summary>
-    /// Gets or sets the static group definition being rendered.
+    /// Gets or sets the topology definition for the health group rendered by
+    /// this component.
     /// </summary>
+    /// <value>
+    /// The static group definition containing the stable identifier, display
+    /// name, and ordered node identifiers.
+    /// </value>
     [Parameter]
     public required TopologyGroupDefinition Definition { get; set; }
 
     /// <summary>
-    /// Gets or sets the current group health snapshot.
+    /// Gets or sets the latest health snapshot for the group.
     /// </summary>
+    /// <value>
+    /// The current group snapshot, or <see langword="null"/> when no snapshot
+    /// is available.
+    /// </value>
     [Parameter]
     public TopologyGroupSnapshot? Snapshot { get; set; }
 
     /// <summary>
-    /// Gets or sets node definitions indexed by stable node ID.
+    /// Gets or sets the topology node definitions indexed by stable node
+    /// identifier.
     /// </summary>
+    /// <value>
+    /// A read-only lookup used to resolve every node referenced by the group.
+    /// </value>
     [Parameter]
     public required IReadOnlyDictionary<string, TopologyNodeDefinition>
         NodeDefinitions { get; set; }
 
     /// <summary>
-    /// Gets or sets node snapshots indexed by stable node ID.
+    /// Gets or sets the latest topology node snapshots indexed by stable node
+    /// identifier.
     /// </summary>
+    /// <value>
+    /// A read-only lookup of current node snapshots. A referenced node may be
+    /// absent when no snapshot has been collected.
+    /// </value>
     [Parameter]
     public required IReadOnlyDictionary<string, TopologyNodeSnapshot>
         NodeSnapshots { get; set; }
 
     /// <summary>
-    /// Gets or sets edge definitions grouped by source-node ID.
+    /// Gets or sets the edge definitions grouped by source-node identifier.
     /// </summary>
+    /// <value>
+    /// A lookup used to resolve the outgoing topology edges for each rendered
+    /// node.
+    /// </value>
     [Parameter]
     public required ILookup<string, TopologyEdgeDefinition>
         OutgoingEdgeDefinitions { get; set; }
 
     /// <summary>
-    /// Gets or sets edge snapshots indexed by source and target node IDs.
+    /// Gets or sets the latest edge snapshots indexed by source and target node
+    /// identifiers.
     /// </summary>
+    /// <value>
+    /// A read-only lookup used by child node components to resolve dependency
+    /// health.
+    /// </value>
     [Parameter]
     public required IReadOnlyDictionary<
         (string SourceNodeId, string TargetNodeId),
         TopologyEdgeSnapshot> EdgeSnapshots { get; set; }
 
+    /// <summary>
+    /// Gets the stable HTML identifier used to associate the group heading with
+    /// its containing section.
+    /// </summary>
+    /// <value>
+    /// An HTML-safe identifier derived from the group definition identifier.
+    /// </value>
     private string HeadingId =>
         $"system-health-group-{SanitizeHtmlId(Definition.Id)}";
 
+    /// <summary>
+    /// Gets the health status displayed for the group.
+    /// </summary>
+    /// <value>
+    /// The status from the latest group snapshot, or
+    /// <see cref="HealthStatus.Unknown"/> when no snapshot is available.
+    /// </value>
     private HealthStatus GroupHealth =>
         Snapshot?.Health ?? HealthStatus.Unknown;
 
+    /// <summary>
+    /// Gets the outgoing edge definitions for a topology node.
+    /// </summary>
+    /// <param name="nodeId">
+    /// The stable identifier of the source node whose edges are requested.
+    /// </param>
+    /// <returns>
+    /// A read-only materialized list of edges originating from the node. The
+    /// list is empty when the lookup contains no matching edges.
+    /// </returns>
     private IReadOnlyList<TopologyEdgeDefinition> GetOutgoingEdges(
         string nodeId)
     {
         return OutgoingEdgeDefinitions[nodeId].ToArray();
     }
 
+    /// <summary>
+    /// Converts an arbitrary value into a stable fragment suitable for use in
+    /// an HTML <c>id</c> attribute.
+    /// </summary>
+    /// <param name="value">The value to sanitize.</param>
+    /// <returns>
+    /// The sanitized value, with unsupported characters replaced by hyphens;
+    /// or <c>unknown</c> when <paramref name="value"/> is null, empty, or
+    /// whitespace.
+    /// </returns>
     private static string SanitizeHtmlId(string value)
     {
         if (string.IsNullOrWhiteSpace(value))

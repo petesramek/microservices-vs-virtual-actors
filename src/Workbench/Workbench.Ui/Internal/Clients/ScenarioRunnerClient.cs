@@ -7,7 +7,7 @@ using Workbench.Contracts.Scenarios;
 /// Client used by the Blazor Server UI to run workbench scenarios through the gateway.
 /// </summary>
 /// <param name="httpClient">The HTTP client.</param>
-public sealed class ScenarioRunnerClient(HttpClient httpClient) {
+internal sealed class ScenarioRunnerClient(HttpClient httpClient) {
     /// <summary>
     /// Runs a scenario for the selected architecture.
     /// </summary>

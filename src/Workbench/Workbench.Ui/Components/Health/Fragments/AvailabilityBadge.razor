@@ -8,18 +8,28 @@
 </span>
 
 @code {
+    /// <summary>
+    /// Defines the visual presentation used for an available resource.
+    /// </summary>
     private static readonly AvailabilityPresentation AvailablePresentation =
         new(
             "availability-available",
             "Online",
             "The service is reachable.");
 
+    /// <summary>
+    /// Defines the visual presentation used for an unavailable resource.
+    /// </summary>
     private static readonly AvailabilityPresentation UnavailablePresentation =
         new(
             "availability-unavailable",
             "Down",
             "The service is not reachable.");
 
+    /// <summary>
+    /// Defines the visual presentation used when no current availability
+    /// observation exists.
+    /// </summary>
     private static readonly AvailabilityPresentation UnknownPresentation =
         new(
             "availability-unknown",
@@ -29,9 +39,18 @@
     /// <summary>
     /// Gets or sets the resource availability displayed by the badge.
     /// </summary>
+    /// <value>The availability state to present.</value>
     [Parameter]
     public ResourceAvailability Value { get; set; }
 
+    /// <summary>
+    /// Gets the visual presentation associated with the current availability
+    /// value.
+    /// </summary>
+    /// <value>
+    /// The matching presentation, or the unknown presentation when
+    /// <see cref="Value"/> contains an unsupported value.
+    /// </value>
     private AvailabilityPresentation Presentation => Value switch
     {
         ResourceAvailability.Available => AvailablePresentation,
@@ -40,6 +59,19 @@
         _ => UnknownPresentation,
     };
 
+    /// <summary>
+    /// Represents the CSS class and accessible text used to display an
+    /// availability state.
+    /// </summary>
+    /// <param name="CssClass">
+    /// The CSS class that applies the state-specific badge styling.
+    /// </param>
+    /// <param name="Label">
+    /// The concise availability label displayed by the badge.
+    /// </param>
+    /// <param name="Description">
+    /// The explanatory availability text exposed as the badge tooltip.
+    /// </param>
     private readonly record struct AvailabilityPresentation(
         string CssClass,
         string Label,

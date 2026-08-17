@@ -32,26 +32,47 @@
 
 @code {
     /// <summary>
-    /// Gets or sets the static dependency-edge definition.
+    /// Gets or sets the static definition of the dependency edge displayed by
+    /// the card.
     /// </summary>
+    /// <value>The dependency source, target, and requirement definition.</value>
     [Parameter]
     public required TopologyEdgeDefinition Definition { get; set; }
 
     /// <summary>
-    /// Gets or sets the current observation for the dependency edge.
+    /// Gets or sets the current health observation for the dependency edge.
     /// </summary>
+    /// <value>
+    /// The current dependency observation, or <see langword="null"/> when the
+    /// dependency has not been observed.
+    /// </value>
     [Parameter]
     public TopologyEdgeSnapshot? Snapshot { get; set; }
 
     /// <summary>
-    /// Gets or sets the dependency target-node definition.
+    /// Gets or sets the definition of the dependency target node.
     /// </summary>
+    /// <value>The target node whose display name is rendered by the card.</value>
     [Parameter]
     public required TopologyNodeDefinition Target { get; set; }
 
+    /// <summary>
+    /// Gets the observed dependency health.
+    /// </summary>
+    /// <value>
+    /// The snapshot health, or <see cref="HealthStatus.Unknown"/> when no
+    /// snapshot is available.
+    /// </value>
     private HealthStatus Health =>
         Snapshot?.Health ?? HealthStatus.Unknown;
 
+    /// <summary>
+    /// Gets the user-facing label for the dependency requirement.
+    /// </summary>
+    /// <value>
+    /// <c>Required</c>, <c>Optional</c>, or the string representation of an
+    /// unsupported requirement value.
+    /// </value>
     private string RequirementLabel =>
         Definition.Requirement switch {
             TopologyDependencyRequirement.Required => "Required",
@@ -59,15 +80,36 @@
             _ => Definition.Requirement.ToString(),
         };
 
+    /// <summary>
+    /// Gets a value indicating whether the current observation description
+    /// should be displayed.
+    /// </summary>
+    /// <value>
+    /// <see langword="true"/> when a non-healthy snapshot contains a
+    /// non-blank description; otherwise, <see langword="false"/>.
+    /// </value>
     private bool ShouldShowDescription =>
         Snapshot is not null &&
         Snapshot.Health != HealthStatus.Healthy &&
         !string.IsNullOrWhiteSpace(Snapshot.Description);
 
+    /// <summary>
+    /// Gets the accessible description of the dependency requirement, target,
+    /// and health.
+    /// </summary>
+    /// <value>The complete label exposed by the dependency container.</value>
     private string AccessibleLabel =>
         $"{RequirementLabel} dependency on {Target.DisplayName}. " +
         $"Health status: {FormatHealth(Health)}.";
 
+    /// <summary>
+    /// Formats a health status for accessible presentation.
+    /// </summary>
+    /// <param name="health">The health status to format.</param>
+    /// <returns>
+    /// The corresponding user-facing status label, or <c>Unknown</c> for an
+    /// unsupported value.
+    /// </returns>
     private static string FormatHealth(HealthStatus health) {
         return health switch {
             HealthStatus.Unknown => "Unknown",

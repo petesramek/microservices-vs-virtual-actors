@@ -1,0 +1,79 @@
+<section class="health-summary"
+         aria-label="System health summary">
+    <article class="card">
+        <span>Services available</span>
+        <strong>@AvailableServiceCount / @ServiceCount</strong>
+    </article>
+
+    <article class="card">
+        <span>Healthy resources</span>
+        <strong>@HealthyNodeCount / @NodeCount</strong>
+    </article>
+
+    <article class="card">
+        <span>Resource issues</span>
+        <strong>@ResourceIssueCount</strong>
+    </article>
+
+    <article class="card">
+        <span>Dependency issues</span>
+        <strong>@DependencyIssueCount</strong>
+    </article>
+</section>
+
+@code {
+    /// <summary>
+    /// Gets or sets the number of service nodes currently reported as
+    /// available.
+    /// </summary>
+    /// <value>
+    /// The available-service numerator displayed with
+    /// <see cref="ServiceCount"/>.
+    /// </value>
+    [Parameter]
+    public int AvailableServiceCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the total number of service nodes in the topology.
+    /// </summary>
+    /// <value>
+    /// The service-count denominator displayed with
+    /// <see cref="AvailableServiceCount"/>.
+    /// </value>
+    [Parameter]
+    public int ServiceCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of resource nodes currently reported as healthy.
+    /// </summary>
+    /// <value>
+    /// The healthy-resource numerator displayed with <see cref="NodeCount"/>.
+    /// </value>
+    [Parameter]
+    public int HealthyNodeCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the total number of resource nodes in the topology.
+    /// </summary>
+    /// <value>
+    /// The resource-count denominator displayed with
+    /// <see cref="HealthyNodeCount"/>.
+    /// </value>
+    [Parameter]
+    public int NodeCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of resources with an availability or health
+    /// issue.
+    /// </summary>
+    /// <value>The resource-issue count displayed by the summary.</value>
+    [Parameter]
+    public int ResourceIssueCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of dependencies with an observed health issue.
+    /// </summary>
+    /// <value>The dependency-issue count displayed by the summary.</value>
+    [Parameter]
+    public int DependencyIssueCount { get; set; }
+}
