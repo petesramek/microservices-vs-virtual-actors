@@ -18,6 +18,9 @@ internal static class HealthGroupResourceExtensions
     /// child project resources.
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
+    /// <param name="healthStatusEvaluator">
+    /// The evaluator used to aggregate child resource health statuses.
+    /// </param>
     /// <param name="name">The resource name used by the application model.</param>
     /// <param name="displayName">The name displayed in the Aspire Dashboard.</param>
     /// <param name="children">
@@ -46,6 +49,7 @@ internal static class HealthGroupResourceExtensions
         params IResourceBuilder<ProjectResource>[] children)
     {
         ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(healthStatusEvaluator);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(children);
