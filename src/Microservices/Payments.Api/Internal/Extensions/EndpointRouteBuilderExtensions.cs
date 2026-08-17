@@ -1,4 +1,4 @@
-namespace Payments.Api.Extensions;
+namespace Payments.Api.Internal.Extensions;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;

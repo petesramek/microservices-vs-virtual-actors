@@ -1,4 +1,4 @@
-namespace Hosting.AppHost.Observability.Topology;
+namespace Hosting.AppHost.Internal.Observability.Topology;
 
 using Aspire.Hosting.ApplicationModel;
 using global::Observability.Topology.Definitions;

@@ -1,4 +1,4 @@
-namespace Orders.Api.Extensions;
+namespace Orders.Api.Internal.Extensions;
 
 using Orders.Api.Logging;
 using System.Collections.Concurrent;

@@ -1,7 +1,7 @@
 namespace Ordering.Api;
 
 using Hosting.ServiceDefaults.Extensions;
-using Ordering.Api.Extensions;
+using Ordering.Api.Internal.Extensions;
 using Ordering.Api.Internal.Observability.Logging;
 
 internal sealed class Program {

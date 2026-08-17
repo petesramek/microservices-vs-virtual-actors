@@ -1,4 +1,4 @@
-namespace Hosting.AppHost.Resources;
+namespace Hosting.AppHost.Internal.Resources;
 
 using Aspire.Hosting.ApplicationModel;
 

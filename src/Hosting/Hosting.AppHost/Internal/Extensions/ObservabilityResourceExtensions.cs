@@ -1,4 +1,4 @@
-namespace Hosting.AppHost.Extensions;
+namespace Hosting.AppHost.Internal.Extensions;
 
 using Hosting.ServiceDefaults.Observability.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Configuration;
 /// Configuration is flattened into environment-variable names that use
 /// double underscores to represent the .NET configuration hierarchy.
 /// </remarks>
-public static class ObservabilityResourceExtensions {
+internal static class ObservabilityResourceExtensions {
     /// <summary>
     /// Adds the configured observability settings to a resource as environment
     /// variables.

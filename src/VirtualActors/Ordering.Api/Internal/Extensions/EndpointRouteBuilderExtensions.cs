@@ -1,4 +1,4 @@
-namespace Ordering.Api.Extensions;
+namespace Ordering.Api.Internal.Extensions;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;

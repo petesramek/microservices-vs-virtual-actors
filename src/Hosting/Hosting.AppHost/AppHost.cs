@@ -2,8 +2,8 @@ namespace Hosting.AppHost;
 
 using global::Observability.Health;
 using global::Observability.Health.Abstraction;
-using Hosting.AppHost.Extensions;
-using Hosting.AppHost.Observability.Topology;
+using Hosting.AppHost.Internal.Extensions;
+using Hosting.AppHost.Internal.Observability.Topology;
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>

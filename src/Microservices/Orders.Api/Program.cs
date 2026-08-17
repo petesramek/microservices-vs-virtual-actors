@@ -1,7 +1,7 @@
 namespace Orders.Api;
 
 using Hosting.ServiceDefaults.Extensions;
-using Orders.Api.Extensions;
+using Orders.Api.Internal.Extensions;
 using Orders.Api.Internal.Infrastructure;
 
 /// <summary>

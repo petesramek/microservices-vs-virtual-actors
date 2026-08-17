@@ -1,4 +1,4 @@
-namespace Orders.Api.Extensions;
+namespace Orders.Api.Internal.Extensions;
 
 using Microsoft.EntityFrameworkCore;
 using Orders.Api.Internal.Clients;

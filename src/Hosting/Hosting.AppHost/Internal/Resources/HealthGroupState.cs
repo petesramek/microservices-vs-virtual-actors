@@ -1,4 +1,4 @@
-namespace Hosting.AppHost.Resources;
+namespace Hosting.AppHost.Internal.Resources;
 
 /// <summary>
 /// Defines the aggregate states displayed for an Aspire health group.
