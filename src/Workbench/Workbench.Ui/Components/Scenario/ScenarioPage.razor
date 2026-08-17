@@ -4,9 +4,9 @@
 @using Workbench.Contracts.Orders
 @using Workbench.Contracts.Scenarios
 @using Workbench.Ui.Components.Scenario.Fragments
+@using Workbench.Ui.Components.Scenario.Models
 @using Workbench.Ui.Internal.Clients
-@using Workbench.Ui.Models
-@using static Workbench.Ui.Models.ScenarioFormModel
+@using static Workbench.Ui.Components.Scenario.Models.ScenarioFormModel
 
 <section class="page-heading">
     <div>
@@ -190,8 +190,7 @@
     /// <summary>
     /// Stores the editable form values for the selected scenario.
     /// </summary>
-    private ScenarioFormModel model =
-        ScenarioFormModel.Create(ScenarioKind.SuccessfulOrder);
+    private ScenarioFormModel model = ScenarioFormModel.Create(ScenarioKind.SuccessfulOrder);
 
     /// <summary>
     /// Stores the response from the most recently completed scenario run.
@@ -467,8 +466,7 @@
     private static string GetDefaultHint(ScenarioKind scenario)
     {
         var defaults = ScenarioDefaults.For(scenario);
-        var baseHint =
-            $"initial stock {defaults.InitialStock}, quantity {defaults.Quantity}";
+        var baseHint = $"initial stock {defaults.InitialStock}, quantity {defaults.Quantity}";
 
         return scenario switch
         {

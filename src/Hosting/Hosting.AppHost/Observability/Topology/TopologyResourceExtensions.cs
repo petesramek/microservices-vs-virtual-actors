@@ -3,6 +3,7 @@ namespace Hosting.AppHost.Observability.Topology;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using global::Observability.Health;
+using global::Observability.Health.Abstraction;
 using global::Observability.Topology.Definitions;
 using global::Observability.Topology.Validation;
 using Hosting.AppHost.Resources;

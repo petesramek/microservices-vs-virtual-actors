@@ -3,6 +3,7 @@ namespace Hosting.AppHost.Resources;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using global::Observability.Health;
+using global::Observability.Health.Abstraction;
 using Microsoft.Extensions.DependencyInjection;
 using FrameworkHealthStatus = Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus;
 

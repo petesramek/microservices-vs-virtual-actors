@@ -16,8 +16,7 @@ public static class SiloBuilderExtensions {
     /// <summary>
     /// Defines the default name of the SQLite grain-storage health check.
     /// </summary>
-    private const string DefaultHealthCheckName =
-        "sqlite-grain-storage";
+    private const string DefaultHealthCheckName = "sqlite-grain-storage";
 
     /// <summary>
     /// Defines the default maximum duration of the SQLite grain-storage health

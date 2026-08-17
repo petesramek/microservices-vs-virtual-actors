@@ -1,11 +1,11 @@
 @page "/system-health"
 
 @using Workbench.Ui.Components.Health.Fragments
+@using Workbench.Ui.Internal.Observability.Health
+@using Workbench.Ui.Internal.Observability.Topology
 @using global::Observability.Health
 @using global::Observability.Topology.Definitions
 @using global::Observability.Topology.Snapshots
-@using Workbench.Ui.Observability.Health
-@using Workbench.Ui.Observability.Topology
 
 @inject SystemHealthService HealthService
 @inject TopologyDefinitionProvider TopologyProvider
