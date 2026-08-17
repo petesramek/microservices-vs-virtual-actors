@@ -124,7 +124,6 @@ internal sealed class ScenarioRunner {
         if (prepared.Scenario == ScenarioKind.PaymentTimeoutAfterReservation) {
             return ToResult(
                 serviceClient.Name,
-                prepared,
                 order with { Reason = "PaymentTimeout" },
                 inventory,
                 stopwatch.ElapsedMilliseconds,
@@ -137,7 +136,6 @@ internal sealed class ScenarioRunner {
 
         return ToResult(
             serviceClient.Name,
-            prepared,
             order,
             inventory,
             stopwatch.ElapsedMilliseconds,
