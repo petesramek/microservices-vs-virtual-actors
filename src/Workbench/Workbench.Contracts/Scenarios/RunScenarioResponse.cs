@@ -6,18 +6,12 @@ namespace Workbench.Contracts.Scenarios;
 /// </summary>
 /// <param name="Scenario">The scenario that was executed.</param>
 /// <param name="Microservices">
-/// The microservices execution result, or <see langword="null"/> when that
-/// architecture was not requested or did not produce a result.
+/// The microservices execution result.
 /// </param>
 /// <param name="VirtualActors">
-/// The virtual actor execution result, or <see langword="null"/> when that
-/// architecture was not requested or did not produce a result.
+/// The virtual actor execution result.
 /// </param>
-/// <remarks>
-/// The nullable architecture results allow one response contract to represent
-/// a single-architecture run or a side-by-side comparison.
-/// </remarks>
 public sealed record RunScenarioResponse(
     ScenarioKind Scenario,
-    ScenarioExecutionResult? Microservices,
-    ScenarioExecutionResult? VirtualActors);
+    ScenarioExecutionResult Microservices,
+    ScenarioExecutionResult VirtualActors);

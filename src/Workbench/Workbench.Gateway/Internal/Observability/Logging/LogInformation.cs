@@ -31,8 +31,8 @@ internal static partial class LogInformation {
         Message = "Starting scenario {ScenarioKind} for architecture {Architecture}.")]
     public static partial void StartingScenario(
         this ILogger logger,
-        ScenarioKind scenarioKind,
-        string? architecture);
+        string architecture,
+        ScenarioKind scenarioKind);
 
     /// <summary>
     /// Logs that scenario execution completed.
@@ -43,22 +43,12 @@ internal static partial class LogInformation {
     /// The requested architecture selection, or <see langword="null"/> when no
     /// selection was available.
     /// </param>
-    /// <param name="microservicesExecuted">
-    /// <see langword="true"/> when the microservices implementation was
-    /// executed; otherwise, <see langword="false"/>.
-    /// </param>
-    /// <param name="virtualActorsExecuted">
-    /// <see langword="true"/> when the virtual actor implementation was
-    /// executed; otherwise, <see langword="false"/>.
-    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 2,
         Level = Level,
-        Message = "Completed scenario {ScenarioKind} for architecture {Architecture}. Microservices executed: {MicroservicesExecuted}; virtual actors executed: {VirtualActorsExecuted}.")]
+        Message = "Completed scenario {ScenarioKind} for architecture {Architecture}.")]
     public static partial void ScenarioCompleted(
         this ILogger logger,
-        ScenarioKind scenarioKind,
-        string? architecture,
-        bool microservicesExecuted,
-        bool virtualActorsExecuted);
+        string architecture,
+        ScenarioKind scenarioKind);
 }

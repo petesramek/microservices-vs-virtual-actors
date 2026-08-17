@@ -79,7 +79,7 @@ public class Program {
         // Map gateway endpoints.
         app.MapGet("/", () => Results.Ok(new {
             Name = "Workbench Gateway",
-            Description = "Routes scenario requests by X-Architecture header.",
+            Description = "Routes scenario requests.",
         }));
 
         app.MapScenarioEndpoints();

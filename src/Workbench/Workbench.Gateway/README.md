@@ -21,7 +21,6 @@ The project performs nine main tasks:
 
 - Hosts the ASP.NET Core gateway application.
 - Exposes the shared scenario execution endpoint.
-- Selects microservices, virtual actors, or both from the `X-Architecture` header.
 - Calls the configured backend APIs through dedicated service clients.
 - Prepares deterministic inventory, payment, concurrency, and idempotency inputs.
 - Aggregates architecture-specific execution results and explanatory timelines.
@@ -96,7 +95,7 @@ Returns identifying information for the gateway:
 ```json
 {
   "name": "Workbench Gateway",
-  "description": "Routes scenario requests by X-Architecture header."
+  "description": "Routes scenario requests."
 }
 ```
 
@@ -108,23 +107,7 @@ POST /api/scenarios/run
 
 Accepts a `RunScenarioRequest` and returns a `RunScenarioResponse` containing the selected architecture results.
 
-The optional request header controls the target architecture:
-
-```text
-X-Architecture: microservices
-X-Architecture: virtual-actors
-X-Architecture: both
-```
-
-When the header is absent, the gateway uses `both`. Header comparison is case-insensitive.
-
 An unsupported value returns HTTP 400 with an explanatory error. Unexpected execution failures are logged and returned as HTTP 500 problem responses. Caller-requested cancellation is propagated.
-
-When both architectures are selected, the gateway starts both executions and awaits them together. The response can therefore contain:
-
-- a microservices result only;
-- a virtual actor result only;
-- both results for side-by-side comparison.
 
 ###### Health and liveness
 
@@ -136,25 +119,6 @@ GET /alive
 ```
 
 `/health` represents readiness. `/alive` represents process liveness. The gateway currently registers health-check services and can add caller-specific downstream dependency checks when backend availability should determine readiness.
-
-####### Scenario selection
-
-`ScenarioEndpoints` reads the `X-Architecture` header and translates it into two execution flags:
-
-- run the microservices implementation;
-- run the virtual actor implementation.
-
-The endpoint uses:
-
-```text
-both
-microservices
-virtual-actors
-```
-
-These values are part of the gateway HTTP contract. Changes must remain synchronized with callers, documentation, tests, and structured logs.
-
-The endpoint also creates the scenario root activity when observability is configured for scenario-only trace collection. It restores the previous ambient activity after execution, including cancellation and failure paths.
 
 ####### Service clients
 
@@ -361,7 +325,6 @@ The gateway registers problem details and enables the ASP.NET Core exception han
 `ScenarioEndpoints` handles its expected HTTP outcomes directly:
 
 - HTTP 200 for successful selected execution;
-- HTTP 400 for an unsupported `X-Architecture` value;
 - HTTP 500 problem response for an unexpected scenario execution failure.
 
 `OperationCanceledException` is not converted into a generic internal-server error. It is marked on the current activity and rethrown so ASP.NET Core can observe request cancellation correctly.
@@ -443,7 +406,6 @@ When modifying this project:
 - Keep deterministic input preparation and result aggregation in `ScenarioRunner`.
 - Keep backend transport behind `IServiceClient` and `HttpServiceClient`.
 - Keep architecture-specific timeline wording in the concrete service clients.
-- Preserve `X-Architecture` values or version the public contract deliberately.
 - Preserve cancellation propagation.
 - Keep both-architecture execution parallel unless the comparison requires ordered execution.
 - Use record copies instead of mutating incoming scenario requests.

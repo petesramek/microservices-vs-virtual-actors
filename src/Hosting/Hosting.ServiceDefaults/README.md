@@ -145,7 +145,6 @@ The current application activity source, named from `Environment.ApplicationName
 | Scenario header marker | `true` |
 | Scenario root tag | `scenario.run` |
 | Scenario kind tag | `scenario.kind` |
-| Architecture tag | `scenario.architecture` |
 | Product identifier tag | `scenario.product.id` |
 | Concurrent request tag | `scenario.concurrent_requests` |
 
@@ -163,7 +162,6 @@ TagList tags = new()
 {
     { ScenarioInstrumentation.TagNames.ScenarioRun, true },
     { ScenarioInstrumentation.TagNames.ScenarioKind, scenarioKind },
-    { ScenarioInstrumentation.TagNames.Architecture, architecture },
 };
 
 using Activity? activity = ScenarioInstrumentation.ActivitySource.StartActivity(
@@ -192,7 +190,6 @@ request.Headers.Add(
 
 Both instruments use bounded dimensions:
 
-- `scenario.architecture`;
 - `scenario.kind`.
 
 Register `ScenarioMetrics` through dependency injection in consumer projects that record workflow completion:
@@ -206,11 +203,10 @@ Record a terminal run with:
 ```csharp
 scenarioMetrics.RecordWorkflowRun(
     elapsed,
-    architecture,
     scenarioKind);
 ```
 
-`duration` must be non-negative. `architecture` and `scenarioKind` must be nonempty. Keep both tag values bounded; do not use order IDs, customer IDs, product IDs, or other high-cardinality values as metric dimensions.
+`duration` must be non-negative. `scenarioKind` must be nonempty. Keep both tag values bounded; do not use order IDs, customer IDs, product IDs, or other high-cardinality values as metric dimensions.
 
 ## Health endpoints
 

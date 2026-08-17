@@ -8,7 +8,7 @@
         <p>The microservice-style implementation splits the workflow by independently deployable business capability.</p>
         <ol class="flow">
             <li><strong>Workbench.Ui</strong> submits a scenario.</li>
-            <li><strong>Workbench.Gateway</strong> routes to Orders.Api when `X-Architecture` is `microservices`.</li>
+            <li><strong>Workbench.Gateway</strong> routes to Orders.Api.</li>
             <li><strong>Orders.Api</strong> coordinates the workflow.</li>
             <li><strong>Inventory.Api</strong> owns stock and reservations.</li>
             <li><strong>Payments.Api</strong> simulates payment authorization.</li>
@@ -28,7 +28,7 @@
         <p>The virtual actor-style implementation splits the workflow by stateful identity.</p>
         <ol class="flow">
             <li><strong>Workbench.Ui</strong> submits a scenario.</li>
-            <li><strong>Workbench.Gateway</strong> routes to Ordering.Api when `X-Architecture` is `virtual-actors`.</li>
+            <li><strong>Workbench.Gateway</strong> routes to Ordering.Api.</li>
             <li><strong>Ordering.Api</strong> calls grains through Orleans.</li>
             <li><strong>OrderGrain</strong> owns the order workflow.</li>
             <li><strong>InventoryItemGrain</strong> owns product inventory state.</li>

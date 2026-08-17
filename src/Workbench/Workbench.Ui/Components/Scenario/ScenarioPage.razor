@@ -23,19 +23,9 @@
 
             <fieldset disabled="@isRunning">
                 <div class="control-section">
-                    <label>Architecture</label>
-                    <InputSelect @bind-Value="architecture">
-                        <option value="both">Both</option>
-                        <option value="microservices">Microservices</option>
-                        <option value="virtual-actors">Virtual Actors</option>
-                    </InputSelect>
-                </div>
-
-                <div class="control-section">
                     <label>Scenario</label>
                     <InputSelect @bind-Value="selectedScenario">
-                        @foreach (var value in Enum.GetValues<ScenarioKind>())
-                        {
+                        @foreach (var value in Enum.GetValues<ScenarioKind>()) {
                             <option value="@value">@FormatScenario(value)</option>
                         }
                     </InputSelect>
@@ -55,8 +45,7 @@
                     <span>@(showAdvancedSettings ? "Hide advanced scenario settings" : "Show advanced scenario settings")</span>
                 </button>
 
-                @if (showAdvancedSettings)
-                {
+                @if (showAdvancedSettings) {
                     <section class="advanced-panel">
                         <div class="control-grid">
                             <div class="control-section">
@@ -109,16 +98,14 @@
     </aside>
 
     <section class="scenario-results-panel">
-        @if (isRunning)
-        {
+        @if (isRunning) {
             <section class="card state-card running-state progress-card">
                 <span class="state-kicker">Running</span>
                 <h3>@FormatScenario(model.Scenario)</h3>
-                <p>@GetRunningDescription()</p>
+                <p>Running the workflow through both architecture styles.</p>
 
                 <ol class="progress-steps" aria-label="Scenario progress">
-                    @for (var index = 0; index < progressSteps.Count; index++)
-                    {
+                    @for (var index = 0; index < progressSteps.Count; index++) {
                         <li class="progress-step @GetProgressStepClass(index)">
                             <span class="progress-step-icon" aria-hidden="true">@GetProgressStepIcon(index)</span>
                             <span>@progressSteps[index]</span>
@@ -126,18 +113,14 @@
                     }
                 </ol>
             </section>
-        }
-        else if (!string.IsNullOrWhiteSpace(errorMessage))
-        {
+        } else if (!string.IsNullOrWhiteSpace(errorMessage)) {
             <section class="card state-card error-state">
                 <span class="state-kicker">Error</span>
                 <h3>Scenario failed</h3>
                 <p>@errorMessage</p>
                 <p>Make sure Workbench.Gateway is running on <code>http://localhost:5100</code> and backend services are running on their configured ports.</p>
             </section>
-        }
-        else if (response is null)
-        {
+        } else if (response is null) {
             <section class="card state-card empty-state">
                 <span class="state-kicker">Ready</span>
                 <h3>No scenario run yet</h3>
@@ -148,19 +131,15 @@
                     <li>Fields that do not apply to the selected scenario are disabled and ignored when the scenario runs.</li>
                 </ul>
             </section>
-        }
-        else
-        {
+        } else {
             <section class="workbench-summary card">
                 <span class="state-kicker">@FormatScenario(response.Scenario)</span>
                 <h3>@GetScenarioSummary(response)</h3>
                 <p>@GetScenarioDescription(response.Scenario)</p>
-                @if (lastRunCompletedAt is not null)
-                {
+                @if (lastRunCompletedAt is not null) {
                     <p class="run-completion-note">
                         Completed at @lastRunCompletedAt.Value.ToLocalTime().ToString("HH:mm:ss")
-                        @if (lastUiElapsedMilliseconds is not null)
-                        {
+                        @if (lastUiElapsedMilliseconds is not null) {
                             <span> · UI request time @lastUiElapsedMilliseconds ms</span>
                         }
                     </p>
@@ -168,12 +147,10 @@
             </section>
 
             <section class="results">
-                @if (response.Microservices is not null)
-                {
+                @if (response.Microservices is not null) {
                     <ResultCard Title="Microservices" Result="response.Microservices" />
                 }
-                @if (response.VirtualActors is not null)
-                {
+                @if (response.VirtualActors is not null) {
                     <ResultCard Title="Virtual Actors" Result="response.VirtualActors" />
                 }
             </section>
@@ -182,11 +159,6 @@
 </section>
 
 @code {
-    /// <summary>
-    /// Stores the architecture selection sent to the scenario runner.
-    /// </summary>
-    private string architecture = "both";
-
     /// <summary>
     /// Stores the editable form values for the selected scenario.
     /// </summary>
@@ -220,7 +192,12 @@
     /// <summary>
     /// Stores the progress labels for the selected architecture.
     /// </summary>
-    private IReadOnlyList<string> progressSteps = Array.Empty<string>();
+    private IReadOnlyList<string> progressSteps = [
+        "Preparing scenario request",
+        "Calling microservices backend",
+        "Calling virtual actors backend",
+        "Building side-by-side workbench"
+    ];
 
     /// <summary>
     /// Stores the local completion time of the most recent successful run.
@@ -241,13 +218,10 @@
     /// Changing the scenario resets advanced settings to that scenario's
     /// defaults.
     /// </remarks>
-    private ScenarioKind selectedScenario
-    {
+    private ScenarioKind selectedScenario {
         get => model.Scenario;
-        set
-        {
-            if (model.Scenario == value)
-            {
+        set {
+            if (model.Scenario == value) {
                 return;
             }
 
@@ -259,16 +233,14 @@
     /// <summary>
     /// Toggles the visibility of the advanced scenario settings.
     /// </summary>
-    private void ToggleAdvancedSettings()
-    {
+    private void ToggleAdvancedSettings() {
         showAdvancedSettings = !showAdvancedSettings;
     }
 
     /// <summary>
     /// Restores advanced form values to the defaults for the selected scenario.
     /// </summary>
-    private void ResetAdvancedSettings()
-    {
+    private void ResetAdvancedSettings() {
         model.ResetAdvancedSettings();
     }
 
@@ -281,17 +253,14 @@
     /// A minimum display delay keeps the running state visible for very fast
     /// responses. A second submission is ignored while a run is active.
     /// </remarks>
-    private async Task RunAsync()
-    {
-        if (isRunning)
-        {
+    private async Task RunAsync() {
+        if (isRunning) {
             return;
         }
 
         isRunning = true;
         errorMessage = null;
         response = null;
-        progressSteps = GetProgressSteps(architecture);
         currentProgressStep = 0;
 
         using var progressCancellationTokenSource =
@@ -300,9 +269,8 @@
             progressCancellationTokenSource.Token);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        try
-        {
-            var runTask = Client.RunAsync(architecture, model.ToRequest());
+        try {
+            var runTask = Client.RunAsync(model.ToRequest());
             var minimumDisplayTask = Task.Delay(750);
             await Task.WhenAll(runTask, minimumDisplayTask);
             response = await runTask;
@@ -311,22 +279,15 @@
             lastUiElapsedMilliseconds = stopwatch.ElapsedMilliseconds;
             lastRunCompletedAt = DateTimeOffset.Now;
             currentProgressStep = Math.Max(0, progressSteps.Count - 1);
-        }
-        catch (Exception exception)
-        {
+        } catch (Exception exception) {
             stopwatch.Stop();
             errorMessage = exception.Message;
-        }
-        finally
-        {
+        } finally {
             await progressCancellationTokenSource.CancelAsync();
 
-            try
-            {
+            try {
                 await progressTask;
-            }
-            catch (OperationCanceledException)
-            {
+            } catch (OperationCanceledException) {
                 // Expected when scenario execution completes before the visual progress loop.
             }
 
@@ -346,82 +307,16 @@
     /// pending.
     /// </exception>
     private async Task AdvanceProgressAsync(
-        CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
+        CancellationToken cancellationToken) {
+        while (!cancellationToken.IsCancellationRequested) {
             await Task.Delay(300, cancellationToken);
 
             if (progressSteps.Count > 0 &&
-                currentProgressStep < progressSteps.Count - 1)
-            {
+                currentProgressStep < progressSteps.Count - 1) {
                 currentProgressStep++;
                 await InvokeAsync(StateHasChanged);
             }
         }
-    }
-
-    /// <summary>
-    /// Creates the progress labels shown for an architecture selection.
-    /// </summary>
-    /// <param name="selectedArchitecture">
-    /// The architecture value selected by the user.
-    /// </param>
-    /// <returns>
-    /// A read-only ordered collection of progress-step labels.
-    /// </returns>
-    private IReadOnlyList<string> GetProgressSteps(
-        string selectedArchitecture)
-    {
-        if (selectedArchitecture.Equals(
-                "microservices",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return
-            [
-                "Preparing scenario request",
-                "Calling Orders.Api through the gateway",
-                "Reading final inventory",
-                "Building microservices result"
-            ];
-        }
-
-        if (selectedArchitecture.Equals(
-                "virtual-actors",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return
-            [
-                "Preparing scenario request",
-                "Calling Ordering.Api through the gateway",
-                "Reading final inventory",
-                "Building virtual actors result"
-            ];
-        }
-
-        return
-        [
-            "Preparing scenario request",
-            "Calling microservices backend",
-            "Calling virtual actors backend",
-            "Building side-by-side workbench"
-        ];
-    }
-
-    /// <summary>
-    /// Gets the running-state description for the selected architecture.
-    /// </summary>
-    /// <returns>A user-visible description of the active scenario run.</returns>
-    private string GetRunningDescription()
-    {
-        return architecture switch
-        {
-            "microservices" =>
-                "Running the workflow through the microservice-style backend.",
-            "virtual-actors" =>
-                "Running the workflow through the virtual actor-style backend.",
-            _ => "Running the workflow through both architecture styles."
-        };
     }
 
     /// <summary>
@@ -431,10 +326,8 @@
     /// <returns>
     /// The completed, active, or pending progress-state CSS class.
     /// </returns>
-    private string GetProgressStepClass(int index)
-    {
-        if (index < currentProgressStep)
-        {
+    private string GetProgressStepClass(int index) {
+        if (index < currentProgressStep) {
             return "progress-completed";
         }
 
@@ -448,10 +341,8 @@
     /// </summary>
     /// <param name="index">The zero-based progress-step index.</param>
     /// <returns>The completed, active, or pending progress symbol.</returns>
-    private string GetProgressStepIcon(int index)
-    {
-        if (index < currentProgressStep)
-        {
+    private string GetProgressStepIcon(int index) {
+        if (index < currentProgressStep) {
             return "✓";
         }
 
@@ -463,13 +354,11 @@
     /// </summary>
     /// <param name="scenario">The scenario whose defaults are described.</param>
     /// <returns>A user-visible summary of the scenario defaults.</returns>
-    private static string GetDefaultHint(ScenarioKind scenario)
-    {
+    private static string GetDefaultHint(ScenarioKind scenario) {
         var defaults = ScenarioDefaults.For(scenario);
         var baseHint = $"initial stock {defaults.InitialStock}, quantity {defaults.Quantity}";
 
-        return scenario switch
-        {
+        return scenario switch {
             ScenarioKind.ConcurrentOrders =>
                 $"{baseHint}, concurrent requests {defaults.ConcurrentRequests}",
             ScenarioKind.HotProductContention =>
@@ -487,10 +376,8 @@
     /// <returns>
     /// A user-visible note explaining whether and how the field is used.
     /// </returns>
-    private static string GetConcurrentRequestsNote(ScenarioKind scenario)
-    {
-        return scenario switch
-        {
+    private static string GetConcurrentRequestsNote(ScenarioKind scenario) {
+        return scenario switch {
             ScenarioKind.ConcurrentOrders =>
                 "Used by this scenario. Must be between 1 and 50 for local demo safety.",
             ScenarioKind.HotProductContention =>
@@ -507,10 +394,8 @@
     /// </summary>
     /// <param name="scenario">The scenario to format.</param>
     /// <returns>The display name for the scenario.</returns>
-    private static string FormatScenario(ScenarioKind scenario)
-    {
-        return scenario switch
-        {
+    private static string FormatScenario(ScenarioKind scenario) {
+        return scenario switch {
             ScenarioKind.SuccessfulOrder => "Successful order",
             ScenarioKind.InsufficientInventory => "Insufficient inventory",
             ScenarioKind.PaymentFailureCompensation =>
@@ -529,8 +414,7 @@
     /// </summary>
     /// <param name="result">The completed scenario response.</param>
     /// <returns>A user-visible summary of the scenario outcome.</returns>
-    private static string GetScenarioSummary(RunScenarioResponse result)
-    {
+    private static string GetScenarioSummary(RunScenarioResponse result) {
         var completed = new[]
             {
                 result.Microservices,
@@ -541,8 +425,7 @@
                 item!.CompletedOrders > 0 ||
                 item.Status == OrderStatus.Completed);
 
-        return result.Scenario switch
-        {
+        return result.Scenario switch {
             ScenarioKind.SuccessfulOrder when completed =>
                 "Both implementations completed the happy path.",
             ScenarioKind.InsufficientInventory =>
@@ -566,10 +449,8 @@
     /// </summary>
     /// <param name="scenario">The scenario to describe.</param>
     /// <returns>A user-visible description of the scenario behavior.</returns>
-    private static string GetScenarioDescription(ScenarioKind scenario)
-    {
-        return scenario switch
-        {
+    private static string GetScenarioDescription(ScenarioKind scenario) {
+        return scenario switch {
             ScenarioKind.SuccessfulOrder =>
                 "Inventory is available, payment succeeds, and the order completes.",
             ScenarioKind.InsufficientInventory =>

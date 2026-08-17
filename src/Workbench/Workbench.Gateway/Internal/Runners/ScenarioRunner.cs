@@ -119,6 +119,7 @@ internal sealed class ScenarioRunner {
             .ConfigureAwait(false);
 
         stopwatch.Stop();
+
         RecordWorkflowRunMetrics(serviceClient, request, stopwatch.Elapsed);
 
         if (prepared.Scenario == ScenarioKind.PaymentTimeoutAfterReservation) {
@@ -271,6 +272,7 @@ internal sealed class ScenarioRunner {
             .ConfigureAwait(false);
 
         stopwatch.Stop();
+
         RecordWorkflowRunMetrics(serviceClient, request, stopwatch.Elapsed);
 
         OrderResponse representative = responses.FirstOrDefault(

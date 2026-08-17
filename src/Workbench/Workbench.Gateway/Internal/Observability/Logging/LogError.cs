@@ -24,17 +24,12 @@ internal static partial class LogError {
     /// The exception that caused scenario execution to fail.
     /// </param>
     /// <param name="scenarioKind">The scenario that failed.</param>
-    /// <param name="architecture">
-    /// The requested architecture selection, or <see langword="null"/> when no
-    /// selection was available.
-    /// </param>
     [LoggerMessage(
         EventId = EventIdBase + 1,
         Level = Level,
-        Message = "Failed to execute scenario {ScenarioKind} for architecture {Architecture}.")]
+        Message = "Failed to execute scenario {ScenarioKind}.")]
     public static partial void ScenarioExecutionFailed(
         this ILogger logger,
         Exception exception,
-        ScenarioKind scenarioKind,
-        string? architecture);
+        ScenarioKind scenarioKind);
 }

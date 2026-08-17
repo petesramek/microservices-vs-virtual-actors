@@ -17,52 +17,6 @@ using Xunit;
 /// Acceptance tests for the workbench gateway contract.
 /// </summary>
 public sealed class WorkbenchGatewayAcceptanceTests {
-    [Theory]
-    [InlineData("microservices")]
-    [InlineData("virtual-actors")]
-    [InlineData("both")]
-    public async Task GatewayRunSelectedArchitecture(string architecture) {
-        await using WebApplicationFactory<Program> factory = CreateFactory();
-        using HttpClient client = factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/run") {
-            Content = JsonContent.Create(new RunScenarioRequest {
-                Scenario = ScenarioKind.SuccessfulOrder,
-                ProductId = "product-001",
-                InitialStock = 10,
-                Quantity = 2,
-            }),
-        };
-        request.Headers.Add("X-Architecture", architecture);
-
-        HttpResponseMessage response = await client.SendAsync(request);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        RunScenarioResponse? result = await response.Content.ReadFromJsonAsync<RunScenarioResponse>();
-        result.ShouldNotBeNull();
-
-        if (architecture is "microservices" or "both") {
-            result!.Microservices.ShouldNotBeNull();
-        }
-
-        if (architecture is "virtual-actors" or "both") {
-            result!.VirtualActors.ShouldNotBeNull();
-        }
-    }
-
-    [Fact]
-    public async Task GatewayRejectUnknownArchitectureHeader() {
-        await using WebApplicationFactory<Program> factory = CreateFactory();
-        using HttpClient client = factory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/scenarios/run") {
-            Content = JsonContent.Create(new RunScenarioRequest()),
-        };
-        request.Headers.Add("X-Architecture", "unknown");
-
-        HttpResponseMessage response = await client.SendAsync(request);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-    }
-
     private static WebApplicationFactory<Program> CreateFactory() {
         return new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder => {

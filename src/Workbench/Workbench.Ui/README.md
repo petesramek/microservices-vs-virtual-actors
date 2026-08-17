@@ -11,7 +11,7 @@ The repository implements the same ordering workflow in two architectural styles
 - **Microservices**, with explicit HTTP service boundaries for order orchestration, inventory, and payments.
 - **Virtual actors**, with Orleans grains providing identity-based state ownership and serialized execution per actor identity.
 
-Workbench.Ui provides the human-facing comparison experience. It lets a user execute the same scenario against either architecture or both, then presents workflow outcomes, inventory results, explanatory timelines, system health, and topology information.
+Workbench.Ui provides the human-facing comparison experience. It lets a user execute the same scenario against both architectures, then presents workflow outcomes, inventory results, explanatory timelines, system health, and topology information.
 
 See the repository-level README and docs directory for scenario definitions, architecture discussions, operational interpretation, known limitations, and scope boundaries.
 
@@ -149,7 +149,6 @@ Scenario names shown by the UI are presentation labels for the shared `ScenarioK
 
 The form includes:
 
-- architecture selection;
 - scenario selection;
 - initial stock;
 - requested quantity;
@@ -206,7 +205,6 @@ The UI request duration includes client-side and gateway-call overhead. It is us
 Its responsibilities should remain limited to:
 
 - constructing the scenario request;
-- sending the architecture selection;
 - serializing shared request contracts;
 - deserializing `RunScenarioResponse`;
 - propagating cancellation when supported by the caller;
@@ -417,7 +415,7 @@ UI changes should cover at least:
 
 - application startup and root routing;
 - interactive server rendering;
-- default scenario and architecture selections;
+- default scenario selections;
 - scenario changes resetting advanced defaults;
 - advanced-settings visibility;
 - form validation;
