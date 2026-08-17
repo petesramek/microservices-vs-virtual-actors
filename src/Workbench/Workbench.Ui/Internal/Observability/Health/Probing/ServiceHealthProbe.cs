@@ -220,11 +220,7 @@ internal sealed class ServiceHealthProbe {
                 report.Status,
                 checkedAtUtc,
                 TimeSpan.FromMilliseconds(report.DurationMilliseconds),
-                response.IsSuccessStatusCode
-                    ? null
-                    : FormatHttpStatus(
-                        "The health endpoint returned HTTP",
-                        response.StatusCode),
+                response.IsSuccessStatusCode ? null : FormatHttpStatus("The health endpoint returned HTTP", response.StatusCode),
                 entries);
         } catch (OperationCanceledException)
               when (!cancellationToken.IsCancellationRequested) {

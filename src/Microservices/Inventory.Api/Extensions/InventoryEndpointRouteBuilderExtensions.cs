@@ -167,18 +167,13 @@ internal static class InventoryEndpointRouteBuilderExtensions {
         try {
             InventoryReservation? existingReservation = await db.Reservations
                 .AsNoTracking()
-                .SingleOrDefaultAsync(
-                    reservation =>
-                        reservation.ReservationId == request.ReservationId,
-                    cancellationToken)
+                .SingleOrDefaultAsync(reservation => reservation.ReservationId == request.ReservationId, cancellationToken)
                 .ConfigureAwait(false);
 
             if (existingReservation is not null) {
                 InventoryItem current = await db.Items
                     .AsNoTracking()
-                    .SingleAsync(
-                        item => item.ProductId == productId,
-                        cancellationToken)
+                    .SingleAsync(item => item.ProductId == productId, cancellationToken)
                     .ConfigureAwait(false);
 
                 logger.InventoryReservationCompleted(
@@ -199,12 +194,11 @@ internal static class InventoryEndpointRouteBuilderExtensions {
                 .ConfigureAwait(false);
 
             await using (transaction.ConfigureAwait(false)) {
-                InventoryItem? item = await db.Items.SingleOrDefaultAsync(
-                    item => item.ProductId == productId,
-                    cancellationToken).ConfigureAwait(false);
+                InventoryItem? item = await db.Items
+                    .SingleOrDefaultAsync(item => item.ProductId == productId, cancellationToken)
+                    .ConfigureAwait(false);
 
-                if (item is null
-                    || item.AvailableQuantity < request.Quantity) {
+                if (item is null || item.AvailableQuantity < request.Quantity) {
                     int availableQuantity = item?.AvailableQuantity ?? 0;
 
                     logger.InventoryReservationCompleted(
@@ -221,6 +215,7 @@ internal static class InventoryEndpointRouteBuilderExtensions {
                 }
 
                 item.AvailableQuantity -= request.Quantity;
+
                 db.Reservations.Add(new InventoryReservation {
                     ReservationId = request.ReservationId,
                     OrderId = request.OrderId,
