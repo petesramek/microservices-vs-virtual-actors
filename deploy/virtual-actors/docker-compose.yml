@@ -1,7 +1,0 @@
-services:
-  ordering-api:
-    build:
-      context: ../..
-      dockerfile: src/VirtualActors/Ordering.Api/Dockerfile
-    ports:
-      - "5300:8080"

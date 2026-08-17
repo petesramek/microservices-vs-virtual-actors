@@ -170,7 +170,6 @@ Keep examples and scenario-specific values in the [Scenario guide](docs/12-scena
 Mention only verified prerequisites:
 
 - the repository's required .NET SDK;
-- Docker Desktop for Compose workflows;
 - a suitable .NET development environment.
 
 Do not state a specific SDK version unless repository configuration verifies it.
@@ -197,20 +196,6 @@ Link to:
 - [Hosting overview](src/Hosting/README.md)
 - [AppHost overview](src/Hosting/Hosting.AppHost/README.md)
 
-### Alternative workflows
-
-Mention briefly:
-
-- `scripts/run-all-local.ps1`;
-- architecture-specific startup scripts;
-- `scripts/run-comparison.ps1`;
-- `deploy/docker-compose.full.yml`.
-
-Keep complete startup and troubleshooting steps in:
-
-- [Local validation](docs/09-local-validation.md)
-- [Deployment overview](deploy/README.md)
-
 ## Repository map
 
 **Section purpose:** Help readers locate major areas without reproducing the full folder tree.
@@ -225,9 +210,7 @@ src/
   VirtualActors/
   Workbench/
 tests/
-deploy/
 docs/
-scripts/
 ```
 
 Add one concise sentence per major area. Do not list individual classes, UI fragments, migrations, runtime databases, or internal namespace trees.
@@ -251,11 +234,7 @@ Summarize the four test projects:
 - `Workbench.AcceptanceTests` for externally visible gateway behavior;
 - `Workbench.ScenarioRegressionTests` for normalized scenario-result semantics.
 
-Mention:
-
-- `scripts/test-build.ps1`;
-- `scripts/validate-e2e.ps1`;
-- `.github/workflows/build.yml`.
+Mention `.github/workflows/build.yml` as the repository's automated build and test validation.
 
 Keep exhaustive validation expectations in:
 
