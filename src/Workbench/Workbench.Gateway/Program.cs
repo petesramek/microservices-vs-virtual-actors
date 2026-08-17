@@ -82,7 +82,6 @@ public class Program {
             Description = "Routes scenario requests by X-Architecture header.",
         }));
 
-        //app.MapStatusEndpoints();
         app.MapScenarioEndpoints();
 
         // Map the shared health and aliveness endpoints.
