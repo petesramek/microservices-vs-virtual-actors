@@ -14,7 +14,7 @@ jobs:
   enable-auto-merge:
     if: >-
       github.event.pull_request.user.login == 'dependabot[bot]' &&
-      github.repository == 'petesramek/microservices-vs-virtual-actors'
+      github.repository == 'petesramek/microservices-vs-virtual-actors' &&
       github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
