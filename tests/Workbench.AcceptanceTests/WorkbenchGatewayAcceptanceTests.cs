@@ -3,7 +3,6 @@ namespace Workbench.AcceptanceTests;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Shouldly;
 using System.Net;
 using System.Net.Http.Json;
 using Workbench.Contracts.Inventory;
@@ -11,7 +10,6 @@ using Workbench.Contracts.Orders;
 using Workbench.Contracts.Scenarios;
 using Workbench.Gateway;
 using Workbench.Gateway.Internal.Clients;
-using Xunit;
 
 /// <summary>
 /// Acceptance tests for the workbench gateway contract.

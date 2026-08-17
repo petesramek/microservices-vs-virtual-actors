@@ -88,9 +88,9 @@ public class Program {
             PaymentsDbContext db = scope.ServiceProvider
             .GetRequiredService<PaymentsDbContext>();
 
-        await db.Database
-            .EnsureCreatedAsync()
-            .ConfigureAwait(false);
+            await db.Database
+                .EnsureCreatedAsync()
+                .ConfigureAwait(false);
         }
     }
 }

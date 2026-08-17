@@ -18,8 +18,7 @@ using global::Observability.Topology.Definitions;
 /// unique. At most one dependency may exist for each source-target pair.
 /// </para>
 /// </remarks>
-internal sealed class TopologyBuilder
-{
+internal sealed class TopologyBuilder {
     /// <summary>
     /// Identifies the default health-report entry that represents a service's
     /// direct health.
@@ -132,8 +131,7 @@ internal sealed class TopologyBuilder
     public TopologyBuilder AddService(
         IResourceBuilder<ProjectResource> resource,
         string displayName,
-        string healthEntryKey = SelfHealthEntryKey)
-    {
+        string healthEntryKey = SelfHealthEntryKey) {
         ArgumentNullException.ThrowIfNull(resource);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentException.ThrowIfNullOrWhiteSpace(healthEntryKey);
@@ -188,8 +186,7 @@ internal sealed class TopologyBuilder
         string id,
         string displayName,
         IResourceBuilder<ProjectResource> provider,
-        string healthEntryKey)
-    {
+        string healthEntryKey) {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(provider);
@@ -252,13 +249,11 @@ internal sealed class TopologyBuilder
         IResourceBuilder<ProjectResource> target,
         string? healthEntryKey = null,
         TopologyDependencyRequirement requirement =
-            TopologyDependencyRequirement.Required)
-    {
+            TopologyDependencyRequirement.Required) {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(target);
 
-        if (healthEntryKey is not null)
-        {
+        if (healthEntryKey is not null) {
             ArgumentException.ThrowIfNullOrWhiteSpace(healthEntryKey);
         }
 
@@ -322,13 +317,11 @@ internal sealed class TopologyBuilder
         string targetNodeId,
         string? healthEntryKey = null,
         TopologyDependencyRequirement requirement =
-            TopologyDependencyRequirement.Required)
-    {
+            TopologyDependencyRequirement.Required) {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(targetNodeId);
 
-        if (healthEntryKey is not null)
-        {
+        if (healthEntryKey is not null) {
             ArgumentException.ThrowIfNullOrWhiteSpace(healthEntryKey);
         }
 
@@ -383,22 +376,19 @@ internal sealed class TopologyBuilder
     public TopologyBuilder AddGroup(
         string id,
         string displayName,
-        params IResourceBuilder<ProjectResource>[] members)
-    {
+        params IResourceBuilder<ProjectResource>[] members) {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(members);
 
-        if (members.Length == 0)
-        {
+        if (members.Length == 0) {
             throw new ArgumentException(
                 "A topology group must contain at least one member.",
                 nameof(members));
         }
 
         string[] memberNodeIds = members
-            .Select(member =>
-            {
+            .Select(member => {
                 ArgumentNullException.ThrowIfNull(member);
 
                 string nodeId = member.Resource.Name;
@@ -453,22 +443,19 @@ internal sealed class TopologyBuilder
     public TopologyBuilder AddGroup(
         string id,
         string displayName,
-        IReadOnlyCollection<string> memberNodeIds)
-    {
+        IReadOnlyCollection<string> memberNodeIds) {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(memberNodeIds);
 
-        if (memberNodeIds.Count == 0)
-        {
+        if (memberNodeIds.Count == 0) {
             throw new ArgumentException(
                 "A topology group must contain at least one member.",
                 nameof(memberNodeIds));
         }
 
         string[] normalizedMemberNodeIds = memberNodeIds
-            .Select(nodeId =>
-            {
+            .Select(nodeId => {
                 ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
 
                 EnsureNodeIsRegistered(
@@ -503,14 +490,12 @@ internal sealed class TopologyBuilder
     /// The node is not backed by a registered Aspire project resource.
     /// </exception>
     internal IResourceBuilder<ProjectResource> GetProjectResource(
-        string nodeId)
-    {
+        string nodeId) {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
 
         if (!projectResources.TryGetValue(
                 nodeId,
-                out IResourceBuilder<ProjectResource>? resource))
-        {
+                out IResourceBuilder<ProjectResource>? resource)) {
             throw new InvalidOperationException(
                 $"Topology node '{nodeId}' does not represent a registered " +
                 "Aspire project resource.");
@@ -531,8 +516,7 @@ internal sealed class TopologyBuilder
     /// the node is not backed by an Aspire project resource.
     /// </returns>
     internal IResourceBuilder<ProjectResource>? TryGetProjectResource(
-        string nodeId)
-    {
+        string nodeId) {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
 
         return projectResources.GetValueOrDefault(nodeId);
@@ -546,10 +530,8 @@ internal sealed class TopologyBuilder
     /// A node with the same identifier is already registered.
     /// </exception>
     private void RegisterNode(
-        TopologyNodeDefinition node)
-    {
-        if (!nodeIds.Add(node.Id))
-        {
+        TopologyNodeDefinition node) {
+        if (!nodeIds.Add(node.Id)) {
             throw new InvalidOperationException(
                 $"The topology node ID '{node.Id}' is already registered.");
         }
@@ -571,13 +553,11 @@ internal sealed class TopologyBuilder
     /// registered.
     /// </exception>
     private void RegisterEdge(
-        TopologyEdgeDefinition edge)
-    {
+        TopologyEdgeDefinition edge) {
         if (string.Equals(
                 edge.SourceNodeId,
                 edge.TargetNodeId,
-                StringComparison.Ordinal))
-        {
+                StringComparison.Ordinal)) {
             throw new InvalidOperationException(
                 $"Topology node '{edge.SourceNodeId}' cannot depend on itself.");
         }
@@ -587,8 +567,7 @@ internal sealed class TopologyBuilder
             EdgeKeySeparator,
             edge.TargetNodeId);
 
-        if (!edgeKeys.Add(edgeKey))
-        {
+        if (!edgeKeys.Add(edgeKey)) {
             throw new InvalidOperationException(
                 $"The topology dependency '{edge.SourceNodeId}' to " +
                 $"'{edge.TargetNodeId}' is already registered.");
@@ -606,10 +585,8 @@ internal sealed class TopologyBuilder
     /// A group with the same identifier is already registered.
     /// </exception>
     private void RegisterGroup(
-        TopologyGroupDefinition group)
-    {
-        if (!groupIds.Add(group.Id))
-        {
+        TopologyGroupDefinition group) {
+        if (!groupIds.Add(group.Id)) {
             throw new InvalidOperationException(
                 $"The topology group ID '{group.Id}' is already registered.");
         }
@@ -629,10 +606,8 @@ internal sealed class TopologyBuilder
     /// </exception>
     private void EnsureNodeIsRegistered(
         string nodeId,
-        string parameterName)
-    {
-        if (!nodeIds.Contains(nodeId))
-        {
+        string parameterName) {
+        if (!nodeIds.Contains(nodeId)) {
             throw new ArgumentException(
                 $"Topology node '{nodeId}' must be registered before it can " +
                 "be referenced.",
@@ -652,8 +627,7 @@ internal sealed class TopologyBuilder
     /// </exception>
     private void EnsureServiceIsRegistered(
         string nodeId,
-        string parameterName)
-    {
+        string parameterName) {
         TopologyNodeDefinition? node = nodes.FirstOrDefault(
             candidate => string.Equals(
                 candidate.Id,
@@ -663,8 +637,7 @@ internal sealed class TopologyBuilder
                 "can be referenced.",
                 parameterName);
 
-        if (node.Kind != TopologyNodeKind.Service)
-        {
+        if (node.Kind != TopologyNodeKind.Service) {
             throw new ArgumentException(
                 $"Topology node '{nodeId}' is not a service node.",
                 parameterName);

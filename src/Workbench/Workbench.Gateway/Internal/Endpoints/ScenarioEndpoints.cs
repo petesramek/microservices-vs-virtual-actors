@@ -8,6 +8,7 @@ using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Internal.Clients;
 using Workbench.Gateway.Internal.Clients.Abstraction;
 using Workbench.Gateway.Internal.Runners;
+using Workbench.Gateway.Internal.Runners.Abstraction;
 using Workbench.Gateway.Logging;
 
 /// <summary>
@@ -40,7 +41,7 @@ internal static class ScenarioEndpoints {
     /// selected by the request header.
     /// </summary>
     /// <param name="request">The scenario execution request.</param>
-    /// <param name="scenarioRunner">The scenario execution coordinator.</param>
+    /// <param name="scenarioRunnerProvider">The scenario runner provider.</param>
     /// <param name="microservicesClient">
     /// The client for the microservices implementation.
     /// </param>
@@ -64,13 +65,15 @@ internal static class ScenarioEndpoints {
     /// </exception>
     private static async Task<IResult> RunScenarioAsync(
         RunScenarioRequest request,
-        ScenarioRunner scenarioRunner,
+        ScenarioRunnerProvider scenarioRunnerProvider,
         MicroservicesServiceClient microservicesClient,
         VirtualActorsServiceClient virtualActorsClient,
         ILoggerFactory loggerFactory,
         IOptions<ObservabilityOptions> observabilityOptions,
         CancellationToken cancellationToken) {
         ILogger logger = loggerFactory.CreateLogger("Workbench.Gateway");
+
+        var runner = scenarioRunnerProvider.GetRunner(request.Scenario);
 
         bool createScenarioRoot = observabilityOptions.Value.TraceMode == TraceCollectionMode.ScenarioOnly;
         Activity? parentActivity = Activity.Current;
@@ -86,20 +89,20 @@ internal static class ScenarioEndpoints {
         }
 
         try {
-            
+
             ScenarioExecutionResult microservices;
             ScenarioExecutionResult virtualActors;
 
             Task<ScenarioExecutionResult> microservicesTask =
                 RunArchitectureAsync(
-                    scenarioRunner,
+                    runner,
                     microservicesClient,
                     request,
                     logger,
                     cancellationToken);
             Task<ScenarioExecutionResult> virtualActorsTask =
                 RunArchitectureAsync(
-                    scenarioRunner,
+                    runner,
                     virtualActorsClient,
                     request,
                     logger,
@@ -167,7 +170,7 @@ internal static class ScenarioEndpoints {
     /// is executing.
     /// </exception>
     private static async Task<ScenarioExecutionResult> RunArchitectureAsync(
-        ScenarioRunner scenarioRunner,
+        IScenarioRunner scenarioRunner,
         IServiceClient serviceClient,
         RunScenarioRequest request,
         ILogger logger,

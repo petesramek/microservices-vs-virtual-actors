@@ -3,8 +3,7 @@ namespace Hosting.AppHost.Resources;
 /// <summary>
 /// Defines the aggregate states displayed for an Aspire health group.
 /// </summary>
-internal enum HealthGroupState
-{
+internal enum HealthGroupState {
     /// <summary>
     /// Indicates that child resource health is not yet available or cannot be
     /// determined.

@@ -1,11 +1,8 @@
 using Hosting.ServiceDefaults.Extensions;
 using Hosting.ServiceDefaults.Observability.Metrics;
-using Microsoft.Extensions.Options;
-using Workbench.Gateway.Internal.Clients;
 using Workbench.Gateway.Internal.Configuration;
 using Workbench.Gateway.Internal.Endpoints;
 using Workbench.Gateway.Internal.Extensions;
-using Workbench.Gateway.Internal.Runners;
 
 namespace Workbench.Gateway;
 
@@ -33,39 +30,13 @@ public class Program {
         // Configure standardized error responses.
         builder.Services.AddProblemDetails();
 
-        // Configure and validate downstream architecture endpoints.
-        builder.Services
-            .AddOptions<ServiceEndpointOptions>()
-            .Bind(builder.Configuration.GetSection(
-                ServiceEndpointOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
-        // Configure microservices service client.
-        builder.Services.AddHttpClient<MicroservicesServiceClient>(
-            (services, client) => {
-                ServiceEndpointOptions options = services
-                    .GetRequiredService<IOptions<ServiceEndpointOptions>>()
-                    .Value;
-
-                client.BaseAddress = new Uri(options.MicroservicesBaseUrl);
-            });
-
-        // Configure virtual actor service client.
-        builder.Services.AddHttpClient<VirtualActorsServiceClient>(
-            (services, client) => {
-                ServiceEndpointOptions options = services
-                    .GetRequiredService<IOptions<ServiceEndpointOptions>>()
-                    .Value;
-
-                client.BaseAddress = new Uri(options.VirtualActorsBaseUrl);
-            });
+        builder.Services.AddServiceClients(builder.Configuration.GetSection(ServiceEndpointOptions.SectionName));
 
         // Register caller-specific downstream dependency health checks.
         builder.Services.AddHealthChecks();
 
-        // Configure gateway services.
-        builder.Services.AddSingleton<ScenarioRunner>();
+        // Register scenario runners.
+        builder.Services.AddScenarioRunners();
 
         // Register workbench metrics.
         builder.Services.AddSingleton<ScenarioMetrics>();

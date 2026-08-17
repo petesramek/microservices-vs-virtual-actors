@@ -10,8 +10,7 @@ using Aspire.Hosting.ApplicationModel;
 /// The resource is a visual, AppHost-only grouping construct. State aggregation
 /// is configured when the resource is added to the application model.
 /// </remarks>
-internal sealed class HealthGroupResource : Resource
-{
+internal sealed class HealthGroupResource : Resource {
     /// <summary>
     /// Initializes a new instance of the <see cref="HealthGroupResource"/> class.
     /// </summary>
@@ -23,8 +22,7 @@ internal sealed class HealthGroupResource : Resource
     public HealthGroupResource(
         string name,
         string displayName)
-        : base(name)
-    {
+        : base(name) {
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         DisplayName = displayName;
     }

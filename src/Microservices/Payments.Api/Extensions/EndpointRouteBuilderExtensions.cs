@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 using Payments.Api.Internal.Infrastructure;
 using Payments.Api.Internal.Observability.Logging;
 using Payments.Api.Models;
-using Workbench.Contracts;
 using Workbench.Contracts.Payments;
 
 /// <summary>

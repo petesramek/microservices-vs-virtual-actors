@@ -12,6 +12,7 @@ using Workbench.Contracts.Orders;
 using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Internal.Clients.Abstraction;
 using Workbench.Gateway.Internal.Runners;
+using Workbench.Gateway.Internal.Runners.Abstraction;
 using Xunit;
 
 /// <summary>
@@ -28,7 +29,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task SuccessfulOrderReportsOneUniqueSuccessfulOrder() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateSingleOrderScenarioRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.SuccessfulOrder, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
         ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
@@ -46,7 +47,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task InsufficientInventoryRejectsOneSubmissionAndLeavesInventoryUnchanged() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateSingleOrderScenarioRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.InsufficientInventory, initialStock: 1, quantity: 2, concurrentRequests: 10);
 
         ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
@@ -65,7 +66,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task PaymentFailureCompensationReleasesInventoryAndRejectsSubmission() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateSingleOrderScenarioRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.PaymentFailureCompensation, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
         ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
@@ -84,7 +85,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task PaymentTimeoutAfterReservationReportsTimeoutAndReleasesInventory() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateSingleOrderScenarioRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.PaymentTimeoutAfterReservation, initialStock: 10, quantity: 2, concurrentRequests: 10);
 
         ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
@@ -104,7 +105,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task HotProductContentionDoesNotOverReserveInventory() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateConcurrentOrdersScenarioRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.HotProductContention, initialStock: 25, quantity: 1, concurrentRequests: 50);
 
         ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
@@ -122,7 +123,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task DuplicateRequestUsesConcurrentRequestsAsDuplicateSubmissionCount() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateDuplicateRequestScenarioRunner();
         RunScenarioRequest request = CreateRequest(ScenarioKind.DuplicateRequest, initialStock: 10, quantity: 2, concurrentRequests: 20);
 
         ScenarioExecutionResult result = await runner.RunAsync(client, request, CancellationToken.None);
@@ -141,7 +142,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task RepeatedSuccessfulOrderReusesPersistedResult() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateSingleOrderScenarioRunner();
         RunScenarioRequest firstRequest = CreateRequest(
             ScenarioKind.SuccessfulOrder,
             initialStock: 10,
@@ -171,7 +172,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task RepeatedPaymentFailureReusesPersistedRejection() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateSingleOrderScenarioRunner();
         RunScenarioRequest firstRequest = CreateRequest(
             ScenarioKind.PaymentFailureCompensation,
             initialStock: 10,
@@ -203,7 +204,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task SuccessfulPaymentRemainsAuthoritativeForRepeatedKey() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateSingleOrderScenarioRunner();
         RunScenarioRequest successfulRequest = CreateRequest(
             ScenarioKind.SuccessfulOrder,
             initialStock: 10,
@@ -236,7 +237,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task FailedPaymentRemainsAuthoritativeForRepeatedKey() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateSingleOrderScenarioRunner();
         RunScenarioRequest failureRequest = CreateRequest(
             ScenarioKind.PaymentFailureCompensation,
             initialStock: 10,
@@ -270,7 +271,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task RepeatedIdempotencyKeyRemainsIsolatedAcrossCustomers() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateSingleOrderScenarioRunner();
         RunScenarioRequest firstRequest = CreateRequest(
             ScenarioKind.SuccessfulOrder,
             initialStock: 10,
@@ -301,7 +302,7 @@ public sealed class ScenarioResultRegressionTests {
     /// </summary>
     [Fact]
     public async Task DuplicateRequestCanBeRepeatedWithPersistedResult() {
-        (ScenarioRunner runner, IServiceClient client) = CreateRunner();
+        (ScenarioRunner runner, IServiceClient client) = CreateDuplicateRequestScenarioRunner();
         RunScenarioRequest firstRequest = CreateRequest(
             ScenarioKind.DuplicateRequest,
             initialStock: 10,
@@ -328,7 +329,7 @@ public sealed class ScenarioResultRegressionTests {
         secondResult.RemainingInventory.ShouldBe(10);
     }
 
-    private static (ScenarioRunner Runner, IServiceClient Client) CreateRunner() {
+    private static (ScenarioRunner Runner, IServiceClient Client) CreateSingleOrderScenarioRunner() {
         var handler = new ScenarioRegressionHttpMessageHandler();
         var httpClient = new HttpClient(handler) {
             BaseAddress = new Uri("http://scenario-regression.test"),
@@ -336,7 +337,29 @@ public sealed class ScenarioResultRegressionTests {
 
         var metrics = MetricsServices.GetRequiredService<ScenarioMetrics>();
 
-        return (new ScenarioRunner(metrics), new RegressionServiceClient(httpClient));
+        return (new SingleOrderScenarioRunner(metrics), new RegressionServiceClient(httpClient));
+    }
+
+    private static (ScenarioRunner Runner, IServiceClient Client) CreateDuplicateRequestScenarioRunner() {
+        var handler = new ScenarioRegressionHttpMessageHandler();
+        var httpClient = new HttpClient(handler) {
+            BaseAddress = new Uri("http://scenario-regression.test"),
+        };
+
+        var metrics = MetricsServices.GetRequiredService<ScenarioMetrics>();
+
+        return (new SingleOrderScenarioRunner(metrics), new RegressionServiceClient(httpClient));
+    }
+
+    private static (ScenarioRunner Runner, IServiceClient Client) CreateConcurrentOrdersScenarioRunner() {
+        var handler = new ScenarioRegressionHttpMessageHandler();
+        var httpClient = new HttpClient(handler) {
+            BaseAddress = new Uri("http://scenario-regression.test"),
+        };
+
+        var metrics = MetricsServices.GetRequiredService<ScenarioMetrics>();
+
+        return (new ConcurrentOrdersScenarioRunner(metrics), new RegressionServiceClient(httpClient));
     }
 
     private static RunScenarioRequest CreateRequest(

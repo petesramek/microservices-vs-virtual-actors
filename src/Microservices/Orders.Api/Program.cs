@@ -55,12 +55,12 @@ public class Program {
         ArgumentNullException.ThrowIfNull(services);
 
         AsyncServiceScope scope = services.CreateAsyncScope();
-        
+
         await using (scope.ConfigureAwait(false)) {
             OrdersDbContext db = scope.ServiceProvider
                 .GetRequiredService<OrdersDbContext>();
 
-        await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
+            await db.Database.EnsureCreatedAsync().ConfigureAwait(false);
         }
     }
 }
