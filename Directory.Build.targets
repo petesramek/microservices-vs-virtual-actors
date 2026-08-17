@@ -1,8 +1,3 @@
 <Project>
-  <ItemGroup>
-	  <PackageReference
-		  Include="Meziantou.Analyzer"
-		  PrivateAssets="all"
-		  IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-  </ItemGroup>
+    <!-- Add only analyzers and build rules that are valid for both source and test projects. -->
 </Project>

@@ -6,10 +6,4 @@
     <ProjectReference Include="../Ordering.Grains/Ordering.Grains.csproj" />
     <ProjectReference Include="..\..\Hosting\Hosting.ServiceDefaults\Hosting.ServiceDefaults.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Update="Meziantou.Analyzer">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
 </Project>

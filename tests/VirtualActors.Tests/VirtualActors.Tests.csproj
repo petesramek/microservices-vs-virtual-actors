@@ -8,10 +8,6 @@
     <PackageReference Include="Microsoft.Orleans.TestingHost" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.analyzers">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -21,11 +17,5 @@
     <ProjectReference Include="../../src/Workbench/Workbench.Contracts/Workbench.Contracts.csproj" />
     <ProjectReference Include="../../src/VirtualActors/Ordering.Grains/Ordering.Grains.csproj" />
     <ProjectReference Include="..\..\src\VirtualActors\Ordering.Persistence.Sqlite\Ordering.Persistence.Sqlite.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Update="Meziantou.Analyzer">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
 </Project>

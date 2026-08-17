@@ -5,10 +5,4 @@
     <PackageReference Include="Microsoft.Orleans.Sdk" />
     <ProjectReference Include="../../Workbench/Workbench.Contracts/Workbench.Contracts.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Update="Meziantou.Analyzer">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
 </Project>

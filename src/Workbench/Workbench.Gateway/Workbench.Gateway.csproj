@@ -1,13 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 	<ItemGroup>
 		<ProjectReference Include="..\Workbench.Contracts\Workbench.Contracts.csproj" />
 		<ProjectReference Include="..\..\Hosting\Hosting.ServiceDefaults\Hosting.ServiceDefaults.csproj" />
-	</ItemGroup>
-	<ItemGroup>
-		<PackageReference Update="Meziantou.Analyzer">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
 	</ItemGroup>
 	<ItemGroup>
 		<InternalsVisibleTo Include="Workbench.AcceptanceTests" />

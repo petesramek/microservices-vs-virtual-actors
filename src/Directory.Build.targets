@@ -1,0 +1,10 @@
+<Project>
+    <Import Project="../Directory.Build.targets" />
+
+    <ItemGroup>
+        <PackageReference
+            Include="Meziantou.Analyzer"
+            PrivateAssets="all"
+            IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    </ItemGroup>
+</Project>
