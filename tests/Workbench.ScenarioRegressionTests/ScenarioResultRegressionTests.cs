@@ -348,7 +348,7 @@ public sealed class ScenarioResultRegressionTests {
 
         var metrics = MetricsServices.GetRequiredService<ScenarioMetrics>();
 
-        return (new SingleOrderScenarioRunner(metrics), new RegressionServiceClient(httpClient));
+        return (new DuplicateRequestScenarioRunner(metrics), new RegressionServiceClient(httpClient));
     }
 
     private static (ScenarioRunner Runner, IServiceClient Client) CreateConcurrentOrdersScenarioRunner() {
