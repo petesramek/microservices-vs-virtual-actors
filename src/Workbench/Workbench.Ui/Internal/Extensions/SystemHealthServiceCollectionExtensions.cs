@@ -5,6 +5,9 @@ using global::Observability.Health.Abstraction;
 using global::Observability.Topology.Evaluators;
 using global::Observability.Topology.Evaluators.Abstraction;
 using Workbench.Ui.Internal.Observability.Health;
+using Workbench.Ui.Internal.Observability.Health.Builders;
+using Workbench.Ui.Internal.Observability.Health.Configuration;
+using Workbench.Ui.Internal.Observability.Health.Probing;
 
 /// <summary>
 /// Provides registration methods for Workbench system health services.
@@ -32,23 +35,30 @@ internal static class SystemHealthServiceCollectionExtensions {
         ArgumentNullException.ThrowIfNull(configuration);
 
         services
-            .AddOptions<HealthEndpointOptions>()
+            .AddOptions<SystemHealthOptions>()
             .Bind(configuration.GetSection(
-                HealthEndpointOptions.SectionName))
+                SystemHealthOptions.SectionName))
             .Validate(
-                options => options.Count > 0,
+                options => options.HealthEndpoints.Count > 0,
                 "At least one health endpoint must be configured.")
+             .Validate(
+                options => options.AliveEndpoints.Count > 0,
+                "At least one alive endpoint must be configured.")
             .ValidateOnStart();
 
         services
             .AddSingleton(TimeProvider.System)
+            .AddSingleton<TopologySnapshotBuilder>()
             .AddSingleton<IHealthStatusEvaluator, HealthStatusEvaluator>()
             .AddSingleton<IGroupHealthEvaluator, GroupHealthEvaluator>()
             .AddSingleton<IDependencyHealthEvaluator, DependencyHealthEvaluator>();
 
-        services.AddHttpClient<SystemHealthService>(client => {
+        services.AddHttpClient<ServiceHealthProbe>(client => {
             client.Timeout = HealthRequestTimeout;
         });
+
+        services
+            .AddScoped<SystemHealthService>();
 
         return services;
     }
