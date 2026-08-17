@@ -1,6 +1,8 @@
 namespace Workbench.Ui.Internal.Extensions;
 
-using global::Observability.Topology.Evaluation;
+using global::Observability.Health;
+using global::Observability.Topology.Evaluators;
+using global::Observability.Topology.Evaluators.Abstraction;
 using Workbench.Ui.Observability.Health;
 
 /// <summary>
@@ -37,9 +39,11 @@ internal static class SystemHealthServiceCollectionExtensions {
                 "At least one health endpoint must be configured.")
             .ValidateOnStart();
 
-        services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<GroupHealthEvaluator>();
-        services.AddSingleton<DependencyHealthEvaluator>();
+        services
+            .AddSingleton(TimeProvider.System)
+            .AddSingleton<IHealthStatusEvaluator, HealthStatusEvaluator>()
+            .AddSingleton<IGroupHealthEvaluator, GroupHealthEvaluator>()
+            .AddSingleton<IDependencyHealthEvaluator, DependencyHealthEvaluator>();
 
         services.AddHttpClient<SystemHealthService>(client => {
             client.Timeout = HealthRequestTimeout;

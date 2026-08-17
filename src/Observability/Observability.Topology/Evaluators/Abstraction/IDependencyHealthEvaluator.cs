@@ -1,4 +1,4 @@
-namespace Observability.Topology.Evaluation;
+namespace Observability.Topology.Evaluators.Abstraction;
 
 using Observability.Health;
 using Observability.Topology.Definitions;

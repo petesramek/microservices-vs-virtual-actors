@@ -3,7 +3,7 @@ using Observability.Topology.Definitions;
 using Observability.Topology.Evaluators.Abstraction;
 using Observability.Topology.Snapshots;
 
-namespace Observability.Topology.Evaluation;
+namespace Observability.Topology.Evaluators;
 
 /// <summary>
 /// Evaluates aggregate health for topology groups.

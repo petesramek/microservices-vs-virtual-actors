@@ -2,7 +2,7 @@ namespace Workbench.Ui.Observability.Health;
 
 using global::Observability.Health;
 using global::Observability.Topology.Definitions;
-using global::Observability.Topology.Evaluation;
+using global::Observability.Topology.Evaluators.Abstraction;
 using global::Observability.Topology.Snapshots;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -18,8 +18,8 @@ using Workbench.Ui.Observability.Topology;
 internal sealed class SystemHealthService(
     HttpClient httpClient,
     TopologyDefinitionProvider topologyDefinitionProvider,
-    DependencyHealthEvaluator dependencyHealthEvaluator,
-    GroupHealthEvaluator groupHealthEvaluator,
+    IDependencyHealthEvaluator dependencyHealthEvaluator,
+    IGroupHealthEvaluator groupHealthEvaluator,
     IOptions<HealthEndpointOptions> healthEndpointOptions,
     IConfiguration configuration,
     TimeProvider timeProvider) {
@@ -109,8 +109,7 @@ internal sealed class SystemHealthService(
             .Select(node => CreateAggregateNodeSnapshot(
                 node,
                 edgeDefinitionsBySource[node.Id].ToArray(),
-                edgeSnapshotsBySource[node.Id].ToArray(),
-                dependencyHealthEvaluator))
+                edgeSnapshotsBySource[node.Id].ToArray()))
             .ToArray();
 
         TopologyGroupSnapshot[] groups = definition.Groups
@@ -394,11 +393,10 @@ internal sealed class SystemHealthService(
             entry.Description);
     }
 
-    private static TopologyNodeSnapshot CreateAggregateNodeSnapshot(
+    private TopologyNodeSnapshot CreateAggregateNodeSnapshot(
         TopologyNodeSnapshot node,
         IReadOnlyCollection<TopologyEdgeDefinition> edgeDefinitions,
-        IReadOnlyCollection<TopologyEdgeSnapshot> edgeSnapshots,
-        DependencyHealthEvaluator dependencyHealthEvaluator) {
+        IReadOnlyCollection<TopologyEdgeSnapshot> edgeSnapshots) {
         if (edgeDefinitions.Count == 0) {
             return node;
         }

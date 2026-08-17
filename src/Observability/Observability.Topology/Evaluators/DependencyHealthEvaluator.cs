@@ -1,8 +1,9 @@
 using Observability.Health;
 using Observability.Topology.Definitions;
+using Observability.Topology.Evaluators.Abstraction;
 using Observability.Topology.Snapshots;
 
-namespace Observability.Topology.Evaluation;
+namespace Observability.Topology.Evaluators;
 
 /// <summary>
 /// Evaluates aggregate dependency health from topology edge definitions and
