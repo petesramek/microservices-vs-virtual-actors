@@ -1,16 +1,5 @@
 # Microservices vs Virtual Actors
 
-> **README planning draft:** This file defines the agreed structure for the repository README. Each section currently contains a concise content brief. Replace the briefs one section at a time with final reader-facing content while keeping the root README compact and linking to deeper documentation.
-
-<!--
-README goals
-- Explain the repository in approximately five minutes
-- Target 1,200 to 1,800 words when complete
-- Keep implementation detail in project READMEs and docs
-- Avoid duplicating scenario matrices, operational guides, or exhaustive documentation indexes
-- Create a new document only when no existing document is an appropriate home
--->
-
 ## What you can explore
 
 **Section purpose:** Introduce the practical questions the workbench helps readers investigate.
