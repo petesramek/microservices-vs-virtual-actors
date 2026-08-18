@@ -1,266 +1,224 @@
 # Microservices vs Virtual Actors
 
+This repository is an architecture workbench that implements the same order workflow in two different styles:
+
+- **Microservices**, using explicit HTTP service boundaries and service-owned persistence.
+- **Virtual actors**, using Orleans grains that own state and behavior by durable identity.
+
+The comparison focuses on how each architecture expresses state ownership, concurrency, idempotency, compensation, contention, deployment, observability, and evolution. The repository includes a Blazor Workbench UI, deterministic scenarios, topology-aware health, shared OpenTelemetry instrumentation, and a .NET Aspire development environment.
+
+> This repository is a teaching and comparison tool. It is not a production reference architecture or a controlled benchmark.
+
 ## What you can explore
 
-**Section purpose:** Introduce the practical questions the workbench helps readers investigate.
+The workbench helps investigate practical architecture questions:
 
-Include six to eight concise points covering:
+- Who owns inventory state and protects its invariants?
+- Where does workflow coordination live?
+- How are concurrent requests prevented from over-reserving stock?
+- How are duplicate submissions resolved idempotently?
+- How is inventory compensated after payment failure or timeout?
+- What happens when many requests target one hot product identity?
+- How do deployment and operational responsibilities differ?
+- How do the architectures affect maintenance, evolution, and team ownership?
 
-- state ownership and invariant protection
-- workflow coordination
-- concurrency and hot-identity contention
-- idempotency under concurrent duplicate submissions
-- compensation after payment failure or timeout
-- deployment, scaling, and operational differences
-- maintenance and organizational fit
-
-Keep detailed answers in:
-
-- [Microservices design](docs/02-microservices-design.md)
-- [Virtual actors design](docs/03-virtual-actors-design.md)
-- [Trade-offs](docs/07-tradeoffs.md)
-- [Organizational scaling and architecture fit](docs/08-organizational-scaling-and-architecture-fit.md)
+Start with the [problem statement](docs/01-problem.md), then explore the [microservices design](docs/02-microservices-design.md), [virtual actors design](docs/03-virtual-actors-design.md), and detailed [trade-offs](docs/07-tradeoffs.md).
 
 ## Architecture at a glance
-
-**Section purpose:** Give readers a compact mental model of the compared implementations and the Workbench.
-
-Include one small request-flow diagram:
 
 ```text
 Workbench.Ui
   -> Workbench.Gateway
-      -> Microservices: Orders.Api -> Inventory.Api + Payments.Api
-      -> Virtual actors: Ordering.Api -> Orleans grains
+      -> Microservices
+          -> Orders.Api
+              -> Inventory.Api
+              -> Payments.Api
+      -> Virtual actors
+          -> Ordering.Api
+              -> Ordering.Silo
+                  -> OrderGrain
+                  -> InventoryItemGrain
+                  -> PaymentAccountGrain
 ```
 
-Keep this section conceptual. Do not include persistence internals, complete deployment topology, compatibility analysis, or project-level implementation detail.
+`Workbench.Gateway` sends each scenario through both implementations and returns normalized results to `Workbench.Ui`.
 
 ### Microservices
 
-Summarize in two or three bullets:
+- `Orders.Api` coordinates the order workflow.
+- `Inventory.Api` owns inventory state and reservation invariants.
+- `Payments.Api` owns payment authorization behavior.
+- Workflow coordination crosses explicit HTTP and persistence boundaries.
 
-- `Orders.Api` coordinates the workflow
-- `Inventory.Api` owns inventory and reservation invariants
-- `Payments.Api` owns payment behavior
-- communication crosses explicit HTTP boundaries
-
-Link to:
-
-- [Microservices folder overview](src/Microservices/README.md)
-- [Microservices design](docs/02-microservices-design.md)
+See the [Microservices folder overview](src/Microservices/README.md) and [Microservices design](docs/02-microservices-design.md).
 
 ### Virtual actors
 
-Summarize in two or three bullets:
+- `OrderGrain(orderId)` owns one logical order workflow.
+- `InventoryItemGrain(productId)` owns inventory for one product identity.
+- `PaymentAccountGrain(customerId)` owns payment behavior for one customer or account identity.
+- `Ordering.Api` is the HTTP entry point and Orleans client, while `Ordering.Silo` hosts the Orleans runtime.
 
-- `OrderGrain` owns an order identity
-- `InventoryItemGrain` owns a product identity
-- `PaymentAccountGrain` owns a customer payment identity
-- Orleans serializes calls for each grain identity
-
-Link to:
-
-- [Virtual actors folder overview](src/VirtualActors/README.md)
-- [Virtual actors design](docs/03-virtual-actors-design.md)
+See the [Virtual actors folder overview](src/VirtualActors/README.md) and [Virtual actors design](docs/03-virtual-actors-design.md).
 
 ## Workbench experience
 
-**Section purpose:** Explain what readers can open and explore in the interactive UI. Keep the four views distinct.
+`Workbench.Ui` provides four focused views.
 
 ### Scenario runner
 
-Explain that the scenario runner:
+The Scenario runner executes the selected deterministic workflow through both implementations and presents normalized results side by side. It supports scenario defaults and optional advanced inputs for stock, quantity, concurrency, and identity values.
 
-- executes deterministic workflows against either or both implementations
-- supports scenario defaults and advanced inputs
-- presents normalized results side by side
-- covers concurrency, idempotency, compensation, timeout, and contention behavior
+The result cards show request submissions, unique successful orders, rejected submissions, idempotent duplicate responses, remaining inventory, elapsed time, terminal reasons, and explanatory timelines.
 
-Link to:
-
-- [UI dashboard](docs/10-ui-dashboard.md)
-- [Scenario guide](docs/12-scenario-guide.md)
-- [Workbench folder overview](src/Workbench/README.md)
+See the [UI dashboard guide](docs/10-ui-dashboard.md), [Scenario guide](docs/12-scenario-guide.md), and [Workbench folder overview](src/Workbench/README.md).
 
 ### Health
 
-Explain that the Health page:
+The Health page combines live readiness and liveness reports with the shared topology model. It organizes resources into groups, nodes, and dependencies, and presents:
 
-- combines live health reports with the shared topology model
-- organizes resources into architecture groups, nodes, and dependencies
-- evaluates required and optional dependency health
-- presents readiness, liveness, and current resource availability
+- service availability
+- direct and aggregate health
+- required and optional dependency health
+- group health
+- unknown or missing observations
 
-Clarify that health indicates runtime reachability and readiness, not business correctness.
+Health describes runtime reachability and readiness. It does not prove business correctness.
 
-Link to:
-
-- [Observability and operations](docs/16-observability-and-operations.md)
-- [Health model](src/Observability/Observability.Health/README.md)
-- [Topology model](src/Observability/Observability.Topology/README.md)
+See [Observability and operations](docs/16-observability-and-operations.md), the [Health model](src/Observability/Observability.Health/README.md), and the [Topology model](src/Observability/Observability.Topology/README.md).
 
 ### Topology
 
-Explain that the Topology page:
+The Topology page is a text-based explanation of the intended architecture. It describes the Workbench request path, service ownership, actor identities, the Orleans runtime boundary, and dependency relationships.
 
-- presents the intended architecture
-- explains service, actor, and dependency relationships
-- is a static explanatory view rather than a live availability dashboard
-
-State explicitly that runtime dependency health and current resource availability belong on the Health page.
+It does not display live resource state or availability. Runtime topology-aware health belongs on the Health page.
 
 ### Trade-offs
 
-Explain that the Trade-offs page provides a concise in-product comparison.
-
-Keep detailed reasoning in:
-
-- [Trade-offs](docs/07-tradeoffs.md)
-- [Organizational scaling and architecture fit](docs/08-organizational-scaling-and-architecture-fit.md)
+The Trade-offs page provides a concise in-product comparison of the two architecture styles. Detailed reasoning remains in [Trade-offs](docs/07-tradeoffs.md) and [Organizational scaling and architecture fit](docs/08-organizational-scaling-and-architecture-fit.md).
 
 ## Scenarios
 
-**Section purpose:** Show the breadth of behavior without duplicating the complete scenario specification.
+The workbench includes seven deterministic scenarios:
 
-Include one sentence for each scenario:
+- **Successful order:** inventory is available and payment succeeds.
+- **Insufficient inventory:** the workflow is rejected before payment.
+- **Payment failure compensation:** reserved inventory is released after explicit payment failure.
+- **Payment timeout after reservation:** timeout is treated as failure and compensated.
+- **Concurrent orders:** independent orders compete for limited stock.
+- **Duplicate request:** concurrent duplicate submissions resolve to one logical result.
+- **Hot product contention:** many requests target one product identity.
 
-- **Successful order:** inventory and payment succeed
-- **Insufficient inventory:** rejection occurs before payment
-- **Payment failure compensation:** reserved inventory is released after failure
-- **Payment timeout after reservation:** timeout is treated as failure and compensated
-- **Concurrent orders:** independent orders compete for limited stock
-- **Duplicate request:** concurrent duplicate submissions return one logical result
-- **Hot product contention:** many requests target one inventory identity
-
-Do not include expected count matrices or reason-code tables here. Link to the [Scenario guide](docs/12-scenario-guide.md) for defaults, expected counts, reasons, and architecture-specific interpretation.
+See the [Scenario guide](docs/12-scenario-guide.md) for default inputs, expected counts, reason values, architecture interpretation, and operational validation.
 
 ## Result semantics
 
-**Section purpose:** Prevent readers from confusing HTTP responses with logical order outcomes.
+The normalized result contract distinguishes attempts from logical outcomes:
 
-Define briefly:
+- **Total request submissions** counts attempts sent to one implementation.
+- **Unique successful orders** counts distinct logical orders that completed.
+- **Rejected submissions** counts logical submissions that were rejected.
+- **Idempotent duplicate responses** counts repeated submissions that returned an established result.
+- **Remaining inventory** is the final observed quantity.
+- **Elapsed time** is local workbench feedback, not benchmark evidence.
 
-- total request submissions
-- unique successful orders
-- rejected submissions
-- idempotent duplicate responses
-- remaining inventory
-- local elapsed time
-
-Keep examples and scenario-specific values in the [Scenario guide](docs/12-scenario-guide.md).
+This distinction is especially important for concurrent and duplicate-request scenarios.
 
 ## Run locally
 
-**Section purpose:** Provide the shortest reliable path to a working development environment.
-
 ### Prerequisites
 
-Mention only verified prerequisites:
+Install the .NET SDK required by the repository and use a suitable .NET development environment.
 
-- the repository's required .NET SDK
-- a suitable .NET development environment
+Confirm the installed SDKs with:
 
-Do not state a specific SDK version unless repository configuration verifies it.
+```bash
+dotnet --list-sdks
+```
 
-### Recommended: Aspire
+### Start with Aspire
 
-Use the Aspire AppHost as the primary development path:
+The supported development path uses the Aspire AppHost:
 
 ```bash
 dotnet run --project src/Hosting/Hosting.AppHost/Hosting.AppHost.csproj
 ```
 
-Explain that Aspire is used to:
+Open the Aspire dashboard URL printed by the AppHost, then open the `Workbench.Ui` endpoint from the resource list.
+
+Aspire is used to:
 
 - compose and start the development topology
-- provide service discovery and resource visibility
-- open service endpoints
+- provide service discovery and dependency wiring
+- expose project endpoints and resource health
 - inspect structured logs
 - inspect distributed traces
-- inspect metrics during development
+- inspect metrics
+- manage resource lifecycle during development
 
-Link to:
-
-- [Hosting overview](src/Hosting/README.md)
-- [AppHost overview](src/Hosting/Hosting.AppHost/README.md)
+See the [Hosting overview](src/Hosting/README.md) and [AppHost overview](src/Hosting/Hosting.AppHost/README.md).
 
 ## Repository map
 
-**Section purpose:** Help readers locate major areas without reproducing the full folder tree.
-
-Use only a shallow map with links to the folder for user to be able navigate quickly:
-
 ```text
 src/
-  Hosting/
-  Microservices/
-  Observability/
-  VirtualActors/
-  Workbench/
-tests/
-docs/
+  Hosting/         Aspire composition and shared service defaults
+  Microservices/   Orders, inventory, and payment services
+  Observability/   Shared health and topology models
+  VirtualActors/   Orleans API, grains, persistence, and silo
+  Workbench/       Shared contracts, gateway, and Blazor UI
+tests/             Workflow, persistence, acceptance, and regression tests
+docs/              Architecture, validation, and operational guidance
 ```
 
-Add one concise sentence per major area. Do not list individual classes, UI fragments, migrations, runtime databases, or internal namespace trees.
+Each major source area contains a focused README with implementation-specific guidance.
 
 ## Testing and validation
 
-**Section purpose:** Explain the layers of confidence and provide standard validation commands.
-
-Include:
+Run the standard validation sequence from the repository root:
 
 ```bash
-dotnet restore
-dotnet build microservices-vs-virtual-actors.slnx --configuration Release
+dotnet restore microservices-vs-virtual-actors.slnx
+dotnet build microservices-vs-virtual-actors.slnx --configuration Release --no-restore
 dotnet test microservices-vs-virtual-actors.slnx --configuration Release --no-build
 ```
 
-Summarize the four test projects:
+The test projects provide complementary coverage:
 
-- `Microservices.Tests` for the HTTP-service workflow
-- `VirtualActors.Tests` for Orleans workflow and SQLite grain persistence
-- `Workbench.AcceptanceTests` for externally visible gateway behavior
-- `Workbench.ScenarioRegressionTests` for normalized scenario-result semantics
+- `Microservices.Tests` covers the HTTP-service workflow.
+- `VirtualActors.Tests` covers the Orleans workflow and SQLite grain persistence.
+- `Workbench.AcceptanceTests` covers externally visible Gateway behavior.
+- `Workbench.ScenarioRegressionTests` protects normalized scenario-result semantics.
 
-Mention `.github/workflows/build.yml` as the repository's automated build and test validation.
+The GitHub Actions workflow in `.github/workflows/build.yml` performs automated build and test validation.
 
-Keep exhaustive validation expectations in:
-
-- [Local validation](docs/09-local-validation.md)
-- [End-to-end validation](docs/11-end-to-end-validation.md)
+See [Local validation](docs/09-local-validation.md) and [End-to-end validation](docs/11-end-to-end-validation.md) for the complete validation workflow.
 
 ## Observability in development
 
-**Section purpose:** Distinguish the repository's observability surfaces and explain their development roles.
+The repository uses shared service defaults and custom scenario instrumentation:
 
-Cover briefly:
+- W3C trace context and .NET `Activity`
+- OpenTelemetry traces and metrics
+- structured logging and `X-Correlation-ID` propagation
+- scenario activities and bounded metrics
+- custom trace collection and sampling
+- readiness and liveness endpoints
+- topology-aware health evaluation
 
-- `X-Correlation-ID` for request correlation
-- shared OpenTelemetry configuration
-- scenario traces and metrics
-- readiness and liveness
-- safe structured logging without request secrets or identifiers
+The observability surfaces are complementary:
 
-Make the distinction explicit:
+- **Aspire dashboard:** detailed development inspection of resources, endpoints, dependencies, logs, traces, metrics, configuration, and lifecycle.
+- **Workbench Health page:** application-specific interpretation of live health through groups, nodes, dependencies, and availability.
+- **Workbench Topology page:** text-based explanation of the intended architecture.
 
-- **Aspire dashboard:** development inspection of composed resources, logs, traces, and metrics
-- **Workbench Health page:** application-specific interpretation of live health through groups, nodes, dependencies, and availability
-- **Workbench Topology page:** static explanation of the intended architecture
+Do not place credentials, connection strings, request bodies, customer identifiers, order identifiers, product identifiers, or idempotency keys in normal telemetry or metric dimensions.
 
-Link to:
-
-- [Correlation ID logging](docs/13-correlation-id-logging.md)
-- [Observability and operations](docs/16-observability-and-operations.md)
-- [Service defaults](src/Hosting/Hosting.ServiceDefaults/README.md)
-- [Health model](src/Observability/Observability.Health/README.md)
-- [Topology model](src/Observability/Observability.Topology/README.md)
+See [Correlation and trace context](docs/13-correlation-id-logging.md), [Observability and operations](docs/16-observability-and-operations.md), and [Service defaults](src/Hosting/Hosting.ServiceDefaults/README.md).
 
 ## Documentation
 
-**Section purpose:** Provide a short reader journey rather than listing every document in the root README.
-
-Recommended start-here path:
+Recommended reading path:
 
 1. [Problem](docs/01-problem.md)
 2. [Microservices design](docs/02-microservices-design.md)
@@ -271,49 +229,29 @@ Recommended start-here path:
 7. [Observability and operations](docs/16-observability-and-operations.md)
 8. [Known limitations](docs/17-known-limitations.md)
 
-Link to `docs/README.md` for the complete categorized documentation map.
+See the [documentation index](docs/README.md) for categorized reading paths and links to every detailed document.
 
-### Documentation work required
+## Contributing
 
-Create `docs/README.md` because the repository currently needs a documentation landing page. Group the existing documents by reader intent:
+Contributions are welcome. Use GitHub Issues for reproducible bugs and concrete feature requests, and GitHub Discussions for questions, observations, and early architecture ideas.
 
-- **Understand the problem:** documents 01 to 03
-- **Compare the architectures:** documents 04 to 08
-- **Run and validate:** documents 09 to 12
-- **Operate and evolve:** documents 13 to 16
-- **Interpret responsibly:** documents 17 and 18
-
-Do not create another new document unless the missing material cannot fit coherently into an existing document.
-
-Add missing information to existing documents as follows:
-
-- Aspire development telemetry belongs in `docs/16-observability-and-operations.md` and the Hosting READMEs
-- Health versus Topology behavior belongs in `docs/10-ui-dashboard.md` and `docs/16-observability-and-operations.md`
-- Workbench internals belong in `src/Workbench/README.md`
-- Scenario semantics belong in `docs/12-scenario-guide.md`
-- Validation behavior belongs in `docs/09-local-validation.md` and `docs/11-end-to-end-validation.md`
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before making a change.
 
 ## Scope and interpretation
 
-**Section purpose:** Provide concise guardrails without duplicating the full limitations documents.
+Keep these guardrails in mind:
 
-State that:
+- The repository is not a benchmark.
+- Local timings depend on the machine, runtime state, persistence, topology, and workload.
+- Aspire is the supported development composition, not a production deployment blueprint.
+- The sample does not provide production security, recovery, reconciliation, scaling, telemetry retention, alerting, or incident management.
+- Health does not prove business correctness.
+- The comparison demonstrates trade-offs rather than declaring a winner.
 
-- the repository is not a benchmark
-- local timings depend on environment and topology
-- the sample is not production guidance for security, recovery, scaling, deployment, or monitoring
-- health does not prove business correctness
-- the repository demonstrates trade-offs rather than declaring a winner
-
-Link to:
-
-- [Known limitations](docs/17-known-limitations.md)
-- [Out of scope](docs/18-out-of-scope.md)
+See [Known limitations](docs/17-known-limitations.md) and [Out of scope](docs/18-out-of-scope.md).
 
 ## Key takeaway
 
-**Section purpose:** Close the narrative in one short paragraph.
+The useful question is not whether microservices or virtual actors are universally better. It is how each style expresses and evolves state ownership, concurrency, coordination, compensation, idempotency, deployment, observability, and operational responsibility.
 
-Summarize that the repository does not try to prove one architecture is universally better. It demonstrates how microservices and virtual actors express state ownership, concurrency, coordination, compensation, idempotency, deployment, observability, and evolution differently.
-
-Link to the detailed [Trade-offs](docs/07-tradeoffs.md).
+The best fit depends on workload identity, consistency requirements, team ownership, deployment boundaries, platform maturity, and expected evolution. See [Trade-offs](docs/07-tradeoffs.md) for the detailed comparison.
