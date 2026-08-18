@@ -1,222 +1,236 @@
 # Trade-offs
 
-Both implementations solve the same order workflow, but they expose different trade-offs.
+Microservices and virtual actors can implement the same workflow correctly, but they place ownership, coordination, consistency, and operational complexity at different boundaries.
 
-The comparison is not about proving that one architecture is universally better. The useful part is seeing where each architecture places state ownership, concurrency control, workflow coordination, failure handling, scaling pressure, and operational complexity.
+The comparison is not intended to prove that one architecture is universally better. It is intended to help readers identify which responsibilities dominate a real workload and where each architecture makes those responsibilities explicit.
 
 ## Summary
 
-Microservices are useful when boundaries are organizational, deployable, and capability-oriented.
+Microservices are often a strong fit when boundaries are organizational, independently deployable, and capability-oriented.
 
-Virtual actors are useful when state is naturally partitioned by identity and the difficult part is coordinating many stateful identities.
+Virtual actors are often a strong fit when state naturally partitions by durable identity and the difficult part is coordinating many stateful entities safely.
 
-Both approaches still require clear contracts, deterministic failure handling, idempotency, observability, testing, and operational discipline.
+Both approaches still require clear contracts, deterministic failure policy, idempotency, persistence, observability, testing, and operational discipline.
 
 ```mermaid
 flowchart LR
-    HardParts[Hard parts]
+    HardParts[Where the hard parts live]
 
-    subgraph Microservices
+    subgraph Microservices[Microservices]
         ServiceBoundaries[Service boundaries]
-        HttpContracts[HTTP contracts]
+        Contracts[Network contracts]
         ServiceData[Service-owned data]
-        ExplicitCoordination[Explicit coordination]
-        OpsSurface[Operational surface area]
+        Coordination[Explicit coordination]
+        Operations[Distributed operations]
     end
 
-    subgraph Virtual actors
-        ActorIdentities[Actor identities]
-        GrainInterfaces[Grain interfaces]
-        GrainState[Grain state]
-        RuntimeBehavior[Runtime behavior]
+    subgraph VirtualActors[Virtual actors]
+        Identities[Actor identities]
+        GrainContracts[Grain interfaces]
+        GrainState[Persistent grain state]
+        Runtime[Actor runtime behavior]
         HotIdentities[Hot identities]
     end
 
     HardParts --> ServiceBoundaries
-    HardParts --> HttpContracts
+    HardParts --> Contracts
     HardParts --> ServiceData
-    HardParts --> ExplicitCoordination
-    HardParts --> OpsSurface
-    HardParts --> ActorIdentities
-    HardParts --> GrainInterfaces
+    HardParts --> Coordination
+    HardParts --> Operations
+
+    HardParts --> Identities
+    HardParts --> GrainContracts
     HardParts --> GrainState
-    HardParts --> RuntimeBehavior
+    HardParts --> Runtime
     HardParts --> HotIdentities
 ```
-
 
 ## State ownership
 
 State ownership is the main difference behind most of the trade-offs.
 
-In the microservices implementation, state is owned by services:
+In a microservices architecture, state is typically owned by a service or bounded context and protected through that boundary's persistence model and contracts. In this repository, `Orders.Api` owns order records and order idempotency, `Inventory.Api` owns inventory and reservations, and `Payments.Api` owns payment attempts and authorization outcomes.
 
-- `Orders.Api` owns order workflow records and idempotency behavior.
-- `Inventory.Api` owns inventory state and inventory invariants.
-- `Payments.Api` owns payment authorization behavior.
+In a virtual actor architecture, state is owned by actor identities. In this repository, `OrderGrain(orderId)` owns one logical order workflow, `InventoryItemGrain(productId)` owns inventory for one product identity, and `PaymentAccountGrain(customerId)` owns payment behavior for one customer or account identity.
 
-In the virtual actor implementation, state is owned by actor identities:
-
-- `OrderGrain(orderId)` owns one logical order workflow.
-- `InventoryItemGrain(productId)` owns inventory state for one product identity.
-- `PaymentAccountGrain(customerId)` owns payment behavior for one customer or account identity.
-
-The same business questions must be answered in both designs:
+Both designs must answer the same questions:
 
 - Who owns the state?
-- Who is allowed to change the state?
+- Who may change it?
 - Who protects the invariant?
-- Who records the final result?
-- Who handles duplicate requests?
+- Who records the terminal result?
+- Who recognizes and resolves duplicate requests?
 
-The architecture style changes where those answers appear.
+The architecture changes where those answers appear and how they are enforced.
 
-## Concurrency
+## Concurrency and invariants
 
-Both implementations should prevent over-reservation in the concurrent orders scenario.
+Microservices do not become concurrency-safe merely because state is placed behind a service. The state owner still needs an explicit strategy such as transactions, optimistic concurrency, compare-and-swap operations, locks, serialized command handling, or partitioned ownership.
 
-This does not mean microservices are automatically concurrency-safe. It means the microservice implementation has explicit concurrency control at the state owner, `Inventory.Api`.
+Virtual actors align coordination with an actor identity. Orleans processes requests for a non-reentrant grain activation sequentially by default, but reentrancy and interleaving can change scheduling behavior. Grain design and runtime configuration therefore remain part of the correctness model.
 
-The virtual actor implementation prevents over-reservation through `InventoryItemGrain(productId)`, which serializes operations for a product identity.
-
-The comparison is therefore:
-
-- microservices: explicit protection at the service-owned state boundary
-- virtual actors: natural per-identity serialization through the actor model
-
-The important correctness rule is the same in both implementations:
+The central rule in the sample is the same for both implementations:
 
 > Inventory must not be over-reserved.
 
+The trade-off is how the serialization boundary is expressed:
+
+- microservices use explicit concurrency protection at service-owned state
+- virtual actors align coordination with one grain identity and its state
+
 ## Workflow coordination
 
-The microservices implementation coordinates the workflow through HTTP calls between services.
+Microservices commonly coordinate workflows through synchronous calls, asynchronous messages, workflow engines, sagas, or a combination of those mechanisms. Each remote boundary introduces contracts, latency, partial failure, retries, and compatibility concerns.
 
-A successful order requires `Orders.Api` to reserve inventory through `Inventory.Api`, authorize payment through `Payments.Api`, and then record the final order outcome.
+Virtual actors coordinate through calls between stateful identities. Strongly typed grain calls reduce transport ceremony in application code, but they remain distributed interactions that can involve serialization, placement, persistence, and runtime failure.
 
-The virtual actor implementation coordinates the workflow through grain calls.
-
-A successful order requires `OrderGrain(orderId)` to call `InventoryItemGrain(productId)`, call `PaymentAccountGrain(customerId)`, and then record the final order outcome in the order grain state.
-
-The trade-off is not whether coordination exists. Coordination exists in both designs. The trade-off is whether coordination is expressed across service/network boundaries or across actor identity boundaries.
+Coordination exists in both designs. The distinction is whether it is expressed primarily across service and network boundaries or through actor identities and an actor runtime.
 
 ## Failure handling and compensation
 
-Both implementations must define explicit failure behavior.
+Neither architecture chooses business failure policy automatically. Both need explicit behavior for situations such as:
 
-Examples include:
+- insufficient inventory
+- payment failure after reservation
+- payment timeout after reservation
+- concurrent duplicate submissions
+- compensation that releases inventory
+- ambiguous downstream outcomes
+- process or node failure during a workflow
 
-- inventory is insufficient
-- payment fails after inventory has been reserved
-- payment times out after inventory has been reserved
-- duplicate submissions arrive concurrently
-- compensation is required to release inventory
+In microservices, failure handling is commonly visible in service responses, message processing, persistence updates, retry policies, and compensation across independently owned boundaries.
 
-In the microservices implementation, failure handling is visible through service responses, client calls, persistence updates, and compensation requests between services.
+In virtual actor systems, failure handling is commonly visible in actor-call outcomes, persisted workflow state, reminders or timers, retries, and compensation between identities.
 
-In the virtual actor implementation, failure handling is visible through grain method results, grain state transitions, and compensation calls between grains.
-
-The actor model can make workflow state easier to colocate with the workflow identity, but it does not decide business policy automatically. The implementation still needs deterministic rules for rejection, timeout handling, compensation, and final result reporting.
+The repository uses deterministic policies so both implementations can be compared through the same scenario expectations. Those policies are intentionally simpler than a production recovery and reconciliation model.
 
 ## Idempotency
 
-Idempotency is required in both implementations.
+Idempotency is required in both architectures whenever callers may retry or submit duplicate work.
 
-In the microservices implementation, `Orders.Api` explicitly owns the relationship between an idempotency key and a logical order result. Duplicate submissions should return the existing result instead of creating another order or reserving inventory again.
+A microservices implementation commonly protects the relationship between an idempotency key and one logical result at a service and persistence boundary. Concurrent duplicates require atomic protection rather than only an initial lookup.
 
-In the virtual actor implementation, `OrderGrain(orderId)` can use stable actor identity and stored grain state to return the existing logical result for duplicate submissions targeting the same order identity.
+A virtual actor implementation can align idempotency with stable actor identity and persisted actor state. That can simplify ownership, but it does not remove decisions about key scope, request mismatch, retention, retries, or result replay.
 
-The trade-off is where duplicate-request coordination is implemented:
+Neither architecture defines idempotency semantics automatically. Both need clear rules for:
 
-- microservices: explicit idempotency handling at the order service and persistence boundary
-- virtual actors: idempotency aligned with order grain identity and state
+- what counts as the same request
+- how concurrent duplicates are coordinated
+- how long results are retained
+- what happens when the same key is reused with different input
+- which terminal result is returned
 
-Both designs still need clear semantics for what counts as a duplicate and how duplicate responses are reported.
+## Scaling and contention
 
-## Scaling
+Microservices add capacity at explicit service boundaries. This is useful when capabilities have different demand profiles, but adding instances does not automatically increase throughput when the bottleneck is a database row, lock, queue partition, downstream system, or hot business key.
 
-Microservices scale by adding capacity to service boundaries.
+Virtual actors add runtime capacity and distribute actor activations across nodes. This is useful when demand spreads across many independent identities. It does not automatically divide one hot identity into several independent state owners.
 
-For example, if inventory reservation is the bottleneck, more `Inventory.Api` instances can be added. This is useful when services have different load profiles.
+The primary questions differ:
 
-Virtual actors scale by adding Orleans runtime capacity and distributing grain activations across silos.
+- microservices ask which service, queue, or persistence boundary needs more capacity
+- virtual actors ask which identities are active, how they are placed, and which identities are hot
 
-This is useful when the workload naturally partitions by identity, such as many independent order, product, or customer identities.
+### Hot identities
 
-The trade-off is the scaling question each architecture asks:
+A hot product demonstrates that state ownership and serialization can become throughput boundaries.
 
-- microservices: which service boundary needs more capacity?
-- virtual actors: which identities are active, where are those identities placed, and are any identities hot?
+In a microservices design, requests may concentrate around the inventory service and the persistence update for one product.
 
-Neither approach removes bottlenecks. Scaling only helps when added capacity targets the actual bottleneck.
+In a virtual actor design, requests may concentrate around one inventory actor and the work serialized for that identity.
 
-## Hot identities
+Adding service instances or actor-runtime nodes does not automatically partition one hot key. Supporting more parallel work may require a deliberate change to the domain partitioning, consistency model, or aggregation strategy.
 
-A hot product is a useful reminder that virtual actors do not remove contention. They make the contention explicit by state identity.
+## Compatibility and evolution
 
-In the microservices implementation, the hot product is protected by `Inventory.Api` and its state store.
+Microservices expose compatibility concerns through network contracts, independently deployed versions, persistence schemas, event formats, and rollout order.
 
-In the virtual actor implementation, the hot product is protected by `InventoryItemGrain(productId)` for that product identity.
+Virtual actors expose compatibility concerns through actor interfaces, serialized calls, persisted actor state, cluster versions, and runtime behavior.
 
-The trade-off is where contention is managed:
+Both require deliberate versioning and state evolution. Independent deployment does not make compatibility automatic, and runtime-managed activation does not make persisted-state changes automatic.
 
-- microservices: around the inventory service and its persistence/update strategy
-- virtual actors: around the inventory grain for the product identity
+The practical difference is which contracts and state boundaries must remain compatible while the system evolves.
 
-A hot product can still be a bottleneck in both designs.
+## Deployment and operations
 
-## Performance timing
+Microservices make business-service processes and network paths explicit. This can align deployment and ownership with team boundaries, but it also creates more endpoints, compatibility combinations, health observations, logs, traces, and independent failure modes.
 
-Elapsed time in the UI is local demo feedback, not a benchmark.
+Virtual actors reduce some explicit service-to-service coordination in application code, but the actor runtime becomes part of the operational model. Teams need to understand cluster membership, placement, activation, persistence, hot identities, request scheduling, and state compatibility.
 
-The microservice workflow crosses more HTTP boundaries:
+Neither architecture removes operational complexity. Each places it at different boundaries and requires different diagnostic knowledge.
 
-- gateway to `Orders.Api`
-- `Orders.Api` to `Inventory.Api`
-- `Orders.Api` to `Payments.Api`
+The repository uses the .NET Aspire AppHost as a development instrument. The Aspire dashboard provides detailed resource state, endpoints, logs, traces, and metrics. `Workbench.Ui` provides curated scenario comparison, evaluated health, static topology explanation, and concise trade-off guidance. These repository tools illustrate operational concerns but are not a production deployment blueprint.
 
-The virtual actor workflow keeps more coordination inside the Orleans runtime path.
+## Performance interpretation
 
-Local elapsed time can help explain the sample topology, but it should not be treated as a general performance conclusion. Production performance depends on network topology, persistence, placement, hot keys, deployment shape, runtime configuration, database behavior, and operational tuning.
+Elapsed time in the Workbench UI is local feedback, not benchmark evidence.
 
-## Operational complexity
+Microservice workflows may cross more explicit network boundaries. Virtual actor workflows may route more coordination through an actor runtime. Those topology differences can affect latency and throughput, but they do not establish a general performance result.
 
-The microservices implementation has more explicit deployable service boundaries.
+Production performance depends on workload distribution, network topology, resource limits, persistence, serialization, placement, hot identities, runtime configuration, and operational tuning.
 
-This can make ownership and deployment responsibilities clearer, but it also creates more processes, network paths, logs, health checks, configuration values, and failure modes to operate.
-
-The virtual actor implementation reduces some explicit service-to-service calls in application code, but it makes Orleans runtime behavior part of the operational model.
-
-Operators and developers need to understand grain placement, activation, persistence, hot identities, silo behavior, and actor state compatibility.
-
-Neither approach removes operational complexity. Each approach moves the complexity to a different boundary.
+A credible comparison requires controlled infrastructure, repeatable workloads, warmup, several capacity levels, latency distributions, throughput, error rates, and resource measurements. This repository does not attempt that study.
 
 ## Testing trade-offs
 
-Microservices tests tend to focus on:
+Microservices tests often emphasize:
 
-- service contracts
-- HTTP-facing behavior
-- downstream client behavior
-- persistence behavior
-- compensation paths
-- idempotency at the service boundary
+- service contracts and endpoint behavior
+- downstream-client behavior
+- service-owned persistence
+- concurrency and idempotency protection
+- compensation across service boundaries
 
-Virtual actor tests tend to focus on:
+Virtual actor tests often emphasize:
 
-- grain behavior
-- actor identity
-- grain state
-- serialized execution
-- workflow coordination through grain calls
+- actor behavior and identity
+- persisted actor state
+- scheduling and serialized execution
+- coordination through actor calls
 - idempotency at the actor identity boundary
 
-Both implementations need scenario regression tests that protect externally visible behavior, not only implementation details.
+Both architectures also need acceptance and regression tests that protect externally visible behavior. Implementation-focused tests alone are not enough.
+
+## Choosing a fit
+
+Favor microservices when the strongest drivers are:
+
+- independently deployable business capabilities
+- organizational ownership aligned with service boundaries
+- explicit integration contracts
+- separate scaling and release cadence by capability
+- teams equipped to operate distributed services
+
+Favor virtual actors when the strongest drivers are:
+
+- durable stateful identities
+- identity-local invariants
+- large numbers of independently active entities
+- workflow ownership that naturally follows one identity
+- teams prepared to operate an actor runtime and evolve persistent actor state
+
+Many real systems combine both styles. A service boundary can contain actor-based state ownership, while explicit services remain useful for organizational, integration, or security boundaries.
 
 ## Practical takeaway
 
-Use the microservices style when deployable business capabilities, organizational ownership, independent service scaling, and explicit service contracts are the main design drivers.
+The useful question is not which architecture has fewer files, fewer network calls, or better local elapsed time.
 
-Use the virtual actor style when the domain is naturally partitioned by stateful identities and the main challenge is coordinating many independent stateful entities safely.
+The useful question is where the hard responsibilities belong for the workload and organization:
 
-The same workflow can be implemented correctly in both styles. The important difference is where each style places the hard parts.
+- Microservices place them around service contracts, service-owned persistence, remote coordination, explicit concurrency control, and operational service boundaries
+- Virtual actors place them around actor identity, actor state, request scheduling, runtime behavior, placement, and hot identities
+
+The same workflow can be implemented correctly in both styles. The best fit depends on workload identity, consistency requirements, deployment boundaries, team ownership, operational capability, and expected evolution.
+
+## Related documentation
+
+- [Problem](01-problem.md)
+- [Microservices design](02-microservices-design.md)
+- [Virtual actors design](03-virtual-actors-design.md)
+- [Development comparison](04-development-comparison.md)
+- [Deployment comparison](05-deployment-comparison.md)
+- [Scaling comparison](06-scaling-comparison.md)
+- [Organizational scaling and architecture fit](08-organizational-scaling-and-architecture-fit.md)
+- [Scenario guide](12-scenario-guide.md)
+- [Observability and operations](16-observability-and-operations.md)
+- [Known limitations](17-known-limitations.md)

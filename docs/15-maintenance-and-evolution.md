@@ -1,428 +1,455 @@
 # Maintenance and evolution
 
-This document focuses on how the two implementations change over time after the first working version exists.
+Architecture must support change after the first working version is released.
 
-Release compatibility, rollback, and versioning are covered separately in [14-release-versioning-and-rollback.md](14-release-versioning-and-rollback.md). This document focuses on long-term ownership, feature evolution, refactoring pressure, testing maintenance, and operational confidence.
+Microservices and virtual actors can both evolve successfully, but they concentrate maintenance work at different boundaries:
 
-## Summary
+- Microservices concentrate change around service ownership, network contracts, service-owned data, and distributed workflow coordination
+- Virtual actors concentrate change around actor identity, interfaces, persistent state, runtime behavior, and actor workflow boundaries
 
-Both architecture styles can be maintained successfully, but they concentrate maintenance work in different places.
+The useful question is not which style requires less maintenance. It is:
 
-Microservices concentrate evolution around:
+> When business behavior changes, where does the change land, and how safely can it be understood, tested, released, observed, and reversed?
 
-- service ownership
-- HTTP/API contracts
-- service-owned data
-- explicit workflow coordination
-- integration and contract testing
+Release compatibility and rollback are covered in [Release, versioning, and rollback](14-release-versioning-and-rollback.md). This document focuses on long-term ownership, feature evolution, refactoring pressure, testing, and operational confidence.
 
-Virtual actors concentrate evolution around:
-
-- actor identity design
-- grain interfaces
-- persistent grain state
-- runtime behavior
-- actor workflow boundaries
-- grain and state compatibility
-
-The core maintenance question is not which style changes less.
-
-The better question is:
-
-> When business behavior changes, where does the change land, and how safely can that change be understood, tested, released, and operated?
+## Change impact at a glance
 
 ```mermaid
 flowchart LR
     Change[Business behavior change]
 
-    subgraph Microservices impact
-        ServiceOwner[Service owner]
-        ApiContract[HTTP/API contract]
+    subgraph Microservices
+        ServiceOwner[Service ownership]
+        Contract[API or message contracts]
         ServiceData[Service-owned data]
-        Orchestration[Workflow orchestration]
-        IntegrationTests[Integration and contract tests]
+        Coordination[Workflow coordination]
+        Integration[Integration and contract tests]
     end
 
-    subgraph Virtual actors impact
-        IdentityModel[Actor identity model]
-        GrainInterface[Grain interface]
-        GrainState[Persistent grain state]
-        ActorWorkflow[Actor workflow behavior]
-        GrainTests[Grain and workflow tests]
+    subgraph VirtualActors[Virtual actors]
+        Identity[Actor identity model]
+        Interface[Actor interfaces]
+        ActorState[Persistent actor state]
+        Workflow[Actor workflow behavior]
+        Runtime[Runtime and actor tests]
     end
 
     Change --> ServiceOwner
-    Change --> ApiContract
+    Change --> Contract
     Change --> ServiceData
-    Change --> Orchestration
-    Change --> IntegrationTests
-    Change --> IdentityModel
-    Change --> GrainInterface
-    Change --> GrainState
-    Change --> ActorWorkflow
-    Change --> GrainTests
+    Change --> Coordination
+    Change --> Integration
+
+    Change --> Identity
+    Change --> Interface
+    Change --> ActorState
+    Change --> Workflow
+    Change --> Runtime
 ```
 
+The diagram shows where change commonly propagates. It does not imply that every business change affects every boundary.
 
-## Maintenance model comparison
+## Maintenance model
 
-### Microservices-style implementation
+### Microservices
 
-The microservices-style implementation separates responsibilities into explicit services:
+Microservices organize maintenance around independently governed capabilities. A service team may own behavior, data, contracts, deployment, observability, support, and deprecation for one bounded context.
 
-- `Orders.Api` owns order workflow orchestration.
-- `Inventory.Api` owns inventory state and reservation invariants.
-- `Payments.Api` owns payment authorization behavior.
-- `Comparison.Gateway` coordinates the comparison paths.
-- `Comparison.Ui` presents scenarios and results.
+This can isolate change when the boundary is well chosen. A payment-provider change can remain inside a payment service if the external contract and workflow semantics remain stable.
 
-This makes ownership visible. A team can often change one service without redeploying every other service, provided the service contract remains compatible.
+The maintenance cost is that every service boundary becomes a compatibility and operational boundary. A seemingly small workflow change can require coordinated updates across:
 
-The maintenance cost is that every service boundary becomes a compatibility boundary. A small workflow change may require updates across multiple services, tests, documentation, dashboards, and deployment sequencing.
+- service contracts
+- messages or events
+- persistence schemas
+- callers and consumers
+- deployment order
+- integration tests
+- dashboards and alerts
+- documentation and support procedures
 
-### Virtual actor-style implementation
+Independent processes provide maintenance value only when teams can change them with meaningful autonomy.
 
-The virtual actor-style implementation organizes behavior around logical identities:
+### Virtual actors
 
-- `OrderGrain(orderId)` owns one order workflow identity.
-- `InventoryItemGrain(productId)` owns one product inventory identity.
-- `PaymentAccountGrain(customerId)` owns one payment or account behavior identity.
-- `Ordering.Api` exposes entry points into the actor workflow.
+Virtual actors organize maintenance around durable identities, interfaces, state, and runtime behavior. An actor can colocate identity-specific behavior with the state and invariant it owns.
 
-This can make state ownership and workflow code easier to reason about because behavior is colocated with identity-specific state.
+This can isolate change when the identity boundary is stable. A reservation rule can remain inside the inventory actor if its interface and persisted state remain compatible.
 
-The maintenance cost is that actor identity, grain interfaces, persisted state shape, and runtime assumptions become central design assets. Poor grain boundaries can be as painful as poor service boundaries.
+The maintenance cost is that identity design becomes durable architecture. Actor keys, interfaces, persistent state, placement assumptions, scheduling behavior, and runtime compatibility can be difficult to change after data and integrations depend on them.
 
-## Common evolution scenarios
+Poor actor boundaries can be as expensive to evolve as poor service boundaries.
 
-### Adding a new payment provider
+## Adding a new payment provider
 
-A new payment provider is a useful example because payment behavior is isolated from inventory ownership but still affects the order workflow.
+A new payment provider is a useful example because payment behavior is separate from inventory ownership but still affects the order workflow.
 
-#### Microservices
+### Microservices
 
-A new payment provider can often be hidden inside `Payments.Api`.
+A payment service can hide provider-specific behavior behind a stable payment contract.
 
-Possible change path:
+A typical change may include:
 
-1. Add provider-specific implementation inside `Payments.Api`.
-2. Keep the existing payment API stable.
-3. Add configuration or routing rules for provider selection.
-4. Extend tests around payment success, failure, and timeout behavior.
-5. Deploy `Payments.Api` independently if the contract stays compatible.
+- adding a provider adapter
+- introducing provider selection and configuration
+- mapping provider outcomes to stable domain outcomes
+- extending timeout, retry, and idempotency behavior
+- adding provider-specific health and telemetry
+- updating payment and workflow tests
 
-Benefits:
+The workflow coordinator can remain unchanged when the contract and semantics remain stable.
 
-- `Orders.Api` may remain unchanged.
-- Provider-specific complexity stays inside the payment service.
-- Rollback can target `Payments.Api`.
+The change spreads when a provider introduces new states, asynchronous confirmation, different idempotency rules, or an ambiguous timeout model. At that point, order state, compensation, client expectations, and operational procedures may also need to evolve.
 
-Risks:
+### Virtual actors
 
-- provider behavior may require new payment states
-- timeout or retry behavior may differ by provider
-- contract compatibility must be preserved for existing callers
-- scenario result semantics may need to change if payment outcomes change
+Provider-specific behavior can remain behind a payment actor or a collaborator owned by that actor boundary.
 
-#### Virtual actors
+A typical change may include:
 
-A new payment provider likely changes `PaymentAccountGrain` or payment abstractions behind that grain.
+- adding a provider adapter
+- introducing provider selection into configuration or actor state
+- preserving the actor interface where possible
+- adding provider-specific workflow transitions
+- evolving persistent state
+- updating actor and multi-actor workflow tests
 
-Possible change path:
+The workflow actor can remain stable when the payment actor preserves its contract and outcome semantics.
 
-1. Add provider-specific behavior behind the payment grain.
-2. Keep grain method contracts stable where possible.
-3. Add provider selection to configuration or payment state.
-4. Update grain tests and workflow tests.
-5. Validate persisted state compatibility.
-
-Benefits:
-
-- payment behavior remains close to payment-related state
-- order workflow can stay stable if the payment grain contract stays stable
-
-Risks:
-
-- new provider state may require grain state evolution
-- grain interface changes can affect all callers
-- provider-specific retries and timeouts can complicate actor workflow state
+The change spreads when provider state must be persisted, confirmation becomes asynchronous, or existing actors need migration to a new state model.
 
 ## Changing inventory reservation rules
 
-Inventory rules are a strong ownership test because inventory is the core stateful invariant in the sample.
+Inventory rules are a strong ownership test because they protect a central invariant.
 
-Examples of future rule changes include:
+Examples include:
 
-- reserve by available stock only
-- reserve by warehouse location
-- reserve with allocation priority
-- reserve with backorder support
-- reserve with expiration
-
-### Microservices
-
-Inventory rules should primarily change inside `Inventory.Api` because that service owns inventory state.
-
-If the API contract remains stable, `Orders.Api` can keep calling the same reservation endpoint. If response semantics change, callers, tests, UI wording, and documentation must be updated.
-
-Maintenance risk appears when inventory rules leak into callers. If `Orders.Api` duplicates inventory availability logic, both services must be changed together, increasing the chance of inconsistency.
-
-### Virtual actors
-
-Inventory rules should primarily change inside `InventoryItemGrain(productId)` because the grain owns product inventory identity.
-
-The colocated state and behavior can simplify rule changes, but persistent grain state must remain compatible.
-
-Possible actor-specific changes include:
-
-- adding reservation expiration fields to grain state
-- adding allocation policy to grain behavior
-- splitting one product identity into product-location identities
-- changing how rejection reasons are produced
-
-Changing actor identity strategy is a major maintenance concern once persisted state exists.
-
-## Adding a new workflow step
-
-Example: add a fraud check after payment authorization but before order completion.
+- reservation by warehouse or location
+- allocation priority
+- backorders
+- reservation expiration
+- quotas or customer priority
+- partial allocation
 
 ### Microservices
 
-Likely changes include:
+The inventory capability should remain the primary owner of reservation rules. Callers should request a reservation rather than reproduce availability logic.
 
-- add `Fraud.Api` or extend an existing risk service
-- update `Orders.Api` orchestration
-- define new compensation behavior if fraud fails after inventory or payment steps
-- update gateway timelines and scenario docs
-- update contract and integration tests
+A compatible service contract can contain many internal rule changes. The change becomes broader when request inputs, result meanings, consistency guarantees, or reservation lifecycle behavior change.
 
-The explicit service boundary is clear, but orchestration complexity grows as more services participate.
+Maintenance risk increases when inventory rules leak into workflow coordinators, UI code, reporting services, or other consumers. Duplicated decision logic creates lockstep change and inconsistent outcomes.
 
 ### Virtual actors
 
-Likely changes include:
+The inventory actor should remain the primary owner of identity-local reservation state and rules.
 
-- add a fraud-check grain or domain collaborator
-- update `OrderGrain(orderId)` workflow
-- decide whether fraud state belongs to order, customer/account, or a separate identity
-- update grain tests and scenario regression tests
+Colocating state and behavior can simplify many rule changes, but persistent state must remain readable and migratable. New rules may require:
 
-The workflow may remain easier to read inside `OrderGrain(orderId)`, but the grain can become too large if too many responsibilities accumulate there.
+- reservation-expiration state
+- policy-version state
+- reminders or timers
+- a different actor key
+- separate product-location identities
+- coordination across several actors
+
+Changing actor identity is a major migration decision once durable state and callers depend on the original key strategy.
+
+## Adding a workflow step
+
+Consider adding fraud or risk evaluation after payment authorization but before completion.
+
+### Microservices
+
+A new workflow step can require:
+
+- a new service or an extension to an existing capability
+- a new network contract
+- workflow-coordinator changes
+- new failure and compensation policy
+- deployment and compatibility planning
+- additional traces, metrics, health checks, and alerts
+- integration and end-to-end tests
+
+The explicit service boundary makes responsibility visible, but the workflow becomes more distributed as more capabilities participate.
+
+A new service should be introduced only when it represents a meaningful ownership or operational boundary. A new class, module, or internal collaborator may be sufficient when independent deployment has no clear value.
+
+### Virtual actors
+
+A new workflow step can require:
+
+- a new actor or actor collaborator
+- workflow-actor changes
+- a decision about which identity owns the new state
+- new cross-actor failure behavior
+- state evolution
+- additional actor and workflow tests
+
+Keeping the workflow in one actor can make it easy to follow, but that actor can become an oversized orchestrator. A new actor should own a meaningful identity or invariant rather than exist only to split code mechanically.
 
 ## Changing timeout policy
 
-The current sample treats payment timeout as failed:
+A deterministic sample may treat timeout as failure and compensate immediately. A production workflow may instead enter a pending state and reconcile the outcome later.
 
-- inventory is released
-- order is rejected
-- reason is `PaymentTimeout`
-
-A future production-style policy might instead mark the order as pending payment confirmation.
+This is a business-semantic change, not only a resilience setting.
 
 ### Microservices
 
-Changing timeout policy may require:
+A pending-state policy may require:
 
-- new order state
-- new database fields
-- retry or reconciliation process
-- operational alerts for stuck pending orders
-- UI changes
-- API compatibility handling
-
-This is not just an implementation change. It changes business semantics.
+- new order states
+- durable workflow state
+- retry or reconciliation workers
+- idempotent downstream queries
+- database changes
+- new operational alerts
+- client and UI changes
+- compatibility with in-flight orders created by the previous policy
 
 ### Virtual actors
 
-Changing timeout policy may require:
+A pending-state policy may require:
 
-- new grain state fields
-- reminders or timers for reconciliation
-- new workflow transitions in `OrderGrain(orderId)`
-- state evolution for existing orders
-- UI and result contract updates
+- new actor-state fields
+- reminders, timers, or external scheduling
+- new workflow transitions
+- recovery behavior after reactivation
+- migration of existing actor state
+- client and UI changes
 
-The actor model can express long-running workflow state naturally, but policy design and state lifecycle still need explicit decisions.
+Actor state can express a long-running workflow naturally, but the organization still owns reconciliation policy, retention, observability, and terminal-state decisions.
 
 ## Changing idempotency semantics
 
-The duplicate request scenario demonstrates that idempotency is a first-class behavior.
+Idempotency is a behavior contract, not an implementation detail.
+
+Potential changes include:
+
+- key scope and format
+- retention period
+- request-mismatch handling
+- in-progress duplicate handling
+- replay of rejected or failed outcomes
+- archival and cleanup
+- ownership of generated identifiers
 
 ### Microservices
 
-Idempotency in `Orders.Api` requires safe coordination around idempotency keys.
+A service must atomically protect the mapping between an idempotency key and a logical result. Changes can affect APIs, persistence, concurrency behavior, cleanup jobs, and consumers that rely on safe retries.
 
-Potential future changes include:
-
-- idempotency key retention period
-- whether duplicate responses return the original result or a special duplicate result
-- whether duplicate rejected orders can be retried
-- how idempotency interacts with customer or product identity
-- whether idempotency records are archived
-
-Maintenance risks:
-
-- changing semantics can break clients that rely on safe retries
-- unique indexes catch duplicates but do not fully define user-facing behavior
-- concurrent duplicate submissions must remain safe
+A unique index prevents duplicate records, but it does not define the user-facing result or recovery policy by itself.
 
 ### Virtual actors
 
-Idempotency can be modeled through stable actor identity, such as one `OrderGrain(orderId)` per logical order.
+Stable actor identity can route duplicate requests to one logical owner. Changes to key strategy, retention, or replay behavior can affect actor identity, persisted state, callers, and migration tooling.
 
-Potential future changes include:
+Actor identity helps coordinate duplicates, but it does not automatically define whether requests are equivalent or how failed and in-progress outcomes should be replayed.
 
-- grain key strategy
-- idempotency retention
-- duplicate response semantics
-- order replay or recovery behavior
+## Changing result semantics
 
-Maintenance risks:
+Status, reason, count, and timeline meanings are semantic contracts.
 
-- changing grain key strategy is a major migration concern
-- persisted grain state must remain readable
-- callers must understand whether identity is generated by the client or server
+Examples of breaking semantic changes include:
 
-## Changing scenario result semantics
+- counting successful HTTP responses instead of unique logical orders
+- treating technical failures as business rejections
+- changing the meaning of idempotent response counts
+- renaming terminal reasons
+- changing timeout from rejected to pending
+- changing when compensation is considered complete
 
-The result model currently includes scenario-level metrics such as:
+A field can retain the same name and type while its meaning becomes incompatible.
 
-- total request submissions
-- unique successful orders
-- rejected submissions
-- idempotent duplicate responses
-- remaining inventory
-- elapsed time
-- reason
-- timeline events
+Treat result semantics as versioned behavior. Update contracts, consumers, tests, metrics, dashboards, and documentation together.
 
-These fields are part of the sample contract. Changing their meaning can be breaking even if property names stay the same.
+## Refactoring boundaries
 
-Examples:
+### Refactoring microservices
 
-- changing completed-order metrics from unique logical orders to raw successful HTTP responses would break duplicate request interpretation
-- changing rejected-submission metrics from logical rejected submissions to failed technical calls would confuse scenario results
-- changing reason strings would break tests, docs, and UI interpretation
+Refactoring inside one service is usually lower risk when public contracts, persistence compatibility, and observable behavior remain stable.
 
-Maintenance rule:
+Moving responsibility across services can require:
 
-> Treat scenario metrics as stable semantic contracts, not just UI labels.
+- contract changes
+- data migration
+- ownership transfer
+- deployment sequencing
+- consumer updates
+- temporary compatibility paths
+- changes to operational ownership
+
+A service extraction or merge should be driven by ownership, coupling, scaling, or lifecycle needs rather than code size alone.
+
+### Refactoring virtual actors
+
+Refactoring inside one actor implementation is usually lower risk when interfaces, identity, persisted state, and scheduling assumptions remain stable.
+
+Moving responsibility across actor boundaries can require:
+
+- key migration
+- state migration
+- interface and message changes
+- workflow compatibility
+- placement and performance review
+- temporary forwarding or compatibility logic
+
+Actor extraction or consolidation should be driven by identity, invariant, workload, and ownership needs rather than class size alone.
+
+## Testing maintenance
+
+Tests must evolve with behavior without becoming coupled to incidental implementation details.
+
+### Microservices test focus
+
+Useful coverage includes:
+
+- service API and message compatibility
+- persistence and migration behavior
+- concurrency and idempotency races
+- compensation
+- timeout and retry policy
+- integration and end-to-end workflows
+- observability and health behavior where operationally significant
+
+### Virtual actor test focus
+
+Useful coverage includes:
+
+- actor behavior and identity
+- actor-interface compatibility
+- persistent-state serialization and migration
+- scheduling, concurrency, and reentrancy assumptions
+- activation and recovery
+- multi-actor workflows
+- cluster and persistence integration
+
+### Shared behavioral tests
+
+Scenario or acceptance tests should protect externally visible semantics across both implementations:
+
+- terminal status and reason
+- unique logical outcomes
+- rejection counts
+- idempotent replay
+- remaining state
+- compensation results
+
+This allows internal designs to evolve independently while preserving the comparison contract.
+
+## Observability maintenance
+
+Observability must evolve with the system.
+
+When changing behavior, review:
+
+- activity and span names
+- structured logging event IDs and property names
+- metric names and bounded dimensions
+- health checks
+- topology definitions and dependency requirements
+- dashboards and queries
+- operational guidance
+
+Telemetry is an operational contract. Renaming a metric or log property can break dashboards and investigations even when business behavior remains correct.
+
+Avoid preserving poor telemetry indefinitely, but migrate it deliberately and document the transition.
+
+## Documentation maintenance
+
+Documentation should change with behavior, not after it becomes inaccurate.
+
+Update the narrowest relevant document when changing:
+
+- architecture or ownership boundaries
+- scenario behavior or defaults
+- result semantics
+- hosting and local validation
+- health and topology interpretation
+- observability
+- release or compatibility guidance
+- known limitations and scope
+
+Avoid repeating the same detail across the root README, project READMEs, and several design documents. The root README should orient readers, project READMEs should explain implementation areas, and numbered documents should contain the deeper architectural narrative.
 
 ## Team ownership implications
 
 ### Microservices
 
-Microservices map naturally to team ownership when service boundaries align with business capabilities.
+Healthy ownership means a team can own a capability end to end, including behavior, data, contracts, deployment, support, and deprecation.
 
-Good ownership shape:
+Warning signs include:
 
-- one team owns inventory rules and `Inventory.Api`
-- one team owns payment integration and `Payments.Api`
-- one team owns ordering workflow and `Orders.Api`
-
-Risky ownership shape:
-
-- many teams frequently change the same service
-- one business rule is split across several services without clear ownership
-- database ownership is unclear
-- every feature requires coordinated deployment across all services
+- many teams changing the same service
+- one rule spread across several services
+- unclear database ownership
+- frequent coordinated releases
+- incidents that have no clear owner
 
 ### Virtual actors
 
-Virtual actors map naturally to ownership around domain identities and workflows.
+Healthy ownership means a team can own an actor-backed domain area, including identity, interfaces, state, persistence, runtime behavior, and operational visibility.
 
-Good ownership shape:
+Warning signs include:
 
-- one team owns order workflow grains
-- one team owns inventory grains
-- one team owns payment grains
-- grain interfaces are treated as contracts
+- actors becoming generic shared infrastructure
+- identity strategy changing without migration ownership
+- runtime knowledge concentrated in one person
+- grain families without a bounded-context owner
+- incidents requiring platform specialists for ordinary domain diagnosis
 
-Risky ownership shape:
+Ownership must follow the durable boundary, not merely the source-code folder.
 
-- grains become large procedural orchestrators with too many responsibilities
-- grain state schemas change without migration discipline
-- actor identity strategy changes after data exists
-- runtime and platform knowledge is concentrated in too few people
+## How this repository illustrates maintenance concerns
 
-## Refactoring considerations
+The repository provides a small illustration rather than a complete production evolution model.
 
-### Microservices
+The microservices implementation shows how an order workflow can change across `Orders.Api`, `Inventory.Api`, `Payments.Api`, their persistence boundaries, and shared contracts.
 
-Refactoring inside a service is relatively safe when public APIs and database compatibility are preserved.
+The virtual actor implementation shows how similar changes affect `OrderGrain(orderId)`, `InventoryItemGrain(productId)`, `PaymentAccountGrain(customerId)`, grain interfaces, persisted state, `Ordering.Api`, and `Ordering.Silo`.
 
-Refactoring across service boundaries is harder because it may require:
+The Workbench acceptance and scenario regression tests protect normalized outcomes while allowing the internal implementations to differ.
 
-- API changes
-- data migration
-- deployment sequencing
-- consumer updates
-- contract test updates
-
-### Virtual actors
-
-Refactoring inside a grain is relatively safe when grain interfaces and persisted state remain compatible.
-
-Refactoring actor boundaries is harder because it may require:
-
-- grain key migration
-- state migration
-- interface changes
-- workflow message compatibility
-- runtime deployment care
-
-## Testing maintenance
-
-Regression tests should evolve with scenario semantics.
-
-When changing behavior, update:
-
-- scenario regression tests
-- scenario guide expected results
-- release/versioning notes if semantics changed
-- UI wording if metrics changed
-- validation documentation if run behavior changed
-
-### Microservices test focus
-
-Recommended maintenance tests include:
-
-- service API contract tests
-- database compatibility tests
-- idempotency race tests
-- compensation tests
-- timeout policy tests
-- gateway scenario regression tests
-
-### Virtual actors test focus
-
-Recommended maintenance tests include:
-
-- grain behavior tests
-- Orleans test-cluster workflow tests
-- grain state serialization tests
-- activation and concurrency tests
-- timeout policy tests
-- gateway scenario regression tests
+The .NET Aspire AppHost provides the development composition and diagnostics environment. It is not a production release, migration, or operational blueprint.
 
 ## Maintenance checklist
 
 Before changing existing behavior, ask:
 
-- Which component owns the state being changed?
-- Which invariant is affected?
-- Does the change alter status, reason, or metric semantics?
-- Does the change require database state or grain state evolution?
-- Can old and new versions run at the same time?
-- Can the change be rolled back safely?
-- Do scenario regression tests need updates?
-- Do docs and README links need updates?
-- Does observability still expose enough information to diagnose failures?
+- Which component or identity owns the state?
+- Which invariant or workflow policy changes?
+- Does the change alter status, reason, count, or timeline semantics?
+- Does it change an API, message, or actor interface?
+- Does it require database or actor-state migration?
+- Can old and new versions coexist during rollout?
+- Can the change be rolled back after durable state is written?
+- Are retries and duplicate requests still safe?
+- Are compensation and ambiguous outcomes still observable?
+- Which focused and scenario-level tests must change?
+- Which telemetry and health definitions must change?
+- Which documentation should be updated?
+- Is the ownership boundary still appropriate after the change?
 
 ## Key takeaways
 
-- Maintenance complexity does not disappear; it moves to different boundaries.
-- Microservices make ownership and deployment boundaries explicit, but require strong contract and integration discipline.
-- Virtual actors make identity-based state ownership explicit, but require strong grain interface and state evolution discipline.
-- Semantic behavior is part of the contract and should be versioned, tested, and documented.
-- A good comparison must evaluate how the system changes over time, not only how the first version is built.
+- Maintenance complexity does not disappear, it moves to different boundaries
+- Microservices require contract, integration, data-ownership, and independent-service discipline
+- Virtual actors require identity, interface, state-evolution, runtime, and hot-identity discipline
+- A stable method signature or JSON shape does not guarantee semantic compatibility
+- Tests should protect externally visible behavior while allowing implementation evolution
+- Telemetry, health definitions, and documentation are part of maintainable system behavior
+- The quality of an architecture is visible in how safely it can change, not only in how cleanly the first version is built
+
+## Related documentation
+
+- [Microservices design](02-microservices-design.md)
+- [Virtual actors design](03-virtual-actors-design.md)
+- [Development comparison](04-development-comparison.md)
+- [Deployment comparison](05-deployment-comparison.md)
+- [Scaling comparison](06-scaling-comparison.md)
+- [Trade-offs](07-tradeoffs.md)
+- [Organizational scaling and architecture fit](08-organizational-scaling-and-architecture-fit.md)
+- [Scenario guide](12-scenario-guide.md)
+- [Release, versioning, and rollback](14-release-versioning-and-rollback.md)
+- [Observability and operations](16-observability-and-operations.md)
+- [Known limitations](17-known-limitations.md)

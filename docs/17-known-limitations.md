@@ -1,158 +1,152 @@
 # Known limitations and interpretation guide
 
-This document explains what the comparison sample does not prove, what is intentionally simplified, and how to interpret results responsibly.
+This document explains what the architecture workbench does not prove, which concerns are intentionally simplified, and how to interpret its results responsibly.
 
-The project is useful as an architecture comparison case study. It is not a production system, a production reference architecture, or a universal benchmark.
+The repository is a teaching and comparison tool. It is not a production system, a production reference architecture, or a controlled benchmark.
 
-## Summary
+## Comparison scope
 
-The sample is designed to compare architectural trade-offs around:
+The workbench is designed to make these concerns visible:
 
 - state ownership
 - inventory invariants
+- workflow coordination
 - idempotency
-- concurrency under contention
+- concurrency and contention
 - compensation
 - timeout policy
-- release and versioning concerns
-- operational diagnostics
+- compatibility and evolution
+- development observability and health
 
-The sample is not designed to prove that one architecture is always faster, simpler, safer, cheaper, or easier to operate than the other.
+It is not designed to prove that one architecture is always faster, simpler, safer, cheaper, easier to deploy, or easier to operate.
 
-## This is not a benchmark
-
-Elapsed times in the UI are useful for understanding local demo behavior, but they should not be interpreted as general production performance results.
-
-Local elapsed time is affected by:
-
-- machine performance
-- process startup state
-- local HTTP overhead
-- SQLite or local storage behavior
-- Orleans local runtime behavior
-- logging overhead
-- gateway orchestration shape
-- whether services are warm or cold
-- whether requests hit one hot identity or multiple independent identities
-
-A production benchmark would need:
-
-- controlled infrastructure
-- repeatable load profile
-- warmup period
-- statistical sampling
-- latency percentiles
-- throughput measurements
-- CPU, memory, and network metrics
-- database and storage metrics
-- realistic deployment topology
-- comparable scaling strategy for both designs
-
-This sample intentionally avoids presenting itself as that kind of benchmark.
-
-## Local topology affects results
-
-The microservices path and virtual actor path are not deployed in a production-equivalent topology.
-
-The microservices path includes explicit HTTP boundaries between services such as:
-
-- `Orders.Api`
-- `Inventory.Api`
-- `Payments.Api`
-
-The virtual actor path uses Orleans-style grain interactions behind `Ordering.Api`.
-
-This means local timing differences often reflect the sample topology and communication paths more than inherent architecture performance.
-
-A result such as:
-
-```text
-Microservices elapsed: 1300 ms
-Virtual Actors elapsed: 170 ms
-```
-
-should be read as:
-
-```text
-In this local sample topology, this scenario completed faster through the virtual actor path.
-```
-
-It should not be read as:
-
-```text
-Virtual actors are always faster than microservices.
-```
-
-## The comparison focuses on state ownership
-
-The strongest comparison dimension in this project is state ownership.
-
-The scenarios are designed to make these questions visible:
+The strongest comparison dimension is state ownership. The scenarios help readers ask:
 
 - Who owns inventory state?
 - Who protects the inventory invariant?
 - Who owns idempotency state?
-- Who owns order workflow decisions?
+- Who owns the order workflow decision?
 - Who coordinates compensation?
 - What happens when many requests target the same state identity?
 
-The project compares how the two styles express those responsibilities.
+The repository demonstrates how two architecture styles express those responsibilities. It does not compare every concern found in a production platform.
 
-The project does not attempt to compare every aspect of architecture, such as:
+## This is not a benchmark
 
-- team structure in a large organization
-- cloud cost at scale
-- multi-region replication
-- compliance requirements
-- event-driven integrations
-- data warehouse integration
-- zero-downtime production deployment pipelines
+Elapsed times in the Workbench UI are local observations. They help explain the sample topology, but they are not general performance results.
 
-## Simplified persistence model
+Local timings can be affected by:
 
-The sample uses lightweight local persistence patterns suitable for a demo.
+- machine performance
+- process and runtime warmup
+- local HTTP overhead
+- SQLite behavior
+- Orleans activation and scheduling
+- logging, tracing, and metric overhead
+- gateway orchestration
+- resource contention
+- whether requests target one hot identity or many independent identities
 
-A production implementation would need stronger consideration of:
+A credible performance study would require:
 
-- database migrations
-- backup and restore
+- controlled and repeatable infrastructure
+- defined workloads and warmup
+- several capacity levels
+- latency distributions and percentiles
+- throughput and error rates
+- CPU, memory, network, and storage measurements
+- equivalent persistence and consistency assumptions
+- documented runtime and deployment configuration
+- repeated statistical analysis
+
+A local result such as one implementation completing a scenario faster means only that it completed faster in that run and topology. It must not be generalized into an architectural performance claim.
+
+## The development topology affects observations
+
+The repository uses a deliberately small .NET Aspire development topology.
+
+The microservices path crosses explicit HTTP and persistence boundaries involving `Workbench.Gateway`, `Orders.Api`, `Inventory.Api`, and `Payments.Api`.
+
+The virtual actor path crosses `Workbench.Gateway`, `Ordering.Api`, `Ordering.Silo`, Orleans grain calls, and grain-state persistence.
+
+These paths are not production-equivalent deployments. Their local timing, resource use, failure behavior, and operational surface reflect the sample composition and configuration.
+
+The Aspire AppHost is the supported development composition. It is not presented as a production deployment blueprint.
+
+## Simplified domain model
+
+The order workflow is intentionally narrow. It models:
+
+- inventory reservation
+- payment authorization
+- order completion or rejection
+- selected compensation behavior
+- concurrent and duplicate submissions
+
+It does not model many concerns common in real commerce or workflow systems, including:
+
+- pricing and promotions
+- tax
+- fulfillment and shipping
+- warehouse selection
+- fraud and risk evaluation
+- asynchronous confirmation
+- cancellation and refund lifecycles
+- customer communication
+- manual review
+- reconciliation and repair workflows
+
+The small domain keeps state ownership and coordination visible. It should not be mistaken for a complete order-management model.
+
+## Simplified persistence
+
+The repository uses SQLite-based persistence suitable for local development and deterministic comparison.
+
+A production data platform would require deliberate decisions for:
+
+- durable database hosting
 - transaction isolation
 - optimistic or pessimistic concurrency
+- schema and state migration
+- backup and restore
+- retention and archival
+- reconciliation
 - outbox and inbox patterns
-- idempotency record retention
-- schema evolution
-- data retention and archival
+- multi-instance coordination
 - disaster recovery
+- regional replication
+- storage performance and capacity
 
-The sample demonstrates the shape of state ownership, not a complete production data platform.
+The sample demonstrates ownership and state transitions. It does not provide a production persistence strategy.
 
-## Simplified payment model
+## Simplified payment behavior
 
-The payment scenarios are intentionally simplified.
+Payment behavior is deterministic so scenario outcomes remain understandable.
 
-The sample models:
+The workbench models:
 
-- successful payment authorization
-- explicit payment failure
-- payment timeout treated as failure for demo determinism
+- successful authorization
+- explicit authorization failure
+- timeout treated as failed authorization
 
-Real payment systems often require more complex handling:
+A real payment system may require:
 
-- asynchronous provider callbacks
-- authorization versus capture
-- cancellation and refund flows
-- provider-specific timeout behavior
-- reconciliation jobs
-- duplicate provider requests
+- provider-specific idempotency
+- asynchronous callbacks
+- authorization and capture separation
 - settlement delays
+- cancellation and refund flows
 - fraud checks
+- provider reconciliation
+- duplicate provider responses
 - manual review
+- ambiguous and late outcomes
 
-The sample uses deterministic payment behavior so the architecture comparison remains clear.
+The payment components are comparison collaborators, not payment-provider integrations.
 
-## Timeout behavior is simplified
+## Simplified timeout and compensation policy
 
-The payment timeout after reservation scenario treats timeout as failure:
+The payment-timeout scenario uses this deterministic policy:
 
 ```text
 reserve inventory
@@ -161,103 +155,165 @@ release inventory
 reject order
 ```
 
-This is intentionally simple and deterministic.
+In a real system, timeout is ambiguous. The remote operation may have completed after the caller stopped waiting.
 
-In production, timeout is ambiguous. A payment provider might eventually complete the operation even after the caller times out. A production system might choose a different policy:
+A production workflow might instead use:
 
 ```text
 reserve inventory
 payment times out
 mark order pending confirmation
-reconcile later
-complete or reject after confirmation
+reconcile payment outcome
+complete or compensate after confirmation
 ```
 
-That more realistic policy introduces additional lifecycle complexity. The sample documents the ambiguity but does not implement the full pending and reconciliation lifecycle.
+That policy requires durable workflow state, reconciliation, retry rules, retention, alerts, and operational ownership.
 
-## No full distributed tracing backend
+The sample also assumes that inventory compensation succeeds. It does not implement compensation retry, repair, or reconciliation when release fails.
 
-The sample uses `X-Correlation-ID` for lightweight correlation.
+## Simplified concurrency model
 
-This is useful for local diagnostics, but it is not a full tracing platform.
+The scenarios demonstrate correct inventory protection and idempotent duplicate handling under controlled local concurrency.
 
-Production applications should generally use end-to-end OpenTelemetry-based observability. A production-grade observability stack would likely include:
+They do not prove correctness under every combination of:
 
-- W3C Trace Context
-- .NET `Activity` and `ActivitySource`
-- OpenTelemetry instrumentation
-- trace export
-- metrics export
-- structured log aggregation
-- dashboards
-- alerting
+- several service instances
+- several Orleans silos
+- process or silo failure during a workflow
+- database failover
+- network partitions
+- delayed or reordered messages
+- retries from external clients
+- cross-region traffic
+- extreme hot-key or hot-identity load
+
+The repository intentionally avoids a deliberately unsafe race-condition comparison. Comparing a broken implementation with a correct one would demonstrate an anti-pattern, not provide a fair architecture comparison.
+
+## Simplified idempotency lifecycle
+
+The duplicate-request scenario uses one controlled order identity and idempotency key.
+
+A production idempotency design must also define:
+
+- key scope and ownership
+- request-equivalence rules
+- behavior for in-progress duplicates
+- replay of failed or rejected outcomes
+- result retention
+- cleanup and archival
+- multi-instance coordination
+- restart and recovery behavior
+- abuse and resource-exhaustion protection
+
+The sample demonstrates the observable requirement that one logical request must not create several logical orders or reserve inventory several times.
+
+## Development observability, not a production platform
+
+The repository includes meaningful development observability:
+
+- W3C trace context
+- .NET `Activity` and `ActivitySource` instrumentation
+- OpenTelemetry traces and metrics
+- structured logging and `X-Correlation-ID` propagation
+- scenario activities and bounded metrics
+- custom trace collection and sampling
+- readiness and liveness endpoints
+- topology-aware Health page evaluation
+- Aspire dashboard views for resources, logs, traces, and metrics
+
+These capabilities are sufficient for understanding and diagnosing the local workbench. They do not provide a complete production observability platform.
+
+Production use would still require decisions for:
+
+- telemetry storage and retention
+- access control and tenant isolation
+- sensitive-data governance
+- alerting and escalation
 - service-level objectives
+- dashboard ownership
+- trace-sampling cost and policy
+- long-term metric and log compatibility
+- incident response
+- cross-region collection and availability
 
-The current implementation keeps observability understandable and low-friction for the demo. See [13-correlation-id-logging.md](13-correlation-id-logging.md) and [16-observability-and-operations.md](16-observability-and-operations.md) for the detailed observability guidance.
+The Aspire dashboard is a development diagnostics instrument. The Workbench Health page provides application-specific interpretation. Neither replaces a production monitoring and incident-management system.
+
+See [Correlation and trace context](13-correlation-id-logging.md) and [Observability and operations](16-observability-and-operations.md).
+
+## Health does not prove business correctness
+
+The repository distinguishes:
+
+- liveness
+- readiness
+- service availability
+- direct resource health
+- dependency health
+- group health
+
+These signals help diagnose the development topology. They do not prove that:
+
+- a workflow preserves its invariants
+- compensation completed correctly
+- an idempotency rule was respected
+- contracts are semantically compatible
+- the next request will succeed
+
+Health checks and scenario validation answer different questions. Both are necessary for the workbench, and neither substitutes for the other.
+
+## Topology is explanatory
+
+The Workbench Topology page is a text-based explanation of the intended architecture. It does not discover the production estate or prove that a displayed dependency is currently reachable.
+
+Live topology-aware observations belong on the Health page. Detailed runtime resources and telemetry belong in the Aspire dashboard.
+
+The shared topology model is intentionally small and configured for this repository. A production topology system would need broader discovery, ownership, versioning, access control, and lifecycle rules.
 
 ## No production security model
 
-The sample does not implement a full production security model.
+The repository does not implement a complete production security model.
 
-Production systems would require:
+Production use would require decisions for:
 
-- authentication
-- authorization
+- user authentication and authorization
 - service-to-service identity
-- secrets management
-- transport security
+- secrets and certificate management
+- transport and network security
 - input hardening
+- rate limiting and abuse protection
 - audit logging
+- data classification and privacy
 - least-privilege access
-- dependency scanning
-- secure deployment configuration
+- dependency and supply-chain security
+- secure configuration and deployment
 
-The current project focuses on architecture workflow behavior rather than security hardening.
+Security features should be designed around the actual deployment and threat model. Their absence from the sample must not be interpreted as a recommended production approach.
 
-## No production deployment platform
+## No production deployment or scaling platform
 
-The sample can be run locally and documented as a deployable architecture, but it is not a complete production platform.
+The repository uses Aspire for local development and composition. It does not provide a production deployment platform.
 
-A production deployment would need:
+Production deployment would require decisions for:
 
-- containerization or service packaging
-- environment-specific configuration
-- health checks
-- readiness and liveness probes
-- autoscaling rules
-- rolling deployment strategy
-- database migration pipeline
-- rollback procedures
+- service and silo packaging
+- environment configuration
+- networking and service discovery
+- ingress and load balancing
 - secrets management
-- monitoring and alerting
+- persistent storage
+- automated migrations
+- rolling upgrades
+- rollback and recovery
+- autoscaling
+- capacity planning
+- multi-region behavior
+- operational ownership
 
-The release and deployment documentation describes these concerns conceptually. The sample does not implement all of them.
-
-## No universal architecture winner
-
-The project should not be interpreted as proving that microservices or virtual actors are universally better.
-
-Microservices can be a strong fit when:
-
-- teams need independently deployable business capabilities
-- service boundaries align with ownership boundaries
-- technology independence matters
-- integration boundaries are explicit and stable
-- operational teams are comfortable with distributed systems
-
-Virtual actors can be a strong fit when:
-
-- identity-based state ownership is central
-- per-identity concurrency control is valuable
-- workflows are naturally expressed around stateful identities
-- runtime-managed activation and placement are acceptable
-- teams are comfortable with the actor runtime model
-
-Both styles can be implemented well or poorly.
+The deployment and scaling documents discuss these concerns architecturally. They do not prescribe one production platform.
 
 ## Scenario results are semantic contracts
 
-The scenario result fields are intentionally consistent:
+The normalized result fields have deliberate meanings:
 
 - total request submissions
 - unique successful orders
@@ -265,81 +321,115 @@ The scenario result fields are intentionally consistent:
 - idempotent duplicate responses
 - remaining inventory
 - elapsed time
-- reason
+- terminal reason
+- explanatory timeline
 
-Changing the meaning of these values is a behavior change.
+A compatible property name or type does not guarantee compatible behavior.
 
 For example:
 
-- `UniqueSuccessfulOrders` means unique successful logical orders, not raw successful HTTP responses.
-- `RejectedSubmissions` means rejected logical submissions, not every technical failure.
-- `IdempotentDuplicateResponses` means duplicate submissions that returned an existing logical result.
+- unique successful orders are logical orders, not successful HTTP responses
+- rejected submissions are logical rejections, not every technical failure
+- idempotent duplicate responses are repeated submissions that returned an established logical result
+- elapsed time is local feedback, not benchmark evidence
 
-These meanings are documented in [12-scenario-guide.md](12-scenario-guide.md) and protected by regression tests.
+These meanings are documented in the [Scenario guide](12-scenario-guide.md) and protected by acceptance and regression tests.
 
-## Race conditions are not intentionally demonstrated
-
-The sample intentionally demonstrates correct inventory protection under concurrent scenarios.
-
-It does not include an intentionally unsafe inventory race demo because that would compare a deliberately broken microservice path against a normal actor path. That can be educational in an anti-pattern lab, but it would be less fair as part of the main architecture comparison.
-
-The current comparison focuses on correct implementations and the different ways each style expresses correctness.
-
-## Known simplifications by scenario
+## Scenario-specific simplifications
 
 ### Successful order
 
-Simplified because payment always succeeds and no fulfillment, shipping, fraud, or asynchronous downstream processes are modeled.
+Payment always succeeds. Fulfillment, shipping, fraud, asynchronous downstream work, and post-order lifecycle are not modeled.
 
 ### Insufficient inventory
 
-Simplified because inventory rejection is immediate and deterministic. Real systems may support backorders, substitutions, allocation priority, or warehouse-specific stock.
+Rejection is immediate and deterministic. Backorders, substitutions, warehouse allocation, customer priority, and partial fulfillment are not modeled.
 
-### Payment failure with compensation
+### Payment failure compensation
 
-Simplified because compensation always succeeds. Real systems need to handle compensation failures and retries.
+Payment failure is explicit and inventory release succeeds. Compensation failure, retry, and reconciliation are not modeled.
 
 ### Payment timeout after reservation
 
-Simplified because timeout is treated as failure. Real systems may hold a pending state and reconcile later.
+Timeout is treated as failed authorization. Pending confirmation and late provider outcomes are not modeled.
 
 ### Concurrent orders
 
-Simplified because all orders use the same basic quantity and product model. Real systems may include warehouses, reservation expiry, customer priority, fraud checks, and pricing changes.
+Orders use a small product and quantity model. Reservation expiry, fairness, pricing changes, and multi-location stock are not modeled.
 
 ### Hot product contention
 
-Simplified because contention is limited to one product identity. Real systems may use partitioning, queues, sharding, cache layers, or product-specific scaling strategies.
+Contention is concentrated on one product identity. Repartitioning, admission queues, quotas, caches, and product-specific scaling strategies are not implemented.
 
 ### Duplicate request
 
-Simplified because duplicate submissions use a controlled scenario and one idempotency key. Real systems need idempotency retention policy, replay rules, client retry guidance, and protection across multiple service instances.
+Duplicate submissions use one controlled order identity and idempotency key. Retention, mismatched payloads, malicious key reuse, and distributed cleanup are not modeled.
 
-## How to interpret the project
+## No universal architecture winner
 
-Use the project to ask:
+Microservices can be a strong fit when:
+
+- business capabilities and team ownership are clear
+- independent deployment has real value
+- explicit integration contracts are acceptable
+- different capabilities need different scaling or release cycles
+- the organization can operate distributed services effectively
+
+Virtual actors can be a strong fit when:
+
+- state is naturally partitioned by durable identity
+- per-identity coordination supports important invariants
+- many independent identities dominate the workload
+- runtime-managed activation and placement are acceptable
+- the organization can operate and evolve the actor runtime and state model
+
+Both styles can be implemented well or poorly. Real systems can also combine them.
+
+## How to interpret the repository
+
+Use the repository to ask:
 
 - Where does state live?
 - Who owns each invariant?
-- How does concurrency behave under pressure?
+- How does concurrency behave under contention?
 - How is idempotency protected?
-- How are failures compensated?
-- How are releases versioned?
-- How would the system be diagnosed in production?
-- What maintenance burden moves where?
+- How are failure and compensation policies expressed?
+- Which compatibility boundaries must evolve safely?
+- What runtime evidence is available during diagnosis?
+- Which maintenance burden moves where?
 
-Do not use the project to claim:
+Do not use the repository to claim:
 
 - one architecture is always faster
 - one architecture is always simpler
+- one architecture is always cheaper
 - one architecture removes the need for testing
-- one architecture removes versioning concerns
+- one architecture removes versioning or migration concerns
 - one architecture removes operational complexity
+- local health or timing proves production readiness
 
 ## Key takeaways
 
-- The sample is a teaching and comparison tool, not a production reference architecture.
-- Timings are local-demo observations, not benchmark conclusions.
-- Correctness and state ownership are the most important comparison dimensions.
-- Timeout, payment, persistence, security, observability, and deployment are intentionally simplified.
-- Both microservices and virtual actors require release, versioning, testing, and operational discipline.
+- The repository is an architecture teaching and comparison tool, not a production reference architecture
+- Local timings are observations, not benchmark conclusions
+- State ownership, invariants, idempotency, and failure policy are the main comparison dimensions
+- Domain, persistence, payment, timeout, reconciliation, security, deployment, and scaling are intentionally simplified
+- The repository includes useful development observability, but not a production telemetry and incident-management platform
+- Health and topology views support understanding and diagnosis, they do not prove business correctness or production readiness
+- Both microservices and virtual actors require deliberate compatibility, testing, operations, and maintenance
+
+## Related documentation
+
+- [Problem](01-problem.md)
+- [Microservices design](02-microservices-design.md)
+- [Virtual actors design](03-virtual-actors-design.md)
+- [Deployment comparison](05-deployment-comparison.md)
+- [Scaling comparison](06-scaling-comparison.md)
+- [Trade-offs](07-tradeoffs.md)
+- [Organizational scaling and architecture fit](08-organizational-scaling-and-architecture-fit.md)
+- [Scenario guide](12-scenario-guide.md)
+- [Correlation and trace context](13-correlation-id-logging.md)
+- [Release, versioning, and rollback](14-release-versioning-and-rollback.md)
+- [Maintenance and evolution](15-maintenance-and-evolution.md)
+- [Observability and operations](16-observability-and-operations.md)
+- [Out of scope](18-out-of-scope.md)

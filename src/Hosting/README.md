@@ -6,7 +6,7 @@ This folder contains the shared .NET Aspire hosting projects for the **Microserv
 
 ### `Hosting.AppHost`
 
-Defines and runs the distributed application model. It registers the Workbench, microservices, and virtual actor projects; supplies Aspire-managed service endpoints; configures health checks and startup dependencies; and publishes the observability topology used by the Workbench UI.
+Defines and runs the distributed application model. It registers the Workbench, microservices, and virtual actor projects, supplies Aspire-managed service endpoints, configures health checks and startup dependencies; and publishes the observability topology used by the Workbench UI.
 
 See [`Hosting.AppHost/README.md`](Hosting.AppHost/README.md) for the application model, topology, configuration, and local-run guidance.
 

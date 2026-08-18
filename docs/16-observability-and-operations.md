@@ -1,371 +1,462 @@
 # Observability and operations
 
-This document explains how to operate, diagnose, and reason about the comparison sample at runtime.
+Observability should help operators understand what a distributed system is doing, why it produced a particular outcome, and where responsibility for that outcome belongs.
 
-Correlation mechanics are covered separately in [13-correlation-id-logging.md](13-correlation-id-logging.md). This document focuses on the broader operational view: what to observe, how to diagnose scenario behavior, which runtime dimensions matter, and how the microservices and virtual actor implementations differ operationally.
+Microservices and virtual actor systems need the same fundamental signals:
 
-## Production observability direction
+- logs that explain discrete events and decisions
+- traces that connect causally related operations
+- metrics that summarize behavior over time
+- health signals that describe current operational state
+- domain-aware validation that confirms business invariants
 
-Production applications should generally use end-to-end OpenTelemetry-based observability.
+The architectures differ in where those signals originate and how operators interpret them. Microservices emphasize service, network, and persistence boundaries. Virtual actors emphasize runtime, identity, activation, placement, and actor-state boundaries.
 
-A production-grade implementation should correlate traces, logs, and metrics across the whole request path:
+This document discusses the broader real-world operational model and then explains how the repository illustrates it through .NET Aspire, OpenTelemetry, shared health and topology models, and the Workbench UI.
 
-- UI or external entry point
-- gateway
-- backend APIs
-- microservice-to-microservice HTTP calls
-- actor runtime boundaries
-- grain workflow execution
+## Operational goals
+
+A useful observability model should help answer several categories of questions.
+
+### Request and workflow questions
+
+- Which external action started the workflow?
+- Which services, actors, stores, and dependencies participated?
+- Which operation failed or became slow?
+- Was the workflow completed, rejected, compensated, left pending, or abandoned?
+- Did retries or duplicate delivery change the logical result?
+
+### State and correctness questions
+
+- Which component owned the affected state?
+- Which invariant was being protected?
+- Was inventory reserved or released exactly as intended?
+- Did duplicate requests create more than one logical result?
+- Did persisted state remain compatible after restart or deployment?
+
+### Runtime and capacity questions
+
+- Which service, actor identity, partition, database, or dependency is the bottleneck?
+- Is load evenly distributed?
+- Are one or more identities disproportionately hot?
+- Are retries, timeouts, or queue growth amplifying load?
+- Is capacity being added at the actual constraint?
+
+### Release and recovery questions
+
+- Did behavior change after a deployment?
+- Are old and new versions interoperating safely?
+- Can incomplete work resume after restart?
+- Is rollback compatible with current durable state?
+- Is reconciliation required for ambiguous outcomes?
+
+No single signal answers all of these questions. Observability requires correlation across technical telemetry and business semantics.
+
+## Signals and their responsibilities
+
+### Logs
+
+Logs record discrete events, decisions, and exceptions. Structured logs should use stable message templates and property names so events can be queried across services and runtime components.
+
+Useful properties can include:
+
+- service or component name
+- operation name
+- scenario or workflow kind
+- normalized outcome
+- correlation, trace, and span identifiers
+- bounded reason or status values
+- retry or compensation outcome
+
+Logs should not become an uncontrolled copy of business data. Avoid recording credentials, tokens, connection strings, complete payloads, personal data, idempotency keys, or persisted state unless an explicit data-handling policy requires and protects those values.
+
+### Distributed traces
+
+Traces connect related operations and show causal relationships and latency across process and runtime boundaries.
+
+A useful trace can reveal:
+
+- the entry request
+- gateway or API processing
+- outgoing HTTP calls
+- actor-runtime calls
 - persistence operations
-- background processing, if introduced later
+- retries and timeouts
+- compensation
+- terminal status
 
-A production implementation would typically use W3C Trace Context, .NET `Activity` and `ActivitySource`, OpenTelemetry instrumentation, structured logs correlated with trace and span identifiers, metrics, exporters, dashboards, and alerts.
+Trace context should propagate through every supported transport. W3C trace context and .NET `Activity` provide the foundation, while OpenTelemetry instrumentation collects and exports the resulting activity data.
 
-The local sample intentionally uses a lightweight `X-Correlation-ID` mechanism instead. That keeps the repository easy to run and keeps the focus on architecture comparison rather than observability platform setup.
+A trace explains one execution. It does not replace aggregate metrics or business invariant tests.
 
-## Summary
+### Metrics
 
-The sample uses lightweight header-based correlation for local diagnostics. The UI generates a correlation ID for a scenario run, sends it through `X-Correlation-ID`, and displays it next to the completed run summary.
+Metrics summarize behavior over time and should use bounded dimensions.
 
-That mechanism is useful for local diagnostics and for explaining how correlation works. It is not intended to be a replacement for production-grade tracing.
+Useful metric categories include:
 
-The broader operational goal is to understand whether each architecture implementation preserves the same scenario behavior, protects the same invariants, and exposes enough diagnostic information to explain unexpected results.
+- request and workflow duration
+- completed, rejected, failed, and canceled operations
+- payment timeout and compensation counts
+- duplicate submissions and idempotent responses
+- dependency latency and error rates
+- resource saturation
+- actor activation and hot-identity indicators
+- health-state transitions
 
-## Diagnostic goals
+Do not use customer, product, order, actor, or idempotency identifiers as metric dimensions. High-cardinality investigation belongs in governed logs and traces.
 
-A scenario run should answer these operational questions:
+### Health
 
-- Which UI action triggered this run?
-- Which gateway request handled this run?
-- Which backend calls belong to the same run?
-- Which architecture path was executed?
-- Which product, order, and idempotency key were involved?
-- Which state owner accepted, rejected, reserved, released, or completed work?
-- Did unique successful, rejected, and idempotent duplicate response counts match the expected scenario behavior?
-- Did final inventory preserve the scenario invariant?
-- Did the observed timeline match the expected workflow sequence?
+Health checks answer whether a component is alive, ready, reachable, or dependent on a failing resource. They do not prove that business behavior is correct.
 
-The most important operational questions are about state ownership, invariant protection, and failure policy.
+A useful model distinguishes:
 
-## Correlation ID usage
+- **Liveness**, which indicates whether a process is running and should generally avoid transient downstream checks
+- **Readiness**, which indicates whether a resource can accept work and can include required dependency or persistence checks
+- **Availability**, which indicates whether a configured endpoint or resource can currently be reached
+- **Evaluated health**, which combines direct observations with dependency and grouping rules
 
-The correlation ID is diagnostic metadata. It is intentionally not part of scenario request or result contracts.
+Health should be actionable. A status without an explanation, affected dependency, timestamp, or ownership context is difficult to use during diagnosis.
 
-The header name is:
+## Correlation and context propagation
 
-```text
-X-Correlation-ID
-```
+Correlation connects logs, traces, metrics, and workflow results without turning diagnostic identifiers into domain state.
 
-Example value:
+The primary causal context should come from distributed tracing. A human-readable correlation value can complement trace context when it improves log search or support workflows.
 
-```text
-run-9f2f4a0f1c17482a8a0cc0c45c6d9a7e
-```
+Diagnostic context should remain outside business request and result contracts unless a business requirement explicitly makes it part of the domain.
 
-For details on why the sample uses this custom header and why production systems should normally use OpenTelemetry, see [13-correlation-id-logging.md](13-correlation-id-logging.md).
+See [Correlation and trace context](13-correlation-id-logging.md) for the repository's implementation and validation guidance.
 
-## How to trace one scenario run
+## Microservices operations
 
-1. Run a scenario from the UI.
-2. Copy the correlation ID shown in the completed run summary.
-3. Search gateway logs for that exact value.
-4. Identify which architecture path ran.
-5. Search backend logs for the same correlation ID.
-6. Compare the UI timeline with service or actor logs.
-7. Check that final result metrics match the expected scenario behavior in [12-scenario-guide.md](12-scenario-guide.md).
+Microservices expose operational boundaries directly through independently running services and their dependencies.
 
-For the microservices path, inspect:
+### Useful signals
 
-- `Comparison.Gateway`
-- `Orders.Api`
-- `Inventory.Api`
-- `Payments.Api`
+Operators commonly need to correlate:
 
-For the virtual actor path, inspect:
+- ingress or gateway requests
+- downstream HTTP or messaging calls
+- service-owned database operations
+- retry and timeout behavior
+- version and deployment state
+- readiness and dependency health
+- compensation and reconciliation workflows
 
-- `Comparison.Gateway`
-- `Ordering.Api`
-- grain workflow logs, when enabled
+### Common operational risks
 
-The diagnostic flow can be summarized like this:
+- long synchronous dependency chains
+- retry amplification
+- version skew
+- partial deployment
+- shared database or infrastructure bottlenecks
+- contract mismatch
+- distributed idempotency races
+- compensation failure
+- unclear incident ownership
 
-```mermaid
-flowchart LR
-    Result[Scenario result in UI]
-    Correlation[Correlation ID]
-    GatewayLogs[Gateway logs]
-    BackendLogs[Backend or actor logs]
-    StateOwner[State owner]
-    ScenarioGuide[Expected result in 12-scenario-guide.md]
+### Diagnostic advantage
 
-    Result --> Correlation
-    Correlation --> GatewayLogs
-    Correlation --> BackendLogs
-    BackendLogs --> StateOwner
-    StateOwner --> ScenarioGuide
-    Result --> ScenarioGuide
-```
+Failures often appear at explicit service, network, or persistence boundaries. This can make ownership clear when service responsibilities and telemetry are well designed.
 
+### Diagnostic cost
 
-## Important diagnostic dimensions
+One business workflow can produce signals across many services, stores, and platforms. Without propagated context and consistent terminology, operators must reconstruct the workflow manually.
 
-The most useful diagnostic dimensions are:
+## Virtual actor operations
 
-- `CorrelationId`
-- `Scenario`
-- `Architecture`
-- `ProductId`
-- `OrderId`
-- `IdempotencyKey`
-- `TotalRequestSubmissions`
-- `UniqueSuccessfulOrders`
-- `RejectedSubmissions`
-- `IdempotentDuplicateResponses`
-- `RemainingInventory`
-- `ElapsedMilliseconds`
-- `Reason`
+Virtual actor systems expose a different operational model. Actor identity and runtime behavior become central diagnostic dimensions.
 
-Not every component logs all of these today. The correlation ID is the minimum common dimension that links a run together.
+### Useful signals
 
-The scenario terminology should stay consistent across UI result cards, logs, tests, and documentation.
+Operators commonly need visibility into:
 
-## Scenario-specific operational notes
+- API-to-cluster connectivity
+- cluster membership and silo lifecycle
+- actor activation, placement, and deactivation
+- actor-call latency and failure
+- hot identities and skewed placement
+- persistence reads and writes
+- reminders, timers, and reactivation
+- actor-state compatibility
+- reentrancy and request-scheduling behavior
+
+### Common operational risks
+
+- hot actors
+- uneven placement
+- activation churn
+- persistence saturation
+- runtime-version incompatibility
+- actor-state migration failure
+- long call chains across identities
+- runtime behavior that is poorly understood by operators
+- unclear ownership of actor families
+
+### Diagnostic advantage
+
+Stable actor identity can provide a natural way to reason about state ownership and identity-local workflows.
+
+### Diagnostic cost
+
+Operators need runtime-specific knowledge. Fewer explicit HTTP service boundaries do not remove distributed execution, persistence, placement, compatibility, or failure concerns.
+
+## Scenario-aware operations
+
+Technical telemetry becomes more useful when it can be interpreted through stable business semantics.
+
+For an order workflow, useful bounded dimensions include:
+
+- scenario kind
+- implementation or service-client name
+- normalized status
+- normalized reason
+- submission, completion, rejection, and idempotent-response counts
+- duration
+
+Identifiers such as order, product, customer, and idempotency key can be useful for targeted investigation, but they should not be metric dimensions and should be logged only under an explicit privacy and retention policy.
 
 ### Successful order
 
-Expected operational shape:
+Expected evidence includes one reservation, one payment authorization, one completed logical order, and the expected inventory reduction.
 
-- one request submission
-- one inventory reservation
-- one payment authorization
-- one completed order
-- inventory reduced by requested quantity
-
-Unexpected signs:
-
-- payment called before inventory reservation
-- multiple reservations for one request submission
-- completed order with unchanged inventory
-- missing correlation ID in backend logs
+Unexpected evidence includes repeated reservation, payment before reservation, completed status with unchanged inventory, or mismatched terminal state.
 
 ### Insufficient inventory
 
-Expected operational shape:
+Expected evidence includes reservation rejection, no successful payment authorization, unchanged inventory, and reason `InsufficientInventory`.
 
-- one request submission
-- inventory rejects reservation
-- payment is not attempted
-- inventory remains unchanged
-- reason is `InsufficientInventory`
+### Payment failure compensation
 
-Unexpected signs:
+Expected evidence includes reservation, payment failure, release, rejection, and restored inventory.
 
-- payment authorization appears in logs
-- inventory changes despite rejection
-- reason is not `InsufficientInventory`
-
-### Payment failure with compensation
-
-Expected operational shape:
-
-- inventory is reserved
-- payment explicitly fails
-- inventory reservation is released
-- order is rejected
-- final inventory equals initial stock
-- reason is `PaymentFailed`
-
-Unexpected signs:
-
-- missing release after payment failure
-- completed order after payment failure
-- final inventory lower than initial stock
+Missing or failed compensation is more important operationally than the original payment failure because it leaves business state inconsistent.
 
 ### Payment timeout after reservation
 
-Expected operational shape:
+Expected evidence includes reservation, modeled timeout, release, rejection, and reason `PaymentTimeout`.
 
-- inventory is reserved
-- payment timeout is reported
-- inventory reservation is released
-- order is rejected with `PaymentTimeout`
-- final inventory equals initial stock
-
-Unexpected signs:
-
-- timeout reported as generic payment failure
-- inventory not released
-- scenario reason differs from `PaymentTimeout`
-
-The sample treats timeout as failed for determinism. A production system might use pending state and reconciliation instead.
+A real production system may instead record a pending state and reconcile later. Observability must distinguish timeout, known failure, pending confirmation, and reconciliation outcome.
 
 ### Concurrent orders
 
-Expected operational shape:
-
-- many independent request submissions
-- completed count does not exceed available stock divided by requested quantity
-- rejected submissions appear when demand exceeds stock
-- final inventory is not negative
-
-Unexpected signs:
-
-- more completed orders than stock allows
-- negative inventory
-- all requests complete despite insufficient stock
-- result timeline shows only one successful order instead of aggregate behavior
+Expected evidence includes bounded completion by stock capacity, explicit rejection after stock is exhausted, and non-negative remaining inventory.
 
 ### Hot product contention
 
-Expected operational shape:
-
-- many submissions target the same product
-- the product identity is the contention point
-- completed and rejected counts reflect available stock
-- inventory does not go below zero
-
-Unexpected signs:
-
-- completed count exceeds stock
-- missing rejected submissions when demand exceeds stock
-- high elapsed time concentrated around the hot product identity
+Expected evidence includes concentrated latency or work around one product state owner. Operators should distinguish healthy serialization from overload, starvation, or excessive queueing.
 
 ### Duplicate request
 
-Expected operational shape:
+Expected evidence includes many submissions, one logical result, one inventory reservation, and idempotent replay for later submissions.
 
-- many submissions reuse the same order identity and idempotency key
-- one unique logical order completes
-- duplicate submissions return idempotent responses
-- inventory is reduced once by requested quantity
+Unique constraint failures, repeated downstream work, or several unique completed orders indicate an idempotency defect.
 
-Unexpected signs:
+## Alerts and operational policies
 
-- inventory reduced once per duplicate submission
-- unique constraint exceptions in `Orders.Api`
-- more than one unique successful order
-- duplicate responses treated as rejected submissions
+Production alerting should focus on actionable symptoms and violated objectives rather than raw infrastructure noise.
 
-## Microservices operations perspective
+Potential alerts include:
 
-The microservices-style implementation distributes behavior across service processes.
+- elevated error or timeout rate
+- sustained workflow latency
+- unavailable required dependencies
+- repeated compensation failure
+- negative inventory or impossible business counts
+- duplicate requests creating several logical results
+- persistence saturation
+- unusual actor activation churn
+- hot-identity backlog
+- missing telemetry from a required component
+- failed migration or incompatible state activation
 
-Operational advantages:
+An alert should identify ownership, expected impact, relevant telemetry, and the next diagnostic step. Alert thresholds should come from service objectives and workload behavior rather than arbitrary sample values.
 
-- failures often appear at explicit service boundaries
-- each service can expose its own logs and metrics
-- service ownership can align with operational ownership
-- individual services can be restarted or scaled independently
+## Incident investigation
 
-Operational costs:
+A practical investigation sequence is:
 
-- diagnosis requires correlation across multiple services
-- network failures and timeouts are part of normal operations
-- version skew during deployment can create subtle failures
-- dashboards and alerts need to account for service interactions
+1. Confirm the user-visible or business symptom.
+2. Identify the affected workflow, scenario, service, or actor family.
+3. Locate the trace or correlation context.
+4. Inspect the entry request and dependency chain.
+5. Identify the state owner and relevant invariant.
+6. Compare direct resource health with dependency health.
+7. Check persistence, retries, timeouts, compensation, and duplicate behavior.
+8. Compare the outcome with the expected business semantics.
+9. Determine whether the issue is code, configuration, capacity, dependency, state, or compatibility related.
+10. Record the recovery and reconciliation actions required.
 
-For this sample, the most important microservices diagnostic path is:
+The most important question is often not which component logged an exception, but which component owned the state transition that produced the incorrect or incomplete outcome.
 
-```text
-Comparison.Ui
-  -> Comparison.Gateway
-      -> Orders.Api
-          -> Inventory.Api
-          -> Payments.Api
-```
+## Repository implementation
 
-## Virtual actors operations perspective
+The repository demonstrates these concerns through shared hosting defaults, reusable observability models, scenario instrumentation, the Aspire dashboard, and Workbench UI pages.
 
-The virtual actor-style implementation expresses behavior through actor identities and runtime-managed activations.
+### Shared service defaults
 
-Operational advantages:
+`Hosting.ServiceDefaults` configures common development behavior for:
 
-- per-identity state ownership is easier to reason about
-- actor identity is a useful diagnostic dimension
-- per-identity serialization can reduce concurrency bugs for stateful invariants
-- workflow behavior can be inspected around grain interactions
+- service discovery
+- HTTP resilience
+- readiness and liveness endpoints
+- structured logging integration
+- OpenTelemetry tracing and metrics
+- OTLP export
+- scenario instrumentation and trace sampling
 
-Operational costs:
+Keeping these defaults shared reduces configuration drift while still allowing each project to add service-specific health checks, logs, activities, and metrics.
 
-- runtime behavior may be less obvious to operators unfamiliar with Orleans
-- activation placement and lifecycle matter
-- hot grains can become bottlenecks
-- grain state storage and serialization require operational discipline
+### Scenario instrumentation
 
-For this sample, useful actor diagnostic dimensions include:
+The Workbench records scenario activities and metrics using stable, bounded values such as scenario kind and service-client name.
 
-- order grain identity
-- inventory item grain identity
-- payment account grain identity
-- scenario name
-- correlation ID
+Custom trace collection and sampling can prioritize Workbench scenario traffic. Sampling controls telemetry collection rather than business execution.
 
-## Metrics to watch
+Instrumentation names, event identifiers, property names, activity tags, and metric dimensions should remain stable because diagnostic queries and documentation can depend on them.
 
-This sample does not implement a full metrics backend, but the result model exposes useful operational signals.
+### Health and topology models
 
-### Correctness metrics
+`Observability.Health` provides reusable health-report models and status evaluation.
 
-- unique successful orders must not exceed stock capacity
-- remaining inventory must not go below zero
-- duplicate submissions must not create multiple unique orders
-- compensation scenarios should restore inventory
+`Observability.Topology` provides:
 
-### Performance indicators
+- topology definitions
+- nodes, groups, and dependency edges
+- required and optional dependency semantics
+- topology validation
+- availability and health snapshots
+- dependency and group evaluation
 
-- elapsed milliseconds per architecture
-- elapsed milliseconds per scenario
-- elapsed time under hot product contention
-- elapsed time under duplicate request concurrency
+The AppHost defines the development resource topology and health groups. `Workbench.Ui` combines current observations with that shared model.
 
-These timings are local demo indicators, not benchmark proof.
+### Aspire dashboard
 
-### Reliability indicators
+The Aspire dashboard is the detailed development diagnostics surface.
 
-- rejected submissions by scenario
-- reason distribution
-- timeout count
-- idempotent duplicate response count
-- backend error responses
+Use it to inspect:
 
-## Alerting guidance for a production version
+- application resources and lifecycle
+- service endpoints and dependencies
+- structured logs
+- distributed traces
+- metrics
+- development configuration exposed by the composed environment
 
-A production version would likely alert on:
+The dashboard provides information that is intentionally not reproduced in the Workbench UI.
 
-- negative inventory
-- unique successful orders exceeding available stock
-- missing compensation release after payment failure
-- increased payment timeout rate
-- high duplicate request rate
-- unique constraint failures on idempotency keys
-- high latency for hot product identities
-- high rejected-submission rate outside expected scenarios
-- missing correlation or trace context in gateway and backend logs
+### Workbench Health page
 
-The local sample does not include these alerts. The list documents what would matter operationally.
+The Health page provides application-specific interpretation of live observations.
+
+It presents:
+
+- aggregate availability and health
+- architecture and service groups
+- nodes and dependencies
+- required and optional dependency health
+- readiness and liveness information
+- current resource availability
+- unknown and missing observations
+- snapshot refresh and stale-snapshot behavior
+
+The Health page is topology-aware, but it is not a production monitoring or alerting platform.
+
+### Workbench Topology page
+
+The Topology page is a text-based explanation of the intended architecture. It describes the Workbench, microservices, virtual actor runtime, grain identities, and persistence relationships.
+
+It does not present live availability or health. Runtime topology-aware observations belong on the Health page.
+
+### Complementary diagnostics
+
+The two dashboards solve different problems:
+
+- `Workbench.Ui` presents normalized scenario results, application-specific health interpretation, architecture explanation, and trade-offs
+- The Aspire dashboard presents lower-level resource, log, trace, metric, dependency, endpoint, and lifecycle diagnostics
+
+The Workbench timeline explains the intended scenario. The Aspire trace shows the operations that actually occurred.
+
+## Local validation
+
+To validate observability locally:
+
+1. Start the repository through `Hosting.AppHost`.
+2. Open the Workbench UI from the Aspire dashboard.
+3. Run each supported scenario.
+4. Confirm that both implementation results preserve the expected business semantics.
+5. Inspect relevant logs for the Gateway and backend resources.
+6. Open the related distributed trace and confirm causal continuity.
+7. Confirm that scenario metrics update with bounded dimensions.
+8. Open the Health page and review groups, nodes, dependencies, availability, and evaluated health.
+9. Stop or restart a safe resource and confirm that Aspire and the Health page expose the changed state.
+10. Restore the resource and confirm that readiness and health recover.
+
+The Microservices and Virtual Actors paths do not need identical traces. Validation should focus on useful context, correct status, safe telemetry, and business-semantic continuity.
+
+See [Local validation](09-local-validation.md) and [End-to-end validation](11-end-to-end-validation.md) for the complete repository checklist.
+
+## Production considerations
+
+The repository provides a development observability implementation, not a production telemetry platform.
+
+A production design still needs explicit decisions for:
+
+- telemetry storage and retention
+- dashboards and alerting
+- service-level indicators and objectives
+- access control and tenant isolation
+- sensitive-data classification and redaction
+- sampling and telemetry cost
+- cross-region collection
+- audit requirements
+- on-call ownership and escalation
+- incident response
+- reconciliation and recovery automation
+
+The Aspire dashboard is a development instrument and diagnostic view. Production systems require an independently designed observability backend and operational model.
 
 ## Operational checklist
 
-When a scenario result looks wrong:
+When a scenario or workflow result looks wrong:
 
-1. Copy the UI correlation ID.
-2. Search gateway logs for the correlation ID.
-3. Identify which architecture path ran.
-4. Search backend logs for the same correlation ID.
-5. Verify total request submission count.
-6. Verify unique successful, rejected, and idempotent duplicate response counts.
-7. Verify final inventory.
-8. Compare the result with [12-scenario-guide.md](12-scenario-guide.md).
-9. If behavior changed intentionally, update regression tests and docs.
-10. If behavior changed unintentionally, inspect the state owner for the affected invariant.
+1. Confirm the expected business outcome in the Scenario guide.
+2. Identify the trace or correlation context.
+3. Inspect the Gateway and relevant backend logs.
+4. Follow the distributed trace across service or actor-runtime boundaries.
+5. Identify the state owner for the affected invariant.
+6. Verify submission, completion, rejection, idempotency, and inventory counts.
+7. Compare direct health, dependency health, and resource availability.
+8. Inspect retries, timeouts, persistence, and compensation.
+9. Determine whether the behavior changed intentionally.
+10. Update tests and documentation when semantics change deliberately.
 
 ## Key takeaways
 
-- Production applications should generally use OpenTelemetry end to end.
-- The local sample uses custom correlation only to avoid observability platform complexity.
-- Correlation is mandatory once a workflow crosses process boundaries.
-- Actor-based workflows still need correlation; fewer HTTP boundaries do not remove operational diagnostics.
-- The most important operational questions are about state ownership, invariant protection, and failure policy.
-- Logs, metrics, traces, tests, and docs should use the same scenario terminology.
-- Diagnostic context belongs in observability infrastructure, not business contracts.
+- Logs, traces, metrics, health, and business validation answer different operational questions
+- Diagnostic context must propagate across both service and actor-runtime boundaries
+- Health indicates operational state, not business correctness
+- Microservices emphasize service, network, persistence, and integration diagnostics
+- Virtual actors emphasize identity, runtime, placement, activation, and actor-state diagnostics
+- High-cardinality identifiers do not belong in metric dimensions
+- The Aspire dashboard provides detailed development diagnostics
+- The Workbench Health page provides topology-aware application interpretation
+- The Workbench Topology page explains the intended architecture without presenting live state
+- Production observability requires decisions beyond the sample's local development tooling
+
+## Related documentation
+
+- [Microservices design](02-microservices-design.md)
+- [Virtual actors design](03-virtual-actors-design.md)
+- [Deployment comparison](05-deployment-comparison.md)
+- [Scaling comparison](06-scaling-comparison.md)
+- [Local validation](09-local-validation.md)
+- [UI dashboard](10-ui-dashboard.md)
+- [End-to-end validation](11-end-to-end-validation.md)
+- [Scenario guide](12-scenario-guide.md)
+- [Correlation and trace context](13-correlation-id-logging.md)
+- [Release, versioning, and rollback](14-release-versioning-and-rollback.md)
+- [Known limitations](17-known-limitations.md)
+- [Out of scope](18-out-of-scope.md)

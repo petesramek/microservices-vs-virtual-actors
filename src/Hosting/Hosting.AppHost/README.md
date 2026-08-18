@@ -8,8 +8,8 @@ This project does not implement either order-processing workflow. Its responsibi
 
 The repository implements the same order workflow in two architectural styles:
 
-- **Microservices**, with explicit HTTP service boundaries for order orchestration, inventory, and payments.
-- **Virtual actors**, with Orleans grains providing identity-based state ownership and serialized execution per actor identity.
+- **Microservices**, with explicit HTTP service boundaries for order orchestration, inventory, and payments
+- **Virtual actors**, with Orleans grains providing identity-based state ownership and serialized execution per actor identity
 
 The Workbench runs equivalent scenarios against both implementations so their behavior and trade-offs can be examined side by side. It is an architecture case study, not a benchmark. Local timings describe this sample topology only and should not be treated as general performance conclusions.
 
@@ -64,15 +64,15 @@ Orders API                      Ordering API
 Inventory API  Payments API      Ordering Silo
 ```
 
-The observability model also includes storage nodes for the orders, inventory, payments, and ordering data stores. These nodes describe health and dependency relationships; they are not separately registered Aspire project resources.
+The observability model also includes storage nodes for the orders, inventory, payments, and ordering data stores. These nodes describe health and dependency relationships, they are not separately registered Aspire project resources.
 
 ## Startup dependencies
 
 The AppHost declares the following startup relationships:
 
-- Orders API waits for Inventory API and Payments API.
-- Ordering API waits for Ordering Silo.
-- Workbench UI waits for Workbench Gateway.
+- Orders API waits for Inventory API and Payments API
+- Ordering API waits for Ordering Silo
+- Workbench UI waits for Workbench Gateway
 
 A startup relationship controls orchestration order. It is separate from visual topology grouping and from the complete set of runtime dependency edges shown by the Workbench.
 
@@ -106,21 +106,21 @@ The AppHost forwards the configured observability section to participating proje
 
 The AppHost also publishes a neutral topology containing:
 
-- service nodes;
-- storage nodes;
-- directed dependency edges;
-- visual resource groups;
-- health-source mappings.
+- service nodes
+- storage nodes
+- directed dependency edges
+- visual resource groups
+- health-source mappings
 
-Topology registration is order-dependent. Nodes must be registered before an edge or group refers to them. Project-backed node identifiers come from Aspire resource names; non-project storage nodes and visual groups use stable identifiers declared by the AppHost.
+Topology registration is order-dependent. Nodes must be registered before an edge or group refers to them. Project-backed node identifiers come from Aspire resource names, non-project storage nodes and visual groups use stable identifiers declared by the AppHost.
 
 ### Visual groups
 
 The topology is organized into three Dashboard groups:
 
-- **Workbench**: Workbench UI and Workbench Gateway.
-- **Microservices**: Orders, Inventory, and Payments APIs plus their storage nodes.
-- **Virtual Actors**: Ordering API, Ordering Silo, and the ordering storage node.
+- **Workbench**: Workbench UI and Workbench Gateway
+- **Microservices**: Orders, Inventory, and Payments APIs plus their storage nodes
+- **Virtual Actors**: Ordering API, Ordering Silo, and the ordering storage node
 
 Groups are visual only. Membership does not imply dependency direction or startup ordering.
 
@@ -179,11 +179,11 @@ When modifying the application model:
 
 ## Naming conventions
 
-- Aspire resource names use lowercase kebab-case.
-- Configuration overrides use .NET's `__` hierarchy separator.
-- Topology node and group identifiers are stable and case-sensitive.
-- Dashboard display names are user-facing labels and are independent of stable IDs.
-- Workbench, Microservices, and Virtual Actors are the domain names used for resource collections and registration helpers; a redundant `Services` suffix is avoided.
+- Aspire resource names use lowercase kebab-case
+- Configuration overrides use .NET's `__` hierarchy separator
+- Topology node and group identifiers are stable and case-sensitive
+- Dashboard display names are user-facing labels and are independent of stable IDs
+- Workbench, Microservices, and Virtual Actors are the domain names used for resource collections and registration helpers, a redundant `Services` suffix is avoided
 
 ## Scope
 

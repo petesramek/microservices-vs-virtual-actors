@@ -1,479 +1,430 @@
 # Organizational scaling and architecture fit
 
-This document compares microservices and virtual actors from a broader product, team, and organizational perspective.
+Architecture choices shape more than code. They influence team ownership, delivery independence, operational responsibility, product quality, and how safely a system can evolve.
 
-The earlier documents focus mostly on technical design, deployment, scaling, validation, observability, and maintenance. This document focuses on a different question:
+Microservices and virtual actors address different pressures:
 
-> Which architecture style fits the team, ownership model, delivery model, domain shape, and organizational maturity behind the system?
+- Microservices primarily organize independently owned business capabilities behind explicit service boundaries
+- Virtual actors primarily organize state and behavior around durable identities managed by an actor runtime
 
-The short answer is that microservices and virtual actors solve different problems at different boundaries. Microservices are strongest when the organization needs independently owned business capabilities with clear lifecycle ownership. Virtual actors are strongest when the domain is naturally partitioned by stateful identity and the system needs safe coordination around many independent stateful entities.
-
-Neither approach is universally better. Both can be overused. Both can become hard to operate. Both can degrade product quality when the organization adopts the structure without the discipline needed to support it.
+Neither approach is universally better. Both can improve clarity when their boundaries match the domain and organization. Both can reduce product quality when adopted without the ownership, platform, and operational discipline they require.
 
 ## Core thesis
 
-Microservices are often as much an organizational scaling strategy as a technical architecture.
+Microservices are often as much an organizational scaling strategy as a technical architecture. A useful service boundary commonly aligns with a business capability, a bounded context, and a team able to own the service throughout its lifecycle.
 
-A good microservice boundary should usually align with a business capability, a bounded context, and a team that can own the service through its full lifecycle. That lifecycle includes design, implementation, testing, deployment, observability, incident response, maintenance, improvement, and eventual deprecation or sunset.
+That lifecycle includes:
 
-That ownership model can work very well in larger organizations because it allows teams to move independently. It can also be painful in smaller organizations or immature platform environments because the same team may have to operate many services, many contracts, many data stores, many deployment pipelines, many dashboards, and many compatibility boundaries before those boundaries provide enough benefit.
+- domain behavior
+- data ownership
+- contracts
+- testing
+- deployment
+- observability
+- incident response
+- maintenance
+- compatibility
+- deprecation and retirement
 
-Virtual actors solve a different problem. They organize behavior around stateful identity rather than around separately deployable business services. This can let a team keep more decomposition inside the application and actor runtime at the beginning, while still modeling many stateful identities explicitly.
+This ownership model can help larger organizations move independently. It can be costly when one small team must operate many services, databases, contracts, pipelines, dashboards, and failure modes before those boundaries provide real autonomy.
 
-That does not make virtual actors simple by default. Virtual actors can be complex from the start when the domain, runtime, persistence, or identity model is complex. The difference is where the complexity first appears:
+Virtual actors address a different problem. They place behavior and state around durable identities. This can keep important coordination inside an application and actor runtime while still making identity ownership explicit.
 
-- Microservices tend to externalize complexity early through infrastructure, deployment, network, data, and ownership boundaries.
-- Virtual actors tend to internalize more of the early decomposition inside the application/runtime model through grain identity, grain state, activation, placement, and silo behavior.
+Virtual actors are not simple by default. Complexity appears through identity design, actor state, activation, placement, persistence, scheduling, hot identities, and cluster behavior.
 
-Both approaches should therefore be adopted deliberately, not as default architecture labels.
+The key difference is where complexity appears first:
 
-## How to approach microservices
+- Microservices externalize complexity through service, network, data, deployment, and team boundaries
+- Virtual actors internalize more decomposition through identity, state, runtime, placement, and persistence boundaries
 
-Approach microservices from ownership boundaries outward.
+Both approaches should be adopted deliberately rather than as default architecture labels.
 
-The first question should not be:
+## Start from the boundary that matters
 
-> Can this code be split into another API?
+A useful design starts from the boundary that owns the difficult responsibility.
 
-The better question is:
+For microservices, ask:
 
 > Is this a business capability or bounded context that a team can own end to end?
 
-A microservice boundary is valuable when it creates a meaningful ownership and delivery boundary. A team should be able to own the service's behavior, data, API contract, operational health, release process, documentation, and lifecycle.
-
-Good microservice candidates usually have:
-
-- a clear business capability
-- clear domain language
-- clear data ownership
-- clear consumers
-- clear operational responsibility
-- a reason to deploy or scale independently
-- a team that can own the service lifecycle
-
-Poor microservice candidates usually have:
-
-- unclear ownership
-- unclear data boundaries
-- frequent lockstep changes with other services
-- shared database ownership
-- API boundaries that simply mirror technical layers
-- a team that cannot operate the additional service independently
-
-The most important adoption rule is:
-
-> Make boundaries explicit early, but delay distributed deployment until the boundary earns its cost.
-
-That means a modular monolith or a small number of coarse-grained services can be a better starting point than many premature microservices.
-
-## How to approach virtual actors
-
-Approach virtual actors from stateful identity boundaries outward.
-
-The first question should not be:
-
-> Can this class become a grain?
-
-The better question is:
+For virtual actors, ask:
 
 > Which identity owns this state, behavior, and invariant?
 
-Virtual actors are useful when the domain has stable identities that naturally own state and behavior. A grain boundary is valuable when it protects an invariant, coordinates state for one identity, or makes per-identity workflow easier to reason about.
+These questions are more useful than asking whether another API or another grain can be created.
 
-Good virtual actor candidates usually have:
+## Approaching microservices
+
+A microservice boundary is valuable when it creates meaningful ownership and delivery independence.
+
+Strong candidates usually have:
+
+- a clear business capability
+- consistent domain language
+- clear data ownership
+- identifiable consumers
+- clear operational responsibility
+- a reason to deploy, secure, or scale independently
+- a team that can own the full lifecycle
+
+Weak candidates often have:
+
+- unclear ownership
+- shared data controlled by several services
+- frequent lockstep changes
+- boundaries that mirror technical layers instead of domain capabilities
+- little reason to deploy or scale independently
+- teams unable to operate the additional service autonomously
+
+A useful adoption rule is:
+
+> Make domain boundaries explicit early, but distribute deployment only when the boundary earns its operational cost.
+
+A modular monolith or a small number of coarse-grained services can be a better starting point than many premature microservices. The goal is useful autonomy, not a high service count.
+
+## Approaching virtual actors
+
+An actor boundary is valuable when one stable identity naturally owns state, behavior, or an invariant.
+
+Strong candidates usually have:
 
 - stable identity
 - identity-specific state
-- identity-specific invariants
+- identity-local invariants
 - per-identity concurrency requirements
 - many independent instances
-- behavior that naturally belongs with the state
+- behavior that belongs with the state
 - a clear persistence and lifecycle model
 
-Poor virtual actor candidates usually have:
+Weak candidates often have:
 
 - unclear identity
-- mostly stateless request processing
+- mostly stateless transformation work
 - global coordination across many entities
 - a small number of extremely hot identities
-- state that changes shape frequently without migration discipline
-- orchestration that would make one grain too large
+- rapidly changing state without migration discipline
+- one actor accumulating too many responsibilities
 
-The most important adoption rule is:
+A useful adoption rule is:
 
-> Keep decomposition inside the runtime while it helps, but introduce stronger boundaries when ownership, scaling, isolation, or release cadence requires them.
+> Keep decomposition inside the actor runtime while it helps, but introduce stronger ownership and deployment boundaries when scale, isolation, release cadence, or team structure requires them.
 
-A team can start with one actor-backed application or one Orleans cluster when that is enough. Later, the system can evolve toward multiple silos, separate grain assemblies, separate storage boundaries, separate actor-backed services, or separate clusters when there is a real reason.
+The goal is not to put everything into actors. The goal is to model stateful identity where it improves correctness and clarity.
 
-## Start simple, split deliberately
+## Start simple and split deliberately
 
-Both approaches can start simple and split later, but the split happens at different boundaries.
-
-A microservices-oriented evolution path can look like this:
-
-```text
-modular monolith
-  -> coarse-grained services
-  -> independently owned services
-  -> mature service ecosystem
-```
-
-A virtual-actor-oriented evolution path can look like this:
-
-```text
-single actor-backed application / one silo
-  -> multiple silos for scale and fault tolerance
-  -> clearer grain families and bounded contexts
-  -> separated actor-backed services, silos, or clusters when justified
-```
-
+Both approaches can start simple and evolve, but they split at different boundaries.
 
 ```mermaid
 flowchart LR
-    subgraph Microservices-oriented path
-        MM[Modular monolith]
+    subgraph MicroservicesPath[Microservices-oriented evolution]
+        Modular[Modular monolith]
         Coarse[Coarse-grained services]
         Owned[Independently owned services]
         Ecosystem[Mature service ecosystem]
-        MM --> Coarse --> Owned --> Ecosystem
+
+        Modular --> Coarse --> Owned --> Ecosystem
     end
 
-    subgraph Virtual-actor-oriented path
-        ActorApp[Single actor-backed app / one silo]
-        Silos[Multiple silos]
-        Families[Clear grain families and bounded contexts]
-        Split[Separate actor-backed services, silos, or clusters]
+    subgraph ActorPath[Virtual-actor-oriented evolution]
+        ActorApp[Actor-backed application]
+        Silos[Multiple runtime nodes]
+        Families[Clear actor families and bounded contexts]
+        Split[Separate actor-backed services or clusters]
+
         ActorApp --> Silos --> Families --> Split
     end
 ```
 
-The key is to avoid splitting because of fear.
+Evolution is not required to follow every step. The diagram shows possible directions, not a maturity ladder.
 
-A common fear is:
+A common fear is that postponing distribution will make a later split impossible. That fear can cause teams to create network, persistence, and release boundaries before the domain is understood.
 
-> If we do not split now, it will be too much work later.
+Premature distribution often makes future change harder because an incorrect boundary becomes an API, database, deployment pipeline, compatibility contract, and ownership commitment.
 
-That fear can lead teams to create distributed systems before the domain boundaries are understood and before the organization can support the operational model. Premature splitting can make future change harder because wrong boundaries become network APIs, separate databases, deployment pipelines, and compatibility constraints.
+A better rule is:
 
-The better rule is:
-
-> Split when the boundary is understood and the benefit now exceeds the operational cost.
+> Split when the boundary is understood and its current value exceeds its delivery and operational cost.
 
 ## Application fit
 
-## Microservices fit well when organizational boundaries dominate
+### When microservices fit well
 
-Microservices are a strong fit when the primary problem is independent ownership and delivery across business capabilities.
+Microservices are often a strong fit when independent business ownership and delivery dominate the problem.
 
-They tend to fit well for:
+Examples include systems with:
 
-- large business platforms with multiple product teams
-- systems with independently evolving business domains
-- systems where capabilities have different release cadence
-- systems where capabilities need different scaling profiles
-- platforms where service ownership is mature
-- systems requiring clear contracts between teams or domains
-- systems where each bounded context has a clear lifecycle owner
+- several product or domain teams
+- independently evolving business capabilities
+- different release cadences
+- different security, availability, or scaling requirements
+- mature service ownership and platform support
+- explicit contracts between teams or domains
+- clear lifecycle ownership for each capability
 
-Example domains can include:
+Common domains include billing, logistics, customer identity, payments, marketplaces, and large enterprise platforms.
 
-- billing platforms
-- customer identity platforms
-- logistics platforms
-- payment platforms
-- marketplace platforms
-- large enterprise platforms with multiple business capabilities
+Microservices are less compelling when one team owns the entire product, most changes require coordinated edits across all services, or the organization lacks the platform and operational capacity to support independent services.
 
-Microservices are less compelling when one team owns everything and most features require coordinated changes across all services.
+### When virtual actors fit well
 
-## Virtual actors fit well when stateful identity dominates
+Virtual actors are often a strong fit when stateful identity coordination dominates the problem.
 
-Virtual actors are a strong fit when the primary problem is stateful identity coordination.
+Examples include systems with:
 
-They tend to fit well for:
-
-- systems with many independent stateful entities
-- workflows centered around stable identities
-- per-identity concurrency control
+- many independent stateful entities
+- workflows centered on stable identities
+- per-identity concurrency rules
 - resource reservation by key
-- session-like or entity-like state management
-- domains where behavior naturally belongs with state
-- systems where scaling many identities is more important than splitting many services early
+- session, presence, or entity state
+- behavior that naturally belongs with identity-owned state
+- load that distributes across many identities
 
-Example domains can include:
+Common domains include IoT device management, game backends, collaboration, sessions and presence, auctions, reservations, and entity-centered workflow coordination.
 
-- IoT device state management
-- game backends
-- real-time collaboration
-- user/session/presence systems
-- order workflow engines
-- reservation systems
-- auctions or bidding by item
-- entity-centered workflow orchestration
+Virtual actors are less compelling when most work is stateless, identity boundaries are unclear, global coordination dominates, or a small number of identities carry most of the workload.
 
-Virtual actors are less compelling when most work is stateless, identity boundaries are unclear, or global coordination dominates the workload.
+## Hybrid architecture
 
-## Hybrid architecture fit
-
-A hybrid architecture is often realistic.
-
-Use microservices for coarse business capability boundaries and virtual actors inside selected services where stateful identity coordination is difficult.
-
-Examples:
-
-```text
-Ordering service
-  -> OrderGrain(orderId)
-  -> PaymentWorkflowGrain(orderId)
-```
-
-```text
-Inventory service
-  -> InventoryItemGrain(productId)
-  -> ReservationGrain(reservationId)
-```
-
-```text
-IoT platform
-  -> DeviceManagement service
-      -> DeviceGrain(deviceId)
-  -> Billing service
-  -> Notification service
-```
-
-This can combine organizational ownership boundaries with actor-based state management.
+Hybrid architecture is often realistic. Coarse business capabilities can remain explicit service boundaries while selected services use virtual actors for identity-oriented state and coordination.
 
 ```mermaid
 flowchart LR
-    ServiceBoundary[Microservice boundary]
-    Api[Service API]
-    GrainA[Stateful grain identity]
-    GrainB[Stateful grain identity]
-    Storage[Owned persistence]
+    Clients[Clients]
 
-    ServiceBoundary --> Api
-    Api --> GrainA
-    Api --> GrainB
-    GrainA --> Storage
-    GrainB --> Storage
+    subgraph ServiceA[Ordering service boundary]
+        ApiA[Ordering API]
+        Order[Order actor]
+        PaymentWorkflow[Payment workflow actor]
+        StoreA[(Owned state)]
+
+        ApiA --> Order
+        ApiA --> PaymentWorkflow
+        Order --> StoreA
+        PaymentWorkflow --> StoreA
+    end
+
+    subgraph ServiceB[Inventory service boundary]
+        ApiB[Inventory API]
+        Inventory[Inventory item actor]
+        Reservation[Reservation actor]
+        StoreB[(Owned state)]
+
+        ApiB --> Inventory
+        ApiB --> Reservation
+        Inventory --> StoreB
+        Reservation --> StoreB
+    end
+
+    Clients --> ApiA
+    ServiceA --> ApiB
 ```
 
+A hybrid design can combine organizational service ownership with actor-based state management. It can also combine the complexity of both styles.
 
-The risk is that hybrid systems can combine the complexity of both styles. A hybrid architecture needs clear rules about:
+A hybrid architecture needs explicit rules for:
 
-- where service boundaries are
-- where actor identity boundaries are
-- who owns state
-- how persistence is organized
-- how observability works
-- how operational responsibility is assigned
-- when actor-backed capabilities should become separate services or clusters
+- service boundaries
+- actor identity boundaries
+- state ownership
+- persistence ownership
+- communication between bounded contexts
+- observability and incident ownership
+- compatibility and release behavior
+- conditions that justify a separate service or cluster
 
 ## How microservices can degrade product quality
 
-Microservices can improve delivery when they create true autonomy. They can degrade product quality when they create distributed complexity without autonomy.
+Microservices improve delivery when they create real autonomy. They degrade product quality when they create distributed complexity without autonomy.
 
-Common degradation patterns include:
+Common failure patterns include:
 
-- services are split before boundaries are understood
-- every feature touches many services
-- services are always deployed together
-- teams do not own services end to end
-- local development becomes slow and fragile
-- observability is weak
-- contracts become accidental coupling
-- data ownership is unclear
-- synchronous call chains become deep and brittle
-- shared databases undermine service boundaries
-- incident ownership is unclear
+- services split before boundaries are understood
+- most features changing many services
+- services always deployed together
+- teams not owning services end to end
+- shared database ownership
+- deep synchronous call chains
+- weak observability
+- accidental contract coupling
+- unclear incident responsibility
+- platform work overwhelming product work
 
-Product impact:
+The product impact can include:
 
-- slower feature delivery
-- more integration bugs
+- slower delivery
+- more integration defects
+- fragile releases
 - harder debugging
 - more coordination meetings
-- fragile releases
 - lower developer confidence
-- more time spent on plumbing than product behavior
+- more time spent on infrastructure than user value
 
-This is the distributed monolith failure mode: the system has the cost of microservices but not the autonomy benefit.
+This is the distributed-monolith failure mode: the system pays the cost of distribution without gaining meaningful autonomy.
 
 ## How virtual actors can degrade product quality
 
-Virtual actors can improve clarity when identity boundaries are well chosen. They can degrade product quality when the actor model is used to avoid architectural boundaries.
+Virtual actors improve clarity when identity and state boundaries are well chosen. They degrade product quality when the actor model is used to avoid domain and ownership boundaries.
 
-Common degradation patterns include:
+Common failure patterns include:
 
-- grain identities are poorly chosen
-- one grain becomes a giant orchestrator
-- hot grains are ignored
-- grain state evolves without discipline
-- actor runtime behavior is treated as magic
-- bounded contexts are not defined
-- everything stays in one actor-backed runtime too long
-- ownership of grain families is unclear
-- observability is weak
-- persistence and activation behavior are poorly understood
+- poorly chosen actor identities
+- one actor becoming a large orchestrator
+- hot actors ignored until production load
+- state evolving without migration discipline
+- runtime behavior treated as magic
+- unclear bounded contexts
+- one shared actor runtime becoming an ownership-free bucket
+- unclear responsibility for actor families
+- weak observability
+- persistence and activation behavior poorly understood
 
-Product impact:
+The product impact can include:
 
 - hidden coupling
 - state migration pain
 - runtime surprises
-- bottlenecks around hot identities
-- difficult ownership as teams grow
-- harder refactoring of actor boundaries
-- unclear responsibility for incidents
+- hot-identity bottlenecks
+- unclear ownership as teams grow
+- difficult actor-boundary refactoring
+- ambiguous incident responsibility
 
-This is the tangled actor-monolith failure mode: the system has many grains but not clear domain, ownership, or lifecycle boundaries.
+This is the tangled actor-monolith failure mode: the system has many actors but weak domain, ownership, and lifecycle boundaries.
 
-## Lifecycle ownership matters in both approaches
+## Lifecycle ownership
 
-Both approaches require lifecycle ownership, but the ownership appears at different levels.
+Both approaches require lifecycle ownership, but ownership appears at different levels.
 
-For microservices, lifecycle ownership means a team owns a service as a product-like unit:
+For microservices, a team may own:
 
-- behavior
-- data
-- API contract
+- capability behavior
+- service data
+- contracts
 - operational health
-- documentation
 - consumer communication
-- support
-- improvement
-- deprecation or sunset
+- support and incident response
+- compatibility
+- deprecation and retirement
 
-For virtual actors, lifecycle ownership means a team owns an actor-backed domain area:
+For virtual actors, a team may own:
 
-- grain identity model
-- grain interfaces
-- grain behavior
-- grain state
-- persistence model
-- hot identity behavior
-- operational visibility
-- state evolution
+- actor identity models
+- interfaces and messages
+- actor behavior
+- persistent state
+- storage and migration
+- hot-identity behavior
 - runtime assumptions
+- operational visibility
+- activation and placement implications
 
-If no team owns the lifecycle, quality will degrade regardless of architecture style.
+If no team owns the lifecycle, quality degrades regardless of architecture style.
 
-## Evolution paths
+## Organizational maturity
 
-### Microservices evolution path
+Architecture should match the organization's ability to operate it.
 
-A healthy microservices evolution path is deliberate:
+Microservices usually require mature support for:
 
-1. Start with clear domain modules or coarse services.
-2. Identify bounded contexts with distinct ownership and language.
-3. Extract services when independent ownership, scaling, reliability, or delivery needs justify the cost.
-4. Invest in platform support, observability, contract testing, and lifecycle ownership.
-5. Avoid multiplying services faster than the organization can own them.
+- automated delivery
+- service discovery and configuration
+- contract and integration testing
+- observability
+- incident response
+- data ownership
+- dependency and release management
 
-The goal is not to maximize service count. The goal is to maximize useful autonomy.
+Virtual actors usually require mature support for:
 
-### Virtual actors evolution path
+- actor runtime operation
+- cluster membership and lifecycle
+- identity-aware diagnostics
+- persistence and state migration
+- placement and hot-identity analysis
+- interface compatibility
+- runtime-specific testing and recovery
 
-A healthy virtual actor evolution path is also deliberate:
-
-1. Start with clear stateful identities and invariants.
-2. Keep early deployment simple when possible.
-3. Add silos for scale and fault tolerance when needed.
-4. Separate grain families and persistence boundaries as bounded contexts become clearer.
-5. Split into separate services, silos, or clusters when ownership, scaling, isolation, or operational needs justify it.
-6. Avoid letting one actor-backed runtime become an ownership-free shared bucket.
-
-The goal is not to put everything into grains. The goal is to model stateful identity where it improves correctness and clarity.
+A platform can reduce repeated operational work, but it does not replace ownership. Standard tooling is valuable only when teams understand the guarantees and failure modes behind it.
 
 ## Decision guidance
 
-Choose microservices when the main problem is organizational and delivery scale:
+Favor microservices when the main problem is organizational and delivery scale:
 
-- many teams need autonomy
+- several teams need autonomy
 - business capability ownership is clear
-- independent deployment boundaries matter
+- independent deployment boundaries have real value
 - service lifecycle ownership is mature
 - platform and operations support exists
-- service contracts can be managed deliberately
+- contracts can be managed deliberately
 
-Choose virtual actors when the main problem is stateful identity coordination:
+Favor virtual actors when the main problem is stateful identity coordination:
 
 - many entities have independent state
-- per-identity serialization helps correctness
+- per-identity serialization supports correctness
 - workflows are naturally identity-centered
 - actor runtime ownership is acceptable
-- deployment does not need to be split by every capability yet
-- grain state and identity evolution can be managed deliberately
+- not every capability needs an independent deployment boundary
+- identity and state evolution can be managed deliberately
 
-Choose a hybrid when both are true:
+Favor a hybrid when both are true:
 
 - the organization needs coarse-grained service ownership boundaries
-- selected capabilities have hard stateful identity and concurrency problems
+- selected capabilities have difficult stateful identity and concurrency problems
 - teams can operate both service boundaries and actor runtime boundaries
 
-Avoid both styles as silver bullets.
+Avoid both approaches as silver bullets. A poorly bounded microservice architecture becomes a distributed monolith. A poorly bounded virtual actor architecture becomes a tangled actor monolith.
 
-A poorly bounded microservice architecture becomes a distributed monolith.
+## How this repository illustrates the ideas
 
-A poorly bounded virtual actor architecture becomes a tangled actor monolith.
+The repository uses a deliberately small order workflow to make the boundaries visible.
 
-## Applying this to this repository
+The microservices implementation separates order coordination, inventory ownership, and payment behavior into `Orders.Api`, `Inventory.Api`, and `Payments.Api`. This illustrates explicit service ownership. It does not imply that every small team should begin with three deployable services for a similar domain.
 
-The current sample has three microservice-style backend services:
+The virtual actor implementation uses `OrderGrain(orderId)`, `InventoryItemGrain(productId)`, and `PaymentAccountGrain(customerId)` to illustrate identity-based ownership and coordination. It does not imply that every actor-backed capability should remain in one cluster or deployment forever.
 
-- `Orders.Api`
-- `Inventory.Api`
-- `Payments.Api`
+The .NET Aspire AppHost and Workbench provide a development and comparison environment. They are not presented as a production organizational or deployment blueprint.
 
-This is useful for demonstrating explicit service ownership boundaries. It should not be interpreted as saying that every small team should begin with three separate deployable services for this domain.
+A real system could evolve toward a hybrid model, use different infrastructure, adopt asynchronous messaging, split bounded contexts differently, or avoid distribution until the ownership boundaries justify it.
 
-A real small team might start with a modular monolith or a coarser service and extract services later when ownership, scaling, or delivery needs justify it.
+## Relationship to evolution and release strategy
 
-The virtual actor implementation groups the backend behind `Ordering.Api` and uses grains for stateful identities:
+Architecture quality depends on whether teams can evolve the chosen boundaries safely.
 
-- `OrderGrain(orderId)`
-- `InventoryItemGrain(productId)`
-- `PaymentAccountGrain(customerId)`
+For microservices, unsafe evolution commonly appears around service contracts, data ownership, event schemas, release order, and cross-service coordination.
 
-This is useful for demonstrating identity-based ownership and per-identity coordination. It should not be interpreted as saying that all future actor-backed capabilities should remain in one deployable unit forever.
+For virtual actors, unsafe evolution commonly appears around actor identity, interfaces, persistent state, runtime behavior, and bounded-context ownership.
 
-A production evolution of this sample could move toward a hybrid model:
-
-- `Ordering` as a service boundary for order workflow
-- `Inventory` as a separate service or bounded context if inventory ownership grows
-- grains inside one or both services where stateful identity coordination is useful
-- messaging between bounded contexts if asynchronous workflows become important
-- OpenTelemetry across the whole system for production diagnostics
-
-## Relationship to versioning and deployment strategy
-
-This document intentionally does not provide a full guide to API versioning, multi-version support, rolling deployment, backward compatibility, database migration strategy, deprecation policy, or release train design.
-
-Those topics are large enough to deserve separate treatment.
-
-This repository only needs the architecture-level point:
-
-> Architecture quality depends on whether the team can evolve the chosen boundaries safely.
-
-For microservices, unsafe evolution usually appears around service contracts, data ownership, and cross-service coordination.
-
-For virtual actors, unsafe evolution usually appears around grain identity, grain interfaces, persistent state, runtime behavior, and bounded context ownership.
+Detailed versioning, state migration, rolling deployment, and rollback concerns are covered in [Release, versioning, and rollback](14-release-versioning-and-rollback.md). Broader change patterns are covered in [Maintenance and evolution](15-maintenance-and-evolution.md).
 
 ## Key takeaways
 
-- Microservices are often as much an organizational scaling strategy as a technical architecture.
-- Microservices work best when teams can own services through the full lifecycle.
-- Microservices can slow teams down when the organization cannot support the operational and ownership overhead.
-- Virtual actors shift complexity from service boundaries to actor identity, grain state, runtime behavior, and hot identity management.
-- Virtual actors can let some decomposition and scaling pressure remain inside the application/runtime model longer, but they still need deliberate boundaries.
-- Large actor systems may eventually need separate bounded contexts, separate ownership, separate silos, separate clusters, or separate services.
-- Hybrid architecture is often realistic: microservices for organizational boundaries, virtual actors for stateful identity coordination.
-- The right architecture depends on team structure, ownership model, domain shape, operational maturity, and expected evolution path.
+- Microservices are often an organizational scaling strategy as much as a technical architecture
+- Microservices work best when teams can own capabilities through the full lifecycle
+- Microservices can slow delivery when organizations cannot support their operational and ownership overhead
+- Virtual actors shift complexity toward identity, state, runtime behavior, and hot-identity management
+- Virtual actors can keep some decomposition inside the application and runtime longer, but they still need deliberate domain and ownership boundaries
+- Large actor systems may eventually need separate bounded contexts, ownership, services, clusters, or persistence boundaries
+- Hybrid architecture is often realistic: services for organizational boundaries and virtual actors for identity-oriented coordination
+- Architecture fit depends on team structure, ownership, domain shape, operational maturity, and expected evolution
+
+## Related documentation
+
+- [Problem](01-problem.md)
+- [Microservices design](02-microservices-design.md)
+- [Virtual actors design](03-virtual-actors-design.md)
+- [Development comparison](04-development-comparison.md)
+- [Deployment comparison](05-deployment-comparison.md)
+- [Scaling comparison](06-scaling-comparison.md)
+- [Trade-offs](07-tradeoffs.md)
+- [Release, versioning, and rollback](14-release-versioning-and-rollback.md)
+- [Maintenance and evolution](15-maintenance-and-evolution.md)
+- [Known limitations](17-known-limitations.md)
 
 ## References
 
-- Microsoft Learn: Microservices architecture style — https://learn.microsoft.com/en-us/azure/architecture/guide/architecture-styles/microservices
-- Microsoft Learn: Use domain analysis to model microservices — https://learn.microsoft.com/en-us/azure/architecture/microservices/model/domain-analysis
-- Microsoft Learn: Orleans overview — https://learn.microsoft.com/en-us/dotnet/orleans/overview
-- Microsoft Learn: Run an Orleans application — https://learn.microsoft.com/en-us/dotnet/orleans/deployment/
-- Martin Fowler: Bounded Context — https://martinfowler.com/bliki/BoundedContext.html
+- [Microservices architecture style](https://learn.microsoft.com/en-us/azure/architecture/guide/architecture-styles/microservices)
+- [Use domain analysis to model microservices](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/domain-analysis)
+- [Identify microservice boundaries](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/microservice-boundaries)
+- [Orleans overview](https://learn.microsoft.com/en-us/dotnet/orleans/overview)
+- [Deploy an Orleans application](https://learn.microsoft.com/en-us/dotnet/orleans/deployment/)
+- [Bounded Context](https://martinfowler.com/bliki/BoundedContext.html)

@@ -1,154 +1,298 @@
 # Out of scope
 
-This repository intentionally keeps the workflow and infrastructure small.
+This repository intentionally keeps the domain and infrastructure focused.
 
-The goal is to compare how the same stateful distributed workflow looks when implemented with service/capability boundaries versus stateful identity boundaries. The repository is not intended to become a complete ecommerce platform, a production platform template, or a benchmark suite.
+Its purpose is to compare how the same stateful distributed workflow can be implemented with:
 
-## Why scope is limited
+- service and business-capability boundaries
+- stateful identity and virtual actor boundaries
 
-The sample workflow is intentionally narrow:
+The repository is an architecture workbench. It is not intended to become a complete commerce platform, a production platform template, an operational control plane, or a benchmark suite.
+
+## Why the scope is limited
+
+The modeled workflow is deliberately narrow:
 
 - place an order
 - reserve inventory
 - authorize payment
 - complete or reject the order
-- handle selected failure and concurrency scenarios
+- compensate selected failures
+- exercise concurrency, contention, and idempotency behavior
 
-Keeping the workflow small makes the architectural trade-offs visible. Adding unrelated production features would make it harder to see the differences between the microservices implementation and the virtual actor implementation.
+Keeping the workflow small makes ownership, coordination, consistency, failure policy, and operational differences easier to see. Adding unrelated production features would increase implementation surface without necessarily improving the architectural comparison.
 
-## Product features out of scope
+An addition belongs in the core workbench only when it helps explain a specific comparison question.
 
-The repository does not attempt to model a complete commerce domain.
+## Complete commerce functionality
 
-The following product features are out of scope:
+The repository does not model a complete commerce domain.
 
-- frontend product UI
-- shopping cart
-- discounts
+Out-of-scope product capabilities include:
+
+- customer-facing storefronts
+- shopping carts
+- product catalog administration
+- pricing, promotions, and discounts
 - taxes
-- shipping
-- refunds
+- shipping and fulfillment
+- refunds and returns
 - notifications
 - customer account management
-- product catalog management
-- order history UI
+- order-history and support experiences
 
-These features can be useful in real systems, but they are not required to compare workflow coordination, state ownership, concurrency, idempotency, and failure handling.
+These capabilities matter in real systems, but they are not required to compare state ownership, workflow coordination, concurrency, compensation, idempotency, and contention.
 
-## Security and identity out of scope
+`Workbench.Ui` is a developer-facing comparison experience. It is not a production commerce frontend or administration portal.
 
-Authentication and authorization are out of scope.
+## Production security and identity
 
-The sample does not attempt to demonstrate:
+The repository does not provide a production security model.
+
+Out-of-scope concerns include:
 
 - user sign-in
-- API authorization policies
-- OAuth or OpenID Connect integration
-- role-based access control
+- API authentication and authorization
+- OAuth 2.0 or OpenID Connect integration
+- role-based or attribute-based access control
 - tenant isolation
-- secret management strategy
+- production secrets management
+- key rotation
+- certificate lifecycle management
+- network-security policy
+- security monitoring and incident response
+- regulatory or compliance controls
 
-Security is important in production systems, but adding full security infrastructure would distract from the core architecture comparison.
+The absence of these features is a deliberate sample boundary, not a recommendation for production systems.
 
-## Messaging and eventing out of scope
+## Messaging and event-driven architecture
 
-The current comparison does not include message brokers or event-sourced architecture.
+The current comparison focuses on direct workflow coordination:
 
-The following topics are out of scope:
+- HTTP calls between services in the microservices implementation
+- grain calls between stateful identities in the virtual actor implementation
+
+Out-of-scope messaging and eventing concerns include:
 
 - message brokers
 - asynchronous command processing
 - event sourcing
 - event replay
 - event-driven projections
-- transactional outbox patterns
+- transactional outbox and inbox patterns
+- dead-letter processing
 - saga frameworks
+- long-running durable workflow engines
+- delivery guarantees and message ordering
 
-This is intentional. The current comparison focuses on direct workflow coordination in two styles:
+Messaging could become a separate comparison dimension, but adding it would change the workflow and operational model substantially. It should not be introduced merely to make the sample appear more production-like.
 
-- service-to-service coordination in the microservices implementation
-- grain-to-grain coordination in the virtual actor implementation
+## Production hosting and platform engineering
 
-Messaging patterns could be added later as a separate comparison dimension, but they are not required for the current purpose.
+The .NET Aspire AppHost is the supported development composition for this repository. It provides local resource orchestration, service discovery, health integration, and access to development diagnostics.
 
-## Platform infrastructure out of scope
+It is not presented as a complete production deployment platform.
 
-The repository does not include a full production platform stack.
+Out-of-scope production platform concerns include:
 
-The following infrastructure topics are out of scope:
-
-- Kubernetes manifests
+- cloud hosting architecture
+- Kubernetes or other orchestrator configuration
 - Helm charts
+- ingress and external load-balancing policy
 - service mesh configuration
-- ingress controller configuration
-- distributed tracing backends
-- centralized logging infrastructure
-- production monitoring dashboards
+- production DNS and certificate management
+- infrastructure as code
 - autoscaling policies
-- production secrets management
+- capacity-management automation
+- zero-downtime deployment implementation
+- multi-region routing and failover
+- production environment promotion
 
-The sample can run locally through Visual Studio, scripts, or Docker Compose. That is enough for the comparison goals.
+The real-world deployment considerations are discussed in [Deployment comparison](05-deployment-comparison.md), but the repository does not implement those production mechanisms.
 
-## Production data management out of scope
+## Production data management
 
-The repository does not attempt to provide a production-grade data strategy.
+The repository uses persistence to demonstrate ownership, concurrency, compensation, idempotency, and state evolution. It does not provide a complete production data-management strategy.
 
-The following topics are out of scope:
+Out-of-scope concerns include:
 
-- production-grade database migration strategy
+- production database selection and sizing
+- high-availability database topology
+- backup and restore automation
+- point-in-time recovery
+- retention and archival policy
+- data classification and governance
 - cross-service schema governance
-- backup and restore strategy
-- data retention policy
-- archival strategy
 - multi-region replication
 - production disaster recovery
+- online migration orchestration
+- reconciliation of every ambiguous workflow outcome
 
-The sample uses persistence only as much as needed to show state ownership, concurrency, compensation, and idempotency behavior.
+The release and migration implications are discussed in [Release, versioning, and rollback](14-release-versioning-and-rollback.md), but the sample does not implement a production migration or recovery platform.
 
-## Production Orleans operations out of scope
+## Production Orleans operations
 
-The virtual actor implementation is intended to demonstrate actor-style workflow ownership and stateful identity boundaries.
+The virtual actor implementation demonstrates identity-based state ownership and workflow coordination through Orleans.
 
-The following production Orleans topics are out of scope:
+Out-of-scope production Orleans concerns include:
 
-- production Orleans clustering strategy
-- production Orleans persistence providers
-- multi-silo deployment tuning
-- placement strategy tuning
-- grain versioning strategy
-- advanced streaming integration
-- production dashboarding for Orleans runtime metrics
+- production cluster-membership strategy
+- cloud or production persistence providers
+- multi-silo capacity tuning
+- custom placement strategies
+- multi-cluster or multi-region topology
+- production reminder and streaming infrastructure
+- advanced grain-versioning rollout
+- placement and activation optimization at scale
+- automated hot-grain mitigation
+- production Orleans dashboarding and alerting
 
-These topics matter for real Orleans systems, but they are not required to understand the architecture comparison in this repository.
+These concerns are important in real Orleans systems. They are not required to demonstrate the difference between service-owned state and identity-owned state in this workbench.
 
-## Performance benchmarking out of scope
+## Production observability and operations
+
+The repository includes development observability through:
+
+- shared OpenTelemetry configuration
+- structured logging
+- distributed traces
+- scenario metrics
+- correlation and trace context
+- readiness and liveness endpoints
+- shared health and topology models
+- the Aspire dashboard
+- the Workbench Health page
+
+It does not provide a complete production observability and operating model.
+
+Out-of-scope concerns include:
+
+- production telemetry storage and retention
+- enterprise log aggregation
+- production dashboards and alerting
+- service-level indicators and objectives
+- paging and escalation policy
+- on-call ownership
+- telemetry access control and tenant isolation
+- sensitive-data governance and redaction policy
+- telemetry cost management
+- cross-region telemetry collection
+- audit and compliance requirements
+- automated remediation
+
+The Aspire dashboard is a development diagnostics surface. The Workbench Health page is an application-specific interpretation of current health. Neither is a production monitoring, alerting, or incident-management platform.
+
+See [Observability and operations](16-observability-and-operations.md) for the implemented model and its production considerations.
+
+## Production resilience and recovery
+
+The scenarios demonstrate selected failure policies, including inventory rejection, payment failure, timeout compensation, concurrency, and duplicate requests.
+
+The repository does not implement a complete resilience or recovery strategy.
+
+Out-of-scope concerns include:
+
+- durable reconciliation services
+- generalized retry and timeout policy
+- circuit-breaker tuning for production workloads
+- recovery of every interrupted workflow
+- operator-driven repair tools
+- poison-message handling
+- business-continuity planning
+- disaster recovery exercises
+- regional failover
+- guaranteed exactly-once processing
+
+The deterministic scenario policies are comparison tools, not production recovery recommendations.
+
+## Performance benchmarking
 
 This repository is not a benchmark suite.
 
-Elapsed time shown in the UI is local feedback for the current run. It can help explain the local sample topology, but it should not be interpreted as a general performance result.
+Elapsed time shown in the Workbench UI is local feedback for one run in the current development topology. It can help explain the sample, but it must not be interpreted as a general performance, throughput, latency, cost, or scalability result.
 
-Production performance depends on many factors that are outside the scope of this sample, including network topology, persistence choices, runtime configuration, deployment shape, hot-key distribution, hardware, and operational tuning.
+A credible benchmark would require controlled decisions for:
 
-## What can be added later
+- representative workloads
+- warmup and repetition
+- infrastructure and resource limits
+- persistence configuration
+- network topology
+- latency distributions
+- throughput and error rates
+- workload skew and hot identities
+- scaling levels
+- statistical analysis
+- reproducibility
 
-Some out-of-scope topics could become useful future extensions if they help explain a specific comparison dimension.
+The repository does not attempt that study.
 
-Examples:
+## Workbench productization
 
-- adding a message broker to compare synchronous and asynchronous workflow coordination
-- adding distributed tracing to compare operational diagnosis across both implementations
-- adding production-like Orleans clustering to compare actor runtime deployment choices
-- adding a more realistic persistence strategy to compare data consistency options
+The Workbench exists to make the comparison understandable.
 
-Any future addition should preserve the purpose of the repository: making architectural trade-offs visible without turning the sample into a full production platform.
+Out-of-scope productization concerns include:
 
-## Practical rule
+- production authentication and authorization
+- multi-user administration
+- audit trails
+- localization
+- accessibility certification
+- browser-support guarantees
+- production session and circuit recovery
+- user preference persistence
+- production caching
+- content-security hardening
+- operational write actions from the Health or Topology pages
 
-A feature should remain out of scope unless it helps answer one of these questions:
+The Topology page explains the intended architecture in text. The Health page presents topology-aware runtime observations. Neither page is an infrastructure-management console.
+
+## Possible future comparisons
+
+An out-of-scope subject can become a useful future extension when it introduces a clear comparison question.
+
+Examples include:
+
+- synchronous versus asynchronous workflow coordination
+- service-owned workflows versus durable workflow engines
+- actor-state persistence providers
+- state repartitioning for hot identities
+- production-like mixed-version deployment
+- pending and reconciled payment-timeout policy
+- multi-region consistency choices
+- event-driven projections
+
+A future comparison should define:
+
+- the architectural question
+- the shared business behavior
+- the invariants being compared
+- the operational evidence required
+- the limits of the conclusion
+
+It should not be added only to increase feature count or infrastructure complexity.
+
+## Practical scope rule
+
+A proposed feature belongs in the core repository only when it materially helps answer at least one of these questions:
 
 - How does state ownership differ between the two implementations?
-- How does workflow coordination differ between the two implementations?
-- How does each implementation handle concurrency, idempotency, and failure?
-- How does each implementation change deployment, scaling, observability, or evolution?
+- How does workflow coordination differ?
+- How are concurrency, contention, idempotency, and compensation expressed?
+- How do deployment, scaling, observability, release, and maintenance responsibilities differ?
+- What externally visible scenario behavior must remain equivalent?
 
-If a feature does not help answer those questions, it should stay out of the core comparison.
+If a feature does not improve one of those comparisons, it should remain outside the core workbench.
+
+## Related documentation
+
+- [Problem](01-problem.md)
+- [Deployment comparison](05-deployment-comparison.md)
+- [Scaling comparison](06-scaling-comparison.md)
+- [Trade-offs](07-tradeoffs.md)
+- [Organizational scaling and architecture fit](08-organizational-scaling-and-architecture-fit.md)
+- [UI dashboard](10-ui-dashboard.md)
+- [Scenario guide](12-scenario-guide.md)
+- [Release, versioning, and rollback](14-release-versioning-and-rollback.md)
+- [Observability and operations](16-observability-and-operations.md)
+- [Known limitations](17-known-limitations.md)

@@ -8,12 +8,12 @@ The project is infrastructure-focused. It does not contain order-processing doma
 
 Calling `AddServiceDefaults()` on an application builder configures:
 
-- strongly typed and startup-validated observability options;
-- OpenTelemetry logging, metrics, and tracing;
-- OTLP export when an exporter endpoint is configured;
-- a default self-health check;
-- Aspire service discovery;
-- standard resilience and service discovery for `HttpClient` instances.
+- strongly typed and startup-validated observability options
+- OpenTelemetry logging, metrics, and tracing
+- OTLP export when an exporter endpoint is configured
+- a default self-health check
+- Aspire service discovery
+- standard resilience and service discovery for `HttpClient` instances
 
 Calling `MapDefaultEndpoints()` on a `WebApplication` maps the shared readiness and liveness endpoints in every environment.
 
@@ -52,8 +52,8 @@ The default `HttpClient` configuration includes the standard resilience handler.
 
 OpenTelemetry logging includes:
 
-- formatted messages;
-- logging scopes.
+- formatted messages
+- logging scopes
 
 Export is configured separately through the OTLP environment setting described below.
 
@@ -94,8 +94,8 @@ If the section is absent, the option type defaults to:
 
 In `ScenarioOnly` mode, an inbound request is eligible for ASP.NET Core tracing when either condition is true:
 
-- the path starts with `/api/scenarios/run`;
-- the request contains the `X-Scenario-Run` header.
+- the path starts with `/api/scenarios/run`
+- the request contains the `X-Scenario-Run` header
 
 An outbound HTTP request is eligible when it carries the `X-Scenario-Run` header. Eligibility filters instrumentation, while the sampler makes the final record-and-sample decision for root activities.
 
@@ -190,7 +190,7 @@ request.Headers.Add(
 
 Both instruments use bounded dimensions:
 
-- `scenario.kind`.
+- `scenario.kind`
 
 Register `ScenarioMetrics` through dependency injection in consumer projects that record workflow completion:
 
@@ -206,7 +206,7 @@ scenarioMetrics.RecordWorkflowRun(
     scenarioKind);
 ```
 
-`duration` must be non-negative. `scenarioKind` must be nonempty. Keep both tag values bounded; do not use order IDs, customer IDs, product IDs, or other high-cardinality values as metric dimensions.
+`duration` must be non-negative. `scenarioKind` must be nonempty. Keep both tag values bounded, do not use order IDs, customer IDs, product IDs, or other high-cardinality values as metric dimensions.
 
 ## Health endpoints
 
@@ -272,7 +272,7 @@ When extending this project:
 6. Update option validation, source enums, configuration examples, and this README together.
 7. Keep health endpoints inexpensive and free of sensitive data.
 8. Verify both `Full` and `ScenarioOnly` behavior when changing tracing filters or sampling.
-9. Ensure a new enum flag has a corresponding configuration branch; declared but unused flags are misleading.
+9. Ensure a new enum flag has a corresponding configuration branch, declared but unused flags are misleading.
 
 ## Scope
 

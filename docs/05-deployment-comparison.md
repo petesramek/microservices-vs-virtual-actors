@@ -1,268 +1,300 @@
 # Deployment comparison
 
-The deployment shapes are intentionally different because the two implementations place ownership and coordination at different boundaries.
+The two implementations have intentionally different runtime shapes because they place ownership and coordination at different boundaries.
 
-The microservices implementation is deployed as multiple backend services that communicate through HTTP. The virtual actor implementation is deployed as an Orleans-based backend where workflow coordination happens through grain calls and stateful actor identities.
+- The microservices implementation runs as multiple HTTP services with independent data ownership
+- The virtual actor implementation runs as an HTTP API plus an Orleans silo that hosts stateful grain identities
 
-This document compares the deployment and operational shape of both approaches. It is not a production deployment guide and it is not a performance benchmark.
+This document compares their deployment and operational characteristics. It is not a production deployment guide and does not claim that either topology is universally preferable.
+
+For local development, the repository uses the .NET Aspire AppHost to compose both implementations, the Workbench, health resources, service discovery, and observability.
 
 ## Microservices deployment
 
-The microservice-style backend has three main deployable processes:
+The microservices backend has three primary runtime processes:
 
 - `Orders.Api`
 - `Inventory.Api`
 - `Payments.Api`
 
-`Orders.Api` coordinates the workflow by calling `Inventory.Api` and `Payments.Api`. Each service can be deployed, configured, monitored, restarted, and scaled separately.
+`Orders.Api` coordinates the workflow by calling `Inventory.Api` and `Payments.Api`. Each service can be configured, monitored, restarted, deployed, and scaled separately, although the order workflow still depends on the required downstream services.
 
-## Microservices topology
+### Runtime topology
 
-A typical local microservices topology looks like this:
+```mermaid
+flowchart LR
+    UI[Workbench.Ui]
+    Gateway[Workbench.Gateway]
+    Orders[Orders.Api<br/>Workflow owner]
+    Inventory[Inventory.Api<br/>Inventory owner]
+    Payments[Payments.Api<br/>Payment owner]
 
-```text
-Comparison.Ui
-  -> Comparison.Gateway
-      -> Orders.Api
-          -> Inventory.Api
-          -> Payments.Api
+    UI --> Gateway
+    Gateway --> Orders
+    Orders -->|Reserve or release inventory| Inventory
+    Orders -->|Authorize payment| Payments
 ```
 
-`Orders.Api` is the workflow entry point for the microservices backend. It owns order workflow coordination but does not own inventory or payment state directly.
+`Orders.Api` is the workflow entry point for the microservices backend. It owns order coordination but does not own inventory or payment state. `Inventory.Api` protects inventory invariants, while `Payments.Api` owns payment authorization outcomes.
 
-`Inventory.Api` owns product inventory state and protects inventory invariants.
+### Operational characteristics
 
-`Payments.Api` owns payment authorization behavior used by the comparison scenarios.
+The service boundaries remain visible at runtime. Each API has its own:
 
-## Microservices operational characteristics
+- process lifecycle
+- configuration
+- HTTP endpoints
+- structured logs
+- traces and metrics
+- readiness and liveness state
+- SQLite persistence boundary
+- compatibility and failure concerns
 
-The microservices deployment makes service boundaries visible at runtime.
+Diagnosing one order can require following activity through `Workbench.Gateway`, `Orders.Api`, `Inventory.Api`, and `Payments.Api`. Correlation and distributed tracing are therefore part of the development and operational model rather than optional presentation detail.
 
-Each service has its own process, configuration, logs, health checks, persistence concerns, and failure modes. This makes independent deployment possible, but it also increases the number of moving parts that must be operated together.
+### Scaling characteristics
 
-Operational diagnosis usually requires following a scenario across multiple processes. A single order scenario can produce relevant logs in the gateway, orders service, inventory service, and payments service. This is why correlation IDs are important in the sample.
+The services can be scaled independently when their workloads differ:
 
-## Microservices scaling model
+- `Orders.Api` can scale with order-workflow request volume
+- `Inventory.Api` can be tuned around persistence behavior and inventory contention
+- `Payments.Api` can scale around authorization demand
 
-The microservices style allows services to be scaled independently.
+Independent scaling does not remove workflow coupling or state contention. The order path still depends on inventory and payment calls, and a hot product remains constrained by the consistency boundary that protects its inventory.
 
-For example:
+See [Scaling comparison](06-scaling-comparison.md) for the broader analysis.
 
-- `Orders.Api` can be scaled when workflow request volume increases.
-- `Inventory.Api` can be scaled or tuned around inventory contention and persistence behavior.
-- `Payments.Api` can be scaled separately when payment authorization behavior becomes the bottleneck.
+### Failure characteristics
 
-However, independent scaling does not remove workflow coupling. The order workflow still depends on downstream inventory and payment calls. If one required service is unavailable, slow, or misconfigured, the workflow is affected.
+The microservices topology contains explicit network and process boundaries. The implementation must account for cases such as:
 
-## Microservices failure model
+- inventory rejection
+- payment failure after reservation
+- payment timeout after reservation
+- downstream unavailability or latency
+- service restart during a workflow
+- configuration or contract mismatch
+- concurrent duplicate submissions
+- compensation failure or an ambiguous downstream outcome
 
-The microservices deployment has explicit network and process boundaries.
+Compensation and idempotency are explicit design responsibilities. `Orders.Api` coordinates the workflow decision, while each downstream service remains responsible for its own state transition.
 
-The implementation must handle failures such as:
+### Trade-offs
 
-- `Inventory.Api` rejecting a reservation
-- `Payments.Api` failing authorization
-- `Payments.Api` timing out after inventory was reserved
-- service restarts during a workflow
-- configuration mismatches between services
-- duplicate submissions arriving concurrently
-
-Compensation and idempotency are explicit design responsibilities. `Orders.Api` coordinates the workflow, but `Inventory.Api` still owns the inventory state transition.
-
-## Local microservices run
-
-The microservices backend can be run with Docker Compose:
-
-```powershell
-docker compose -f deploy/microservices/docker-compose.yml up --build
-```
-
-When running from Visual Studio, configure the required microservices projects as startup projects instead of using Docker Compose.
-
-## Microservices trade-offs
-
-### Advantages
+#### Advantages
 
 - Independent service deployment
-- Clear service ownership boundaries
-- Explicit HTTP APIs
-- Familiar process and service model
-- Services can be configured and scaled separately
-- Operational responsibility maps naturally to service boundaries
+- Clear business-capability ownership
+- Explicit HTTP contracts
+- Service-owned data
+- Independent configuration and scaling
+- Operational responsibility aligned with service boundaries
 
-### Costs
+#### Costs
 
-- More deployable units
-- More network paths
-- More configuration
-- More health checks and logs to correlate
-- More failure modes between workflow participants
-- Workflow consistency requires explicit compensation and idempotency
+- More deployable units and network paths
+- More configuration and compatibility boundaries
+- More health, logging, tracing, and metric data to correlate
+- More partial-failure modes
+- Explicit compensation and idempotency requirements
+- Distributed workflow consistency across independently owned state
 
 ## Virtual actors deployment
 
-The virtual actor-style backend exposes an HTTP API through `Ordering.Api` and coordinates the workflow through Orleans grains.
+The virtual actor backend has two primary runtime processes:
 
-The main actor identities are:
+- `Ordering.Api` exposes the HTTP entry point and acts as an Orleans client
+- `Ordering.Silo` hosts the Orleans runtime and grain activations
+
+The stateful workflow is implemented by these grain identities:
 
 - `OrderGrain(orderId)`
 - `InventoryItemGrain(productId)`
 - `PaymentAccountGrain(customerId)`
 
-The deployment shape is different because coordination moves from service-to-service HTTP calls to grain calls inside the Orleans runtime.
+`Ordering.Persistence.Sqlite` provides the silo's grain-state persistence implementation. It is a library used by the silo, not a separate runtime process.
 
-## Virtual actors topology
-
-A typical local virtual actor topology looks like this:
-
-```text
-Comparison.Ui
-  -> Comparison.Gateway
-      -> Ordering.Api
-          -> OrderGrain(orderId)
-              -> InventoryItemGrain(productId)
-              -> PaymentAccountGrain(customerId)
-```
-
-`Ordering.Api` is the HTTP entry point for the virtual actor backend.
-
-The grains own stateful identities and coordinate the workflow internally through strongly typed grain calls.
-
-Depending on the local run mode, Orleans may be hosted in-process by `Ordering.Api` or through a standalone `Ordering.Silo` process. The important comparison point is that the workflow is coordinated by actor identities rather than by HTTP calls across multiple business services.
+### Runtime topology
 
 ```mermaid
 flowchart LR
-    UI2[Comparison.Ui]
-    Gateway2[Comparison.Gateway]
-    OrderingApi[Ordering.Api]
-    OrderGrain[OrderGrain
-orderId]
-    InventoryGrain[InventoryItemGrain
-productId]
-    PaymentGrain[PaymentAccountGrain
-customerId]
+    UI[Workbench.Ui]
+    Gateway[Workbench.Gateway]
+    OrderingApi[Ordering.Api<br/>HTTP entry point and Orleans client]
+    OrderingSilo[Ordering.Silo<br/>Orleans runtime]
+    OrderGrain[OrderGrain<br/>orderId]
+    InventoryGrain[InventoryItemGrain<br/>productId]
+    PaymentGrain[PaymentAccountGrain<br/>customerId]
+    Storage[(SQLite grain state)]
 
-    UI2 --> Gateway2
-    Gateway2 --> OrderingApi
-    OrderingApi --> OrderGrain
+    UI --> Gateway
+    Gateway --> OrderingApi
+    OrderingApi --> OrderingSilo
+    OrderingSilo --> OrderGrain
     OrderGrain --> InventoryGrain
     OrderGrain --> PaymentGrain
+    OrderingSilo --> Storage
 ```
 
+The workflow is coordinated through strongly typed grain calls rather than business-service HTTP calls. Grain identities own state and behavior, while Orleans provides activation, identity routing, placement, and per-activation request scheduling.
 
-## Virtual actors operational characteristics
+### Operational characteristics
 
-The virtual actor deployment has fewer explicit business-service processes, but the Orleans runtime becomes part of the operational model.
+The virtual actor deployment has fewer explicit business-service processes, but the Orleans runtime becomes a first-class operational dependency. Diagnosis may involve:
 
-Operational diagnosis focuses on actor identities, grain activation, runtime behavior, state persistence, placement, and hot grains.
+- the API-to-cluster connection
+- silo startup and membership
+- grain activation and placement
+- grain identity and hot-identity behavior
+- grain-state persistence
+- runtime logs, traces, and metrics
+- compatibility of grain interfaces and persisted state
 
-A scenario may still need correlation across the gateway, API process, and actor runtime logs. The boundaries are different from the microservices version, but observability remains necessary.
+A scenario still crosses `Workbench.Gateway`, `Ordering.Api`, and `Ordering.Silo`. The boundaries differ from the microservices topology, but correlation and observability remain necessary.
 
-## Virtual actors scaling model
+### Scaling characteristics
 
-The virtual actor model scales around actor identities and Orleans runtime behavior.
+The actor model partitions work around stable identities:
 
-For example:
+- order workflow state by `orderId`
+- inventory state by `productId`
+- payment behavior by `customerId`
 
-- order workflow state is partitioned by `orderId`
-- inventory state is partitioned by `productId`
-- payment behavior is partitioned by `customerId`
+This can align naturally with an identity-oriented domain. It does not eliminate hot spots. High contention for one product concentrates work on one `InventoryItemGrain(productId)`, so throughput remains constrained by the consistency requirements of that identity.
 
-This can be a natural fit when the domain is already identity-oriented. However, hot identities can still become bottlenecks. A product with very high contention can concentrate work around one `InventoryItemGrain(productId)`.
+Scaling depends on silo capacity, grain placement, persistence performance, cluster configuration, and the distribution of actor identities.
 
-Scaling therefore depends on grain placement, persistence strategy, cluster configuration, and the distribution of actor identities.
+### Failure characteristics
 
-## Virtual actors failure model
-
-The virtual actor implementation still needs explicit failure policies.
-
-The actor runtime helps with activation and identity routing, but it does not remove business failure cases. The implementation must still define what happens when:
+Orleans helps with activation and identity routing, but it does not define the business failure policy. The implementation must still decide what happens when:
 
 - inventory is insufficient
-- payment fails after inventory was reserved
-- payment times out after inventory was reserved
+- payment fails or times out after reservation
 - compensation must release inventory
-- duplicate submissions target the same order identity
-- a grain or silo restarts during operation
+- duplicate submissions target one order identity
+- a silo or grain activation restarts during operation
+- persistence is unavailable or incompatible
+- API-to-cluster communication is interrupted
 
-The deployment model changes where failures appear, but it does not remove the need for deterministic workflow behavior.
+The runtime changes where failures appear and how stateful work is addressed. It does not remove the need for deterministic workflow behavior, idempotency, reconciliation decisions, and state compatibility.
 
-## Local virtual actors run
+### Trade-offs
 
-The virtual actor backend can be run with Docker Compose:
+#### Advantages
 
-```powershell
-docker compose -f deploy/virtual-actors/docker-compose.yml up --build
-```
+- Workflow modeled around stateful identities
+- State and behavior colocated by identity
+- Per-identity execution easier to reason about
+- Fewer business-service HTTP calls in application code
+- Runtime-managed activation, routing, and placement
+- Natural partitioning for identity-oriented workloads
 
-When running from Visual Studio, configure the required virtual actor projects as startup projects instead of using Docker Compose.
+#### Costs
 
-## Virtual actors trade-offs
+- Orleans runtime and cluster behavior become operational concerns
+- Hot grains can limit throughput
+- Silo capacity, placement, and persistence choices matter
+- Grain interface and state compatibility require care
+- Deployment boundaries do not map directly to business capabilities
+- Developers and operators need actor-runtime knowledge
 
-### Advantages
+## Development composition with Aspire
 
-- Workflow is modeled around stateful identities
-- Per-product inventory coordination is localized in `InventoryItemGrain(productId)`
-- Fewer explicit service-to-service HTTP calls in application code
-- Actor runtime manages activation and placement
-- Single-identity concurrency can be easier to reason about
-- Domain state and behavior can be colocated by identity
+The .NET Aspire AppHost is the supported development composition for the complete repository. It starts and connects:
 
-### Costs
-
-- Orleans runtime behavior becomes part of the operational model
-- Hot grains can become bottlenecks
-- Persistence and clustering choices matter
-- Grain state compatibility becomes important during evolution
-- Deployment independence differs from microservice-style service boundaries
-- Developers and operators must understand actor runtime concepts
-
-## Full comparison stack
-
-The full comparison stack includes:
-
-- `Comparison.Ui`
-- `Comparison.Gateway`
-- the microservices backend
-- the virtual actor backend
-
-It can be run with Docker Compose:
-
-```powershell
-docker compose -f deploy/docker-compose.full.yml up --build
-```
-
-For local development in Visual Studio, the same stack can be run by configuring multiple startup projects. This is a valid development flow and keeps each project visible in the Visual Studio output and debugging experience.
+- `Workbench.Ui`
+- `Workbench.Gateway`
+- the three microservices APIs
+- `Ordering.Api`
+- `Ordering.Silo`
+- health groups and topology metadata
+- shared observability configuration
 
 ```mermaid
 flowchart TB
-    FullUI[Comparison.Ui]
-    FullGateway[Comparison.Gateway]
+    UI[Workbench.Ui]
+    Gateway[Workbench.Gateway]
 
-    subgraph Microservices backend
-        OrdersApi[Orders.Api]
-        InventoryApi[Inventory.Api]
-        PaymentsApi[Payments.Api]
+    subgraph Microservices
+        Orders[Orders.Api]
+        Inventory[Inventory.Api]
+        Payments[Payments.Api]
     end
 
-    subgraph Virtual actors backend
-        OrderingApi2[Ordering.Api]
-        Grains[Orleans grains / silo]
+    subgraph VirtualActors[Virtual actors]
+        OrderingApi[Ordering.Api]
+        OrderingSilo[Ordering.Silo]
+        Grains[Order, inventory, and payment grains]
     end
 
-    FullUI --> FullGateway
-    FullGateway --> OrdersApi
-    OrdersApi --> InventoryApi
-    OrdersApi --> PaymentsApi
-    FullGateway --> OrderingApi2
-    OrderingApi2 --> Grains
+    UI --> Gateway
+    Gateway --> Orders
+    Orders --> Inventory
+    Orders --> Payments
+    Gateway --> OrderingApi
+    OrderingApi --> OrderingSilo
+    OrderingSilo --> Grains
 ```
 
+Aspire provides the development orchestration and service-discovery experience, but it is more than a launcher. The Aspire dashboard exposes resource state, dependencies, endpoints, structured logs, distributed traces, metrics, configuration, and lifecycle operations that are intentionally not duplicated in `Workbench.Ui`.
+
+The dashboards are complementary:
+
+- `Workbench.Ui` presents curated scenario outcomes, architecture comparison, health interpretation, topology explanation, and trade-offs
+- The Aspire dashboard provides lower-level development diagnostics across the complete composed application
+
+The AppHost is not presented as the production deployment model. A production deployment would require independent decisions for hosting, networking, security, persistence, scaling, telemetry storage, release management, and recovery.
+
+## Health and readiness
+
+Both topologies use the shared service defaults:
+
+- `/health` represents readiness and can include dependency or persistence checks
+- `/alive` represents process liveness
+
+The AppHost uses health information to represent resource state and startup dependencies. The Workbench Health page combines live reports with the shared topology model to present architecture groups, nodes, dependency health, and resource availability.
+
+Health does not prove workflow correctness. A ready process can still return an incorrect business result, violate an idempotency rule, or fail a compensation path. Scenario validation and health evaluation answer different questions.
+
+See [Observability and operations](16-observability-and-operations.md) for the detailed model.
+
+## Release and compatibility implications
+
+The deployment boundaries create different compatibility concerns.
+
+For microservices:
+
+- HTTP contracts must remain compatible across independently updated services
+- database changes belong to the service that owns the data
+- rollout order can matter when callers and dependencies change together
+
+For virtual actors:
+
+- `Ordering.Api` and `Ordering.Silo` must remain compatible as Orleans client and cluster participants
+- grain interfaces must remain compatible across runtime updates
+- persisted grain state and storage schema changes require deliberate evolution
+- mixed-version cluster behavior must be understood before staged rollout
+
+Neither style makes rollback automatic. A safe rollback depends on contract compatibility, persisted-state compatibility, and whether the failed version has already changed durable data.
+
+See [Release, versioning, and rollback](14-release-versioning-and-rollback.md) for detailed guidance.
 
 ## Comparison summary
 
-The microservices deployment emphasizes independently deployable business services. This makes service ownership and operational boundaries explicit, but increases the number of processes, network paths, and failure points.
+The microservices deployment emphasizes independently deployable business services. This makes capability ownership and service boundaries explicit, while increasing the number of processes, network paths, compatibility edges, and independently observable failure points.
 
-The virtual actor deployment emphasizes stateful identity boundaries. This can simplify workflow coordination for identity-oriented state, but makes the actor runtime, grain placement, hot identities, and grain state evolution central operational concerns.
+The virtual actor deployment emphasizes stateful identity boundaries. This can simplify coordination for identity-oriented state, while making the Orleans runtime, cluster behavior, hot identities, and grain-state evolution central operational concerns.
 
-Neither deployment style removes distributed-systems complexity. Each style moves the complexity to different boundaries.
+Neither deployment style removes distributed-systems complexity. Each places that complexity at different boundaries.
+
+## Related documentation
+
+- [Microservices design](02-microservices-design.md)
+- [Virtual actors design](03-virtual-actors-design.md)
+- [Development comparison](04-development-comparison.md)
+- [Scaling comparison](06-scaling-comparison.md)
+- [Trade-offs](07-tradeoffs.md)
+- [Local validation](09-local-validation.md)
+- [Observability and operations](16-observability-and-operations.md)
+- [Known limitations](17-known-limitations.md)
+- [Out of scope](18-out-of-scope.md)

@@ -1,123 +1,222 @@
-# Correlation ID logging
+# Correlation and trace context
 
-This document explains the simplified correlation mechanism used by the sample.
+This document explains how diagnostic context moves through the architecture workbench.
 
-The purpose of this document is narrow: it describes how `X-Correlation-ID` flows through the local comparison sample and why this lightweight approach was chosen instead of a full observability platform.
+The repository uses complementary mechanisms:
 
-Broader runtime diagnostics, metrics, alerting, and operational interpretation are covered in [16-observability-and-operations.md](16-observability-and-operations.md).
+- W3C trace context and .NET `Activity` provide distributed tracing context
+- OpenTelemetry instrumentation records traces and metrics
+- `X-Correlation-ID` provides a stable, human-readable request correlation value for structured logs and HTTP boundaries where it is supplied
+- the Aspire dashboard provides the development view for resources, logs, traces, and metrics
 
-## Production direction
+Correlation and trace identifiers are diagnostic metadata. They are not part of the business scenario contract.
 
-Production applications should generally use end-to-end OpenTelemetry-based observability instead of a custom correlation-only mechanism.
+## Why correlation matters
 
-In a production system, trace context should flow consistently through the whole request path, including:
+One scenario run can cross several runtime boundaries.
 
-- UI or external entry point
-- gateway
-- backend APIs
-- service-to-service HTTP clients
-- actor runtime boundaries
-- persistence operations
-- logs
-- metrics
-- traces
+The microservices path can involve:
 
-A production-grade approach would usually include:
-
-- W3C Trace Context propagation
-- .NET `Activity` and `ActivitySource`
-- OpenTelemetry instrumentation
-- structured logs correlated with trace and span identifiers
-- metrics emitted through the same observability strategy
-- exporters to an observability backend
-- dashboards and alerting based on collected telemetry
-
-That full observability stack is intentionally not implemented in this repository. The repository is designed to compare workflow ownership, state boundaries, concurrency, idempotency, and failure handling between microservices and virtual actors. Adding full OpenTelemetry infrastructure would be valuable in production, but it would add setup and operational complexity that could distract from the core comparison.
-
-## Sample approach
-
-For simplicity, the sample uses a pragmatic custom HTTP header:
-
-```text
-X-Correlation-ID
-```
-
-The UI sends this header when executing a scenario.
-
-The gateway stores the value in an asynchronous correlation context and forwards it to backend HTTP calls.
-
-Backend APIs add the value to structured logging scopes when the header is present.
-
-The UI displays the correlation ID for the completed scenario run so the same value can be searched in logs.
-
-This gives enough diagnostic value for the local comparison sample without requiring tracing infrastructure, exporters, dashboards, or an observability backend.
-
-```mermaid
-flowchart LR
-    UI[Comparison.Ui]
-    Gateway[Comparison.Gateway]
-    Orders[Orders.Api]
-    Inventory[Inventory.Api]
-    Payments[Payments.Api]
-    Ordering[Ordering.Api]
-
-    UI -->|X-Correlation-ID| Gateway
-    Gateway -->|X-Correlation-ID| Orders
-    Orders -->|X-Correlation-ID| Inventory
-    Orders -->|X-Correlation-ID| Payments
-    Gateway -->|X-Correlation-ID| Ordering
-```
-
-
-## Where correlation appears
-
-A scenario run can involve multiple processes, depending on the selected architecture:
-
-- `Comparison.Ui`
-- `Comparison.Gateway`
+- `Workbench.Gateway`
 - `Orders.Api`
 - `Inventory.Api`
 - `Payments.Api`
+
+The virtual actor path can involve:
+
+- `Workbench.Gateway`
 - `Ordering.Api`
+- `Ordering.Silo`
+- Orleans grain calls and persistence
 
-The correlation ID makes it possible to search logs across these processes for the same scenario run.
+Without propagated diagnostic context, logs and spans from one scenario are difficult to distinguish from concurrent work. Correlation makes it possible to connect activity across those boundaries without adding diagnostic fields to business request and response contracts.
 
-For example:
+## Diagnostic context flow
 
-- in the microservices path, the same correlation ID should connect gateway, order, inventory, and payment logs
-- in the virtual actor path, the same correlation ID should connect gateway, ordering API, and actor workflow logs
+```mermaid
+flowchart LR
+    UI[Workbench.Ui]
+    Gateway[Workbench.Gateway]
 
-## Why this is not part of the scenario contract
+    Orders[Orders.Api]
+    Inventory[Inventory.Api]
+    Payments[Payments.Api]
 
-Correlation IDs are diagnostic metadata rather than business data.
+    OrderingApi[Ordering.Api]
+    OrderingSilo[Ordering.Silo]
+    Grains[Orleans grains]
 
-Keeping correlation in headers avoids mixing observability concerns into scenario request and result contracts.
+    UI -->|HTTP and trace context| Gateway
+    Gateway -->|HTTP and trace context| Orders
+    Orders -->|HTTP and trace context| Inventory
+    Orders -->|HTTP and trace context| Payments
 
-The scenario contract should describe business input and business result shape. The correlation ID should help diagnose how that result was produced.
+    Gateway -->|HTTP and trace context| OrderingApi
+    OrderingApi -->|Orleans client context| OrderingSilo
+    OrderingSilo --> Grains
+```
 
-This distinction matters because changing observability infrastructure should not require changing scenario contracts.
+The diagram shows the main propagation paths. The exact span graph depends on the selected scenario, enabled instrumentation, sampling policy, and runtime behavior.
 
-## Limitations of the sample approach
+## Trace context
 
-The custom `X-Correlation-ID` approach is intentionally simple.
+.NET tracing is based on `Activity` and `ActivitySource`. OpenTelemetry instrumentation observes activities and exports them through the configured telemetry pipeline.
 
-It does not provide everything a full observability implementation would provide. In particular, it does not model:
+W3C trace context provides:
 
-- trace spans
-- parent-child span relationships
-- automatic HTTP client instrumentation
-- automatic database instrumentation
-- actor runtime instrumentation
-- metrics correlation
-- export to tracing backends
-- cross-service latency breakdowns
+- a trace identifier shared by related operations
+- span identifiers for individual operations
+- parent-child relationships
+- sampling information propagated with the request
 
-The custom header is enough to search logs for a local scenario run, but it is not a replacement for production-grade tracing.
+Automatic and custom instrumentation can contribute spans for:
+
+- ASP.NET Core requests
+- outgoing HTTP calls
+- Entity Framework Core operations
+- Orleans runtime activity where instrumentation applies
+- custom scenario and architecture operations
+
+Trace context is the primary mechanism for understanding causal relationships and latency across the composed application.
+
+## Correlation ID
+
+`X-Correlation-ID` is a custom HTTP header used as an additional log-correlation value.
+
+Where the header is present:
+
+- the Gateway reads or establishes the correlation value
+- outgoing HTTP calls propagate it to relevant backend APIs
+- receiving APIs add it to structured logging context
+- operators can search logs for the same value across process boundaries
+
+The correlation ID complements trace context. It does not replace trace and span identifiers, and it does not define parent-child relationships between operations.
+
+The Workbench UI does not display the correlation ID. Detailed request correlation, logs, and trace evidence are inspected through the Aspire dashboard and the configured telemetry pipeline.
+
+## Structured logging
+
+Structured logs should preserve stable property names so related events can be queried consistently.
+
+Useful diagnostic properties can include:
+
+- correlation ID
+- trace ID and span ID
+- service name
+- scenario kind
+- operation name
+- normalized outcome
+- bounded architecture or client identity
+
+Do not log sensitive or unbounded request data merely to improve correlation. Avoid placing these values in normal logs or telemetry unless an explicit data-handling policy requires and protects them:
+
+- credentials and tokens
+- connection strings
+- complete request or response bodies
+- customer identifiers
+- order identifiers
+- product identifiers
+- idempotency keys
+- persisted state
+
+High-cardinality investigation belongs primarily in carefully governed logs and traces, not metric dimensions.
+
+## Scenario instrumentation
+
+`Hosting.ServiceDefaults` provides shared observability configuration. The workbench adds scenario-specific instrumentation for operations that are meaningful to the comparison.
+
+Scenario activities and metrics can identify bounded values such as:
+
+- scenario kind
+- service-client name
+- normalized outcome
+- duration
+- submission, completion, rejection, and idempotent-response counts
+
+Custom trace collection and sampling can prioritize scenario traffic without requiring every development request to be retained. Sampling affects whether a trace is collected, it does not change business execution.
+
+Instrumentation names and tag values should remain stable because dashboards, queries, tests, and operational guidance can depend on them.
+
+## Aspire dashboard
+
+The Aspire dashboard is the primary development diagnostics surface for the composed application.
+
+Use it to inspect:
+
+- resource state and lifecycle
+- service endpoints and dependencies
+- structured logs
+- distributed traces
+- metrics
+- runtime configuration exposed by the development environment
+
+The Aspire dashboard and Workbench UI are complementary:
+
+- `Workbench.Ui` presents normalized scenario outcomes, topology-aware health, architecture explanation, and trade-offs
+- the Aspire dashboard presents lower-level runtime and telemetry information that is intentionally not duplicated in the Workbench
+
+The Workbench timeline explains the intended scenario. The Aspire trace shows the operations that actually occurred.
+
+## Why diagnostic metadata is not part of the scenario contract
+
+Scenario contracts describe business input and normalized business outcomes. Correlation and trace metadata describe how an operation was processed.
+
+Keeping these concerns separate means:
+
+- telemetry infrastructure can change without changing the business contract
+- clients are not required to persist diagnostic identifiers as domain data
+- scenario regression tests can focus on business semantics
+- observability can evolve independently through headers, activities, exporters, and logging configuration
+
+A diagnostic identifier can still be returned by infrastructure where useful, but it should not become part of the logical order or scenario result model without a business requirement.
+
+## Validation
+
+To validate correlation and tracing locally:
+
+1. Start the repository through `Hosting.AppHost`.
+2. Open `Workbench.Ui` from the Aspire dashboard.
+3. Run a scenario.
+4. Inspect the Gateway and backend logs in Aspire.
+5. Open the related distributed trace.
+6. Confirm that trace context connects the relevant operations.
+7. Where `X-Correlation-ID` is present, confirm that the same value appears in the expected structured logs.
+8. Confirm that logs and telemetry do not expose sensitive or unbounded request values.
+
+The microservices and virtual actor paths do not need identical span graphs. Validation should focus on causal continuity, useful operation names, accurate status, and safe diagnostic context.
+
+## Limitations
+
+The repository demonstrates development observability, not a complete production observability platform.
+
+It does not provide a production decision for:
+
+- telemetry storage and retention
+- multi-tenant access control
+- alerting and escalation
+- service-level objectives
+- incident response
+- telemetry cost management
+- sensitive-data governance
+- cross-region collection
+- long-term trace sampling policy
+
+The Aspire dashboard is a development instrument and detailed diagnostics view. Production systems still require an independently designed telemetry backend and operating model.
 
 ## Practical takeaway
 
-Use OpenTelemetry end to end in production applications.
+Use distributed trace context to understand causal relationships and latency. Use structured correlation values when they improve log search and support workflows. Keep both forms of diagnostic metadata outside the business contract.
 
-Use the sample's `X-Correlation-ID` mechanism as a deliberately small local diagnostic aid for the comparison repository.
+The important architectural principle is consistent across both implementations: diagnostic context must flow across process, runtime, and persistence boundaries without becoming domain state.
 
-The important architectural point is the same in both cases: diagnostic context should flow across process, runtime, and persistence boundaries without becoming part of the business contract.
+## Related documentation
+
+- [Microservices design](02-microservices-design.md)
+- [Virtual actors design](03-virtual-actors-design.md)
+- [Local validation](09-local-validation.md)
+- [UI dashboard](10-ui-dashboard.md)
+- [End-to-end validation](11-end-to-end-validation.md)
+- [Scenario guide](12-scenario-guide.md)
+- [Observability and operations](16-observability-and-operations.md)
+- [Known limitations](17-known-limitations.md)
+- [Out of scope](18-out-of-scope.md)

@@ -8,9 +8,9 @@ This repository is an architecture workbench that compares the same order workfl
 
 Choose the appropriate GitHub channel:
 
-- Use a **bug report** for reproducible incorrect behavior.
-- Use a **feature request** for a concrete improvement, new scenario, or new comparison.
-- Use **GitHub Discussions** for questions, early ideas, observations, and open-ended architecture conversations.
+- Use a **bug report** for reproducible incorrect behavior
+- Use a **feature request** for a concrete improvement, new scenario, or new comparison
+- Use **GitHub Discussions** for questions, early ideas, observations, and open-ended architecture conversations
 
 Search existing issues and discussions before creating a new one.
 
@@ -55,13 +55,13 @@ Read the nearest folder or project README before changing an unfamiliar area.
 
 Keep contributions focused and proportional to the problem.
 
-- Avoid unrelated formatting or refactoring.
-- Prefer the minimum useful abstraction.
-- Preserve the observable meaning of shared scenarios and results.
-- Keep both architecture implementations aligned when changing comparison semantics.
-- Propagate cancellation through asynchronous operations.
-- Do not expose credentials, connection strings, personal data, or sensitive configuration in code, logs, traces, screenshots, tests, or issues.
-- Do not commit generated output, local databases, SQLite WAL or SHM files, IDE user files, or Aspire runtime state.
+- Avoid unrelated formatting or refactoring
+- Prefer the minimum useful abstraction
+- Preserve the observable meaning of shared scenarios and results
+- Keep both architecture implementations aligned when changing comparison semantics
+- Propagate cancellation through asynchronous operations
+- Do not expose credentials, connection strings, personal data, or sensitive configuration in code, logs, traces, screenshots, tests, or issues
+- Do not commit generated output, local databases, SQLite WAL or SHM files, IDE user files, or Aspire runtime state
 
 ### Shared contracts
 
@@ -69,7 +69,7 @@ Changes under `src/Workbench/Workbench.Contracts` can affect both implementation
 
 When changing a shared contract:
 
-- preserve serialization compatibility unless a deliberate breaking change is agreed;
+- preserve serialization compatibility unless a deliberate breaking change is agreed
 - review nullability and default values
 - update every affected producer and consumer
 - update tests and documentation in the same pull request
@@ -125,10 +125,10 @@ Also validate the affected behavior through the Aspire AppHost when the change i
 
 Relevant test projects include:
 
-- `Microservices.Tests`;
-- `VirtualActors.Tests`;
-- `Workbench.AcceptanceTests`;
-- `Workbench.ScenarioRegressionTests`.
+- `Microservices.Tests`
+- `VirtualActors.Tests`
+- `Workbench.AcceptanceTests`
+- `Workbench.ScenarioRegressionTests`
 
 Add or update tests when changing observable behavior. Do not weaken existing assertions merely to make a change pass.
 

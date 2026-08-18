@@ -1,32 +1,32 @@
-### Payments.Api
+# Payments.Api
 
 Payments.Api is the payment authorization service for the microservices implementation in the **Microservices vs Virtual Actors** architecture workbench. It exposes an ASP.NET Core Minimal API endpoint, persists idempotent authorization outcomes to SQLite through Entity Framework Core, and returns shared workbench response contracts.
 
 The service does not orchestrate orders or manage inventory. Orders.Api calls this service as part of the distributed order workflow.
 
-#### Repository context
+## Repository context
 
 The repository implements the same order workflow in two architectural styles:
 
-- **Microservices**, with explicit HTTP service boundaries for order orchestration, inventory, and payments.
-- **Virtual actors**, with Orleans grains providing identity-based state ownership and serialized execution per actor identity.
+- **Microservices**, with explicit HTTP service boundaries for order orchestration, inventory, and payments
+- **Virtual actors**, with Orleans grains providing identity-based state ownership and serialized execution per actor identity
 
 Payments.Api owns the payment authorization boundary for the microservices path. It records each authorization outcome so repeated requests using the same idempotency key return the previously persisted result.
 
 See the repository-level README and docs directory for the scenario guide, architecture discussions, operational interpretation, known limitations, and scope boundaries.
 
-#### Responsibilities
+## Responsibilities
 
 The project performs six main tasks:
 
-- Hosts the ASP.NET Core Minimal API application.
-- Exposes the payment authorization endpoint.
-- Persists payment attempts through Entity Framework Core and SQLite.
-- Provides idempotent responses for repeated authorization requests.
-- Adds correlation information and source-generated structured logging.
-- Exposes database readiness and shared liveness endpoints.
+- Hosts the ASP.NET Core Minimal API application
+- Exposes the payment authorization endpoint
+- Persists payment attempts through Entity Framework Core and SQLite
+- Provides idempotent responses for repeated authorization requests
+- Adds correlation information and source-generated structured logging
+- Exposes database readiness and shared liveness endpoints
 
-#### Project structure
+## Project structure
 
 Generated `bin` and `obj` directories, the user-specific `.csproj.user` file, and the local `payments.db` artifact are intentionally omitted.
 
@@ -59,7 +59,7 @@ Properties/
   launchSettings.json
 ```
 
-#### Startup flow
+## Startup flow
 
 `Program.cs` performs application composition:
 
@@ -82,7 +82,7 @@ Data Source=payments.db
 
 The fallback supports local workbench execution. Environment-specific deployments should provide the connection string through normal ASP.NET Core configuration providers.
 
-#### Endpoint organization
+## Endpoint organization
 
 Application endpoints are registered by:
 
@@ -94,9 +94,9 @@ app.MapPaymentsEndpoints();
 
 Payment routes are grouped under `/api/payments`, while the root service-information endpoint remains at `/`.
 
-#### Endpoint reference
+## Endpoint reference
 
-##### Service information
+### Service information
 
 ```http
 GET /
@@ -111,7 +111,7 @@ Returns identifying information for the service:
 }
 ```
 
-##### Authorize payment
+### Authorize payment
 
 ```http
 POST /api/payments/authorize
@@ -129,7 +129,7 @@ The handler:
 
 Successful requests return HTTP 200. Unexpected failures are logged and mapped to HTTP 500. Caller-requested cancellation is propagated.
 
-#### Idempotency
+## Idempotency
 
 `IdempotencyKey` has a unique database index and is the lookup key for repeated payment authorization requests.
 
@@ -137,7 +137,7 @@ When a matching attempt exists, the service returns the stored `Authorized` and 
 
 Idempotency behavior is part of the service contract. Changes to key comparison, uniqueness, or replay semantics can affect distributed workflow correctness even when the HTTP shape remains unchanged.
 
-#### Failure simulation
+## Failure simulation
 
 The workbench request can simulate a rejected payment authorization. When simulation is enabled, the persisted result contains:
 
@@ -148,35 +148,35 @@ Reason:     PaymentFailed
 
 This is a deterministic architecture-workbench control, not a production payment decision engine or general fault-injection interface.
 
-#### Persistence model
+## Persistence model
 
 `PaymentAttempt` stores:
 
-- `PaymentId`, the primary key;
-- `OrderId`, the associated order identifier;
-- `CustomerId`, the customer identifier;
-- `IdempotencyKey`, the unique repeat-request key;
-- `Authorized`, the terminal authorization outcome;
-- `Reason`, the optional failure reason.
+- `PaymentId`, the primary key
+- `OrderId`, the associated order identifier
+- `CustomerId`, the customer identifier
+- `IdempotencyKey`, the unique repeat-request key
+- `Authorized`, the terminal authorization outcome
+- `Reason`, the optional failure reason
 
 `PaymentsDbContext` exposes the payment attempts and applies `PaymentAttemptEntityConfiguration` during model creation.
 
 The entity configuration defines:
 
-- `PaymentId` as the primary key;
-- a maximum length of 100 for customer identifiers and failure reasons;
-- a maximum length of 200 for idempotency keys;
-- a unique index on `IdempotencyKey`.
+- `PaymentId` as the primary key
+- a maximum length of 100 for customer identifiers and failure reasons
+- a maximum length of 200 for idempotency keys
+- a unique index on `IdempotencyKey`
 
 The schema limits are consolidated as named constants in the entity configuration.
 
-#### Database initialization
+## Database initialization
 
 The application calls `EnsureCreatedAsync` before mapping requests. This creates the SQLite database and schema when they do not exist.
 
 `EnsureCreatedAsync` is suitable for the local architecture workbench. If the schema begins evolving through migrations, replace this initialization approach with an explicit migration workflow rather than mixing both strategies.
 
-#### Correlation logging
+## Correlation logging
 
 The request pipeline reads the optional header:
 
@@ -186,15 +186,15 @@ X-Correlation-ID
 
 When the header contains a non-blank value, the API:
 
-- creates a logging scope with the structured `CorrelationId` property;
-- emits an informational request-handling event;
-- keeps the scope active through the remaining request pipeline.
+- creates a logging scope with the structured `CorrelationId` property
+- emits an informational request-handling event
+- keeps the scope active through the remaining request pipeline
 
 Requests without a correlation identifier continue without creating the scope.
 
 The header value is used for correlation only. It must not be treated as authenticated identity or authorization data.
 
-#### Structured logging
+## Structured logging
 
 The project uses source-generated logging methods in:
 
@@ -205,9 +205,9 @@ Internal/Observability/Logging/LogError.cs
 
 Informational events cover:
 
-- request correlation;
-- payment authorization start;
-- payment authorization completion.
+- request correlation
+- payment authorization start
+- payment authorization completion
 
 Error events cover unexpected payment authorization failures.
 
@@ -215,7 +215,7 @@ Event IDs are allocated from log-level-specific ranges. Message-template placeho
 
 Do not log credentials, full request bodies, connection strings, or other sensitive values. Payment, order, customer, authorization, and correlation identifiers are the current operational context carried by these events.
 
-#### Health endpoints
+## Health endpoints
 
 The project registers `PaymentsDatabaseHealthCheck`, which creates an asynchronous dependency-injection scope and calls `CanConnectAsync` on `PaymentsDbContext`.
 
@@ -236,7 +236,7 @@ payments-database
 
 The database health check verifies connectivity only. It does not validate schema freshness or guarantee that each subsequent write will succeed.
 
-#### Configuration
+## Configuration
 
 `appsettings.json` contains project configuration consumed by ASP.NET Core and shared service defaults.
 
@@ -244,13 +244,13 @@ The database health check verifies connectivity only. It does not validate schem
 
 Environment-specific values should be supplied through normal ASP.NET Core configuration providers. Do not commit secrets or credentials to either file.
 
-#### Docker
+## Docker
 
 The project includes a `Dockerfile` for container builds. Keep it aligned with the target framework, repository build layout, database path, and runtime user when project references or output paths change.
 
-Container-specific ports, user configuration, filesystem permissions, and health checks should be reviewed directly in the `Dockerfile`; those details are not duplicated here.
+Container-specific ports, user configuration, filesystem permissions, and health checks should be reviewed directly in the `Dockerfile`, those details are not duplicated here.
 
-#### Local development
+## Local development
 
 The service has no runtime HTTP dependency on Inventory.Api or Orders.Api. It does require writable access to the configured SQLite database path.
 
@@ -268,7 +268,7 @@ dotnet run --project <path-to-Payments.Api.csproj>
 
 Local URLs are defined by `Properties/launchSettings.json` or runtime configuration.
 
-#### Validate changes
+## Validate changes
 
 From the repository root:
 
@@ -280,48 +280,48 @@ dotnet test --configuration Release --no-build
 
 Payments API changes should cover at least:
 
-- successful authorization;
-- simulated authorization failure;
-- repeated requests with the same idempotency key;
-- unique idempotency-key enforcement;
-- payment-attempt persistence;
-- database initialization;
-- database connectivity failure;
-- cancellation propagation;
-- correlation scope creation with and without the header;
-- structured log event IDs and property names;
-- readiness and liveness endpoints;
-- request binding and invalid inputs.
+- successful authorization
+- simulated authorization failure
+- repeated requests with the same idempotency key
+- unique idempotency-key enforcement
+- payment-attempt persistence
+- database initialization
+- database connectivity failure
+- cancellation propagation
+- correlation scope creation with and without the header
+- structured log event IDs and property names
+- readiness and liveness endpoints
+- request binding and invalid inputs
 
-#### Adding or changing endpoints
+## Adding or changing endpoints
 
 When modifying this project:
 
-- Keep host composition in `Program.cs` concise.
-- Add payment routes through `EndpointRouteBuilderExtensions`.
-- Keep payment routes in the `/api/payments` route group.
-- Preserve idempotency semantics and the unique database constraint.
-- Keep persistence mapping in `PaymentAttemptEntityConfiguration`.
-- Propagate `OperationCanceledException` rather than converting cancellation to HTTP 500.
-- Log unexpected failures before returning a problem response.
-- Preserve structured message templates and stable event IDs.
-- Avoid logging sensitive payment or customer data.
-- Keep database dependency checks on readiness rather than liveness.
-- Update this README when routes, persistence, idempotency, health checks, or initialization behavior change.
+- Keep host composition in `Program.cs` concise
+- Add payment routes through `EndpointRouteBuilderExtensions`
+- Keep payment routes in the `/api/payments` route group
+- Preserve idempotency semantics and the unique database constraint
+- Keep persistence mapping in `PaymentAttemptEntityConfiguration`
+- Propagate `OperationCanceledException` rather than converting cancellation to HTTP 500
+- Log unexpected failures before returning a problem response
+- Preserve structured message templates and stable event IDs
+- Avoid logging sensitive payment or customer data
+- Keep database dependency checks on readiness rather than liveness
+- Update this README when routes, persistence, idempotency, health checks, or initialization behavior change
 
-#### Naming conventions
+## Naming conventions
 
-- Endpoint registration types use the `Extensions` suffix.
-- Endpoint registration methods use the `Map` prefix.
-- Async route handlers use the `Async` suffix.
-- Entity Framework contexts use the `DbContext` suffix.
-- Entity mappings use the `EntityConfiguration` suffix.
-- Health checks use the `HealthCheck` suffix.
-- Source-generated logging classes are grouped by log level.
-- Structured logging placeholders use PascalCase.
-- Route parameters use camelCase.
+- Endpoint registration types use the `Extensions` suffix
+- Endpoint registration methods use the `Map` prefix
+- Async route handlers use the `Async` suffix
+- Entity Framework contexts use the `DbContext` suffix
+- Entity mappings use the `EntityConfiguration` suffix
+- Health checks use the `HealthCheck` suffix
+- Source-generated logging classes are grouped by log level
+- Structured logging placeholders use PascalCase
+- Route parameters use camelCase
 
-#### Scope
+## Scope
 
 Payments.Api demonstrates an independently deployed payment boundary for the microservices ordering scenario. It is not a production payment processor, fraud engine, ledger, settlement system, PCI compliance implementation, authentication model, authorization policy, or disaster-recovery design.
 

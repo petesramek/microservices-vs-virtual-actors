@@ -1,19 +1,19 @@
 # Development comparison
 
-This document compares the developer experience of implementing the same order workflow with two different architecture styles:
+This document compares the developer experience of implementing the same order workflow in two architectural styles:
 
 - a microservices-style implementation with explicit HTTP service boundaries
 - a virtual actor-style implementation with stateful identity boundaries
 
-The comparison focuses on how day-to-day development changes when state ownership, workflow coordination, concurrency, idempotency, and failure handling move to different places.
+The comparison focuses on where developers express state ownership, workflow coordination, concurrency control, idempotency, failure handling, testing, and operational diagnostics.
 
 ## Development focus
 
-Microservices emphasize service contracts, HTTP communication, service-owned persistence, and explicit failure handling.
+Microservices emphasize service contracts, HTTP communication, service-owned persistence, and explicit handling of remote failures.
 
-Virtual actors emphasize identity-based state, grain interfaces, runtime-managed activation, and per-entity coordination.
+Virtual actors emphasize identity-based state, grain interfaces, runtime-managed activation, and per-identity coordination.
 
-Both styles can express the same business workflow. The difference is where the developer has to make responsibilities explicit.
+Both styles can implement the same business workflow. The difference is where responsibilities become explicit in code and which runtime assumptions developers must understand.
 
 ```mermaid
 flowchart LR
@@ -26,12 +26,9 @@ flowchart LR
     InventoryApi[Inventory.Api]
     PaymentsApi[Payments.Api]
 
-    OrderGrain[OrderGrain
-orderId]
-    InventoryGrain[InventoryItemGrain
-productId]
-    PaymentGrain[PaymentAccountGrain
-customerId]
+    OrderGrain[OrderGrain<br/>orderId]
+    InventoryGrain[InventoryItemGrain<br/>productId]
+    PaymentGrain[PaymentAccountGrain<br/>customerId]
 
     OrderWorkflow --> OrdersApi
     OrderWorkflow --> OrderGrain
@@ -43,177 +40,208 @@ customerId]
     Idempotency --> OrderGrain
 ```
 
-
 ## Modeling the workflow
 
 ### Microservices
 
-In the microservices implementation, the workflow is modeled across separately deployable services:
+In the microservices implementation, the workflow is modeled across independently hosted services:
 
-- `Orders.Api` coordinates the order workflow.
-- `Inventory.Api` owns product inventory state.
-- `Payments.Api` owns payment authorization behavior.
+- `Orders.Api` coordinates the order workflow
+- `Inventory.Api` owns product inventory state
+- `Payments.Api` owns payment authorization behavior
 
-The developer has to design HTTP contracts between services, decide how each service persists its own data, and handle each downstream call as a possible failure point.
+Developers define HTTP contracts between services, decide how each service persists its data, and treat each downstream call as a possible failure point.
 
-This makes service boundaries visible in code. It also means workflow logic can be spread across service entry points, client abstractions, DTOs, persistence models, and compensation paths.
+This makes process and service boundaries visible in code. It can also distribute workflow behavior across endpoints, client abstractions, transport contracts, persistence models, retries, and compensation paths.
 
 ### Virtual actors
 
 In the virtual actor implementation, the workflow is modeled around stateful identities:
 
-- `OrderGrain(orderId)` owns one order workflow.
-- `InventoryItemGrain(productId)` owns inventory for one product identity.
-- `PaymentAccountGrain(customerId)` owns payment behavior for one customer or account identity.
+- `OrderGrain(orderId)` owns one order workflow
+- `InventoryItemGrain(productId)` owns inventory for one product identity
+- `PaymentAccountGrain(customerId)` owns payment behavior for one customer or account identity
 
-The developer works with grain interfaces and strongly typed method calls instead of internal HTTP calls between workflow participants.
+Developers work with grain interfaces and strongly typed asynchronous calls rather than directly constructing HTTP requests between workflow participants. Orleans still treats grain calls as distributed messages when required, including copying or serializing their arguments and results.
 
-This can make identity-specific state and behavior easier to reason about, but it also means grain boundaries, grain state shape, activation behavior, and runtime assumptions become part of the design.
+This can make identity-specific state and behavior easier to follow. It also makes grain identity, state shape, activation, placement, serialization, and runtime scheduling part of the development model.
 
 ## State ownership
 
 State ownership is the central development difference.
 
-In the microservices implementation, state ownership is expressed through services and their data stores. `Inventory.Api` owns inventory. `Orders.Api` owns order records and idempotency behavior. `Payments.Api` owns payment attempts.
+In the microservices implementation, ownership is expressed through services and their data stores:
 
-In the virtual actor implementation, state ownership is expressed through actor identity. `InventoryItemGrain(productId)` owns one product inventory identity. `OrderGrain(orderId)` owns one logical order workflow identity.
+- `Inventory.Api` owns inventory and reservations
+- `Orders.Api` owns order records and order idempotency
+- `Payments.Api` owns payment attempts
 
-The developer has to answer the same questions in both designs:
+In the virtual actor implementation, ownership is expressed through actor identity:
+
+- `InventoryItemGrain(productId)` owns one product inventory identity
+- `OrderGrain(orderId)` owns one logical order workflow identity
+- `PaymentAccountGrain(customerId)` owns payment behavior for one customer identity
+
+Developers must answer the same questions in both designs:
 
 - Who owns the state?
-- Who is allowed to change the state?
+- Who may change it?
 - Who protects the invariant?
-- Who records the final result?
-- Who handles duplicate requests?
+- Who records the terminal result?
+- Who recognizes and resolves duplicate requests?
 
-The implementation style changes where those answers appear in code.
+The architecture changes where those answers appear and how they are enforced.
 
 ## Coordination style
 
 ### Microservices coordination
 
-The microservices implementation coordinates the workflow through HTTP calls.
+The microservices implementation coordinates the workflow through HTTP calls. A typical order flow requires `Orders.Api` to reserve inventory through `Inventory.Api`, authorize payment through `Payments.Api`, and possibly call `Inventory.Api` again to release the reservation.
 
-A typical order flow requires `Orders.Api` to call `Inventory.Api`, then call `Payments.Api`, then possibly call `Inventory.Api` again to release a reservation when compensation is required.
+Developers must account for:
 
-This makes integration boundaries explicit. It also requires developers to handle:
-
-- HTTP status codes
+- HTTP status codes and response bodies
 - serialization contracts
 - downstream timeouts
-- retries or retry avoidance
+- retry safety and retry avoidance
 - partial failure
 - compensation
-- correlation across service logs
+- correlation across service logs and traces
+
+These concerns are explicit because every service call crosses a remote boundary.
 
 ### Virtual actor coordination
 
-The virtual actor implementation coordinates the workflow through grain calls.
+The virtual actor implementation coordinates the workflow through grain calls. A typical order flow requires `OrderGrain` to call `InventoryItemGrain`, then `PaymentAccountGrain`, and possibly `InventoryItemGrain` again to release a reservation.
 
-A typical order flow requires `OrderGrain` to call `InventoryItemGrain`, then call `PaymentAccountGrain`, then possibly call `InventoryItemGrain` again to release a reservation.
-
-This can make the workflow read more like direct domain collaboration. However, developers still need to understand:
+The code can read like direct domain collaboration, but developers still need to understand:
 
 - grain identity selection
 - activation and placement behavior
-- serialized execution per grain identity
-- grain state compatibility
-- runtime failure behavior
-- hot grain bottlenecks
+- request scheduling and interleaving
+- grain-call and grain-state serialization
+- state compatibility
+- runtime and silo failure behavior
+- hot-grain bottlenecks
 
-The actor model changes the coordination mechanism, but it does not remove the need to design the workflow carefully.
+The actor model changes the programming abstraction and coordination boundary. It does not turn remote work into an in-process method call or remove distributed-system failure modes.
 
 ## Concurrency and invariants
 
 ### Microservices
 
-In the microservices implementation, concurrency protection must be explicit at the state owner.
+In the microservices implementation, concurrency protection must be explicit at the state owner. `Inventory.Api` must ensure that concurrent reservations do not reduce available inventory below zero.
 
-For inventory, `Inventory.Api` must ensure that concurrent reservations do not reduce available inventory below zero. This is a service and persistence design responsibility.
-
-The benefit is that the concurrency strategy is visible and can be implemented using familiar service and database techniques. The cost is that the developer must design, test, and maintain that strategy explicitly.
+The concurrency strategy is visible and can use familiar service and database techniques. The developer is responsible for choosing, testing, and maintaining the strategy, including its behavior under retries and competing requests.
 
 ### Virtual actors
 
-In the virtual actor implementation, concurrency protection is naturally aligned with actor identity.
+In the virtual actor implementation, concurrency protection aligns with actor identity. Reservation attempts for one product identity are routed to `InventoryItemGrain(productId)`.
 
-All reservation attempts for one product identity are routed through `InventoryItemGrain(productId)`. Calls for that grain identity are processed sequentially by the actor runtime, which helps protect the inventory invariant for that identity.
+Orleans grain activations use a single-threaded execution model and, by default, process one request to completion before processing the next. Reentrancy and interleaving can change that behavior, so the guarantee must be considered together with the grain configuration.
 
-The benefit is that single-identity invariants can be easier to express. The cost is that hot identities can become bottlenecks, and developers must understand runtime behavior when designing for scale.
+This can simplify single-identity invariants. It does not remove contention: a hot product can become a hot grain, and throughput for that identity remains bounded by the work serialized through it.
 
 ## Idempotency
 
 Idempotency is a first-class development concern in both implementations.
 
-In the microservices implementation, `Orders.Api` must explicitly protect the relationship between an idempotency key and a logical order result. Duplicate submissions should return the existing result instead of creating a second order or reserving inventory again.
+In the microservices implementation, `Orders.Api` explicitly protects the relationship between an idempotency key and a logical order result. Duplicate submissions should return the established result instead of creating another order or reserving inventory again.
 
-In the virtual actor implementation, `OrderGrain(orderId)` can use stable actor identity and stored grain state to return the existing result for duplicate submissions targeting the same logical order.
+In the virtual actor implementation, `OrderGrain(orderId)` combines stable actor identity with persisted grain state. Duplicate submissions targeting the same order identity can return the stored result instead of rerunning the workflow.
 
-Both approaches still require clear semantics. Developers must decide what counts as a duplicate request, how long idempotency state is retained, and what response duplicate submissions should receive.
+Both designs still require clear policy:
+
+- What identifies the same logical request?
+- What happens when duplicates arrive concurrently?
+- How long is the idempotent result retained?
+- Can a key be reused with different request data?
+- What response is returned for an established result?
+
+The architecture can support idempotency, but it does not define those semantics automatically.
 
 ## Failure handling and compensation
 
-Failure handling is explicit in both styles.
+Failure handling remains explicit in both styles. The sample includes insufficient inventory, payment failure after reservation, and payment timeout after reservation.
 
-The sample includes scenarios where inventory is insufficient, payment fails after reservation, and payment times out after reservation.
+In the microservices implementation, failure handling is expressed through HTTP outcomes, service-client behavior, persisted workflow state, and compensation calls between services.
 
-In the microservices implementation, failure handling is expressed through HTTP responses, service client behavior, and compensation calls between services.
+In the virtual actor implementation, it is expressed through grain-call outcomes, persisted grain state, workflow transitions, and compensation calls between grains.
 
-In the virtual actor implementation, failure handling is expressed through grain method results, workflow state transitions, and compensation calls between grains.
+The business policy still has to answer:
 
-The architecture style changes the mechanics, but the business policy still has to be designed:
+- Does a timeout reject the order or leave it pending?
+- Is inventory released immediately?
+- Is payment retried?
+- How is an ambiguous downstream outcome reconciled?
+- What terminal reason is exposed to the caller?
 
-- Should a timeout reject the order?
-- Should a timeout move the order to a pending state?
-- Should inventory be released immediately?
-- Should payment be retried?
-- What should the final reason be?
-
-The sample keeps these decisions deterministic so both implementations can be compared with the same scenario expectations.
+The workbench uses deterministic policies so both implementations can be compared through the same scenario expectations. Those policies are intentionally simpler than a production recovery and reconciliation model.
 
 ## Testing implications
 
 ### Microservices tests
 
-Microservices tests tend to focus on service contracts, HTTP-facing behavior, downstream client behavior, persistence behavior, and compensation paths.
+Microservices tests focus on service contracts, endpoint behavior, downstream-client behavior, persistence, concurrency, idempotency, and compensation.
 
-Useful tests include:
+The repository includes coverage for:
 
-- order workflow tests through `Orders.Api`
-- fake downstream inventory and payment clients
-- idempotency race tests
-- compensation tests
-- scenario regression tests through the comparison layer
+- order workflow behavior through `Orders.Api`
+- controlled inventory and payment clients
+- persistence-backed state transitions
+- compensation paths
+- gateway acceptance behavior
+- normalized scenario regression semantics
 
 ### Virtual actor tests
 
-Virtual actor tests tend to focus on grain behavior, identity-specific state, serialized execution, and workflow coordination through grains.
+Virtual actor tests focus on grain behavior, stable identities, persisted grain state, request scheduling, and workflow coordination through grains.
 
-Useful tests include:
+The repository includes coverage for:
 
-- grain workflow tests with an Orleans test cluster
-- inventory grain concurrency tests
-- order grain idempotency tests
-- payment grain behavior tests
-- scenario regression tests through the comparison layer
+- order workflow behavior in an Orleans test cluster
+- SQLite grain persistence
+- inventory and order state behavior
+- gateway acceptance behavior
+- normalized scenario regression semantics
 
-Both styles need regression tests that protect scenario semantics, not just method signatures.
+Both styles need tests that protect observable scenario semantics, not only method signatures or individual implementation classes.
+
+## Debugging and diagnostics
+
+The development workflow uses the .NET Aspire AppHost to start and connect the complete application topology.
+
+The Aspire dashboard provides detailed development diagnostics that are not reproduced in the Workbench UI, including:
+
+- resource state and endpoints
+- structured logs
+- distributed traces
+- metrics
+- dependency and lifecycle information
+
+The Workbench UI provides the comparison-specific view:
+
+- normalized scenario outcomes
+- explanatory event timelines
+- evaluated health organized by topology
+- a static architecture topology explanation
+- concise trade-off guidance
+
+The two dashboards are complementary. Developers use the Workbench to understand comparison semantics and the Aspire dashboard to investigate lower-level runtime behavior.
 
 ## Developer trade-offs
 
-The microservices style can be easier to understand when teams think in deployable business capabilities. It makes service boundaries explicit and keeps service ownership visible. The trade-off is that more workflow behavior crosses process, network, contract, and persistence boundaries.
+The microservices style can be easier to understand when teams organize work around deployable business capabilities. Service ownership is visible, and each boundary can evolve independently. The cost is that more workflow behavior crosses network, contract, persistence, and operational boundaries.
 
-The virtual actor style can be easier to understand when the domain is naturally partitioned by stateful identity. It colocates state and behavior for one identity and can simplify single-identity concurrency. The trade-off is that actor runtime behavior, grain identity design, and state evolution become central development concerns.
+The virtual actor style can be easier to understand when the domain is naturally partitioned by durable identities. State and behavior for one identity are colocated, and single-identity coordination can be simpler. The cost is that actor identity design, request scheduling, runtime behavior, serialization, and state evolution become central development concerns.
 
 Neither style removes complexity. Each style moves complexity to a different set of boundaries.
 
 ## Practical takeaway
 
-For developers, the important comparison is not which implementation has fewer files or fewer lines of code.
+The useful development comparison is not which implementation has fewer files or lines of code. It is where the difficult responsibilities live:
 
-The important comparison is where the hard parts live:
+- Microservices place them around service contracts, persistence boundaries, remote calls, explicit concurrency control, and compensation
+- Virtual actors place them around actor identity, grain state, request scheduling, runtime behavior, hot identities, and interface and state compatibility
 
-- Microservices place the hard parts around service contracts, persistence boundaries, network calls, explicit concurrency control, and compensation.
-- Virtual actors place the hard parts around actor identity, grain state, runtime behavior, hot identities, and interface/state compatibility.
-
-The same workflow can be implemented correctly in both styles. The value of the comparison is seeing how the development model changes when the ownership boundary changes.
+The same workflow can be implemented correctly in both styles. The value of the workbench is seeing how the development model changes when the ownership boundary changes.

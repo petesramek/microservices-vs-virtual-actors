@@ -1,181 +1,262 @@
 # Local validation
 
-This checklist verifies that the repository works from a clean local checkout and that both architecture implementations expose the same comparison behavior.
+This checklist verifies that the repository works from a clean local checkout and that the two architecture implementations expose equivalent scenario semantics through the Workbench.
 
-Use this document after documentation changes, test changes, solution-file changes, scenario changes, or infrastructure changes.
+Use it after changes to:
+
+- shared contracts
+- scenario workflows or defaults
+- persistence
+- health or topology definitions
+- Aspire composition
+- observability
+- tests
+- project or solution structure
+
+This document covers local repository validation. Detailed scenario expectations are maintained in the [Scenario guide](12-scenario-guide.md), while broader operational interpretation belongs in [Observability and operations](16-observability-and-operations.md).
+
+## Prerequisites
+
+Before validating the repository, confirm that:
+
+- the required .NET SDK is installed
+- the repository has been cloned locally
+- no stale application processes are using resources required by the Aspire topology
+- the working tree contains the changes you intend to validate
+
+Check the installed SDKs with:
+
+```bash
+dotnet --list-sdks
+```
+
+Do not rely on fixed localhost ports from older documentation. Use the resource endpoints displayed by the Aspire dashboard for the current run.
 
 ## Build and test validation
 
-Run the standard .NET validation commands from the repository root:
+Run the standard validation sequence from the repository root:
 
-```powershell
-dotnet clean
-dotnet restore
-dotnet build --configuration Release --no-restore
-dotnet test --configuration Release --no-build
-```
-
-On Windows PowerShell, the helper script can also be used:
-
-```powershell
-./scripts/test-build.ps1
+```bash
+dotnet restore microservices-vs-virtual-actors.slnx
+dotnet build microservices-vs-virtual-actors.slnx \
+  --configuration Release \
+  --no-restore
+dotnet test microservices-vs-virtual-actors.slnx \
+  --configuration Release \
+  --no-build
 ```
 
 Expected result:
 
-- restore succeeds
-- build succeeds in `Release`
+- package restore succeeds
+- the complete solution builds in Release configuration
+- compiler and analyzer warnings are reviewed rather than hidden by broad suppressions
 - all tests pass
 
-## Visual Studio multi-startup validation
+The test suite includes focused coverage for:
 
-Visual Studio is a supported local development flow.
+- the microservices workflow
+- the virtual actor workflow and grain persistence
+- Workbench Gateway acceptance behavior
+- normalized scenario-result regression behavior
 
-Configure multiple startup projects and set the action to start for these projects:
+## Start the repository with Aspire
 
-- `src/Microservices/Inventory.Api`
-- `src/Microservices/Payments.Api`
-- `src/Microservices/Orders.Api`
-- `src/VirtualActors/Ordering.Api`
-- `src/Comparison/Comparison.Gateway`
-- `src/Comparison/Comparison.Ui`
+Start the supported development topology from the repository root:
 
-Expected local URLs:
-
-- Inventory API: `http://localhost:5201`
-- Payments API: `http://localhost:5202`
-- Orders API: `http://localhost:5200`
-- Ordering API: `http://localhost:5300`
-- Comparison Gateway: `http://localhost:5100`
-- Comparison UI: `http://localhost:5000`
-
-After startup, open:
-
-```text
-http://localhost:5000
+```bash
+dotnet run --project src/Hosting/Hosting.AppHost/Hosting.AppHost.csproj
 ```
 
-Then run scenarios with architecture set to `Both`.
+Open the Aspire dashboard URL printed by the AppHost. Use the dashboard to confirm that the composed resources start and become ready.
 
-Expected result:
+The topology should include:
 
-- the comparison UI loads
-- backend status indicators are available
-- scenarios can be run against both implementations
-- the microservice result and virtual actor result are shown side by side
-
-## Script-based local run
-
-The services can also be started from PowerShell scripts.
-
-Start the microservice-style backend:
-
-```powershell
-./scripts/run-microservices.ps1
-```
-
-Start the virtual actor-style backend:
-
-```powershell
-./scripts/run-virtual-actors.ps1
-```
-
-Start the comparison layer:
-
-```powershell
-./scripts/run-comparison.ps1
-```
-
-Open:
-
-```text
-http://localhost:5000
-```
-
-This run mode is useful when validating the local stack without using Docker Compose or Visual Studio startup profiles.
-
-## Docker Compose validation
-
-The full stack can be started with Docker Compose:
-
-```powershell
-docker compose -f deploy/docker-compose.full.yml up --build
-```
-
-Open:
-
-```text
-http://localhost:5000
-```
-
-Expected result:
-
-- Docker Compose builds all projects from a clean checkout
-- all required containers start successfully
-- the comparison UI loads
-- scenarios can be run against both backend implementations
-
-## Architecture routing checks
-
-The comparison gateway supports selecting which implementation should handle a scenario run.
-
-Validate the expected behavior for each architecture selection:
-
-- `X-Architecture: microservices` returns only the microservice result
-- `X-Architecture: virtual-actors` returns only the virtual actor result
-- `X-Architecture: both` returns side-by-side results
-
-The UI should make these result shapes visible without requiring direct API calls.
-
-## Scenario checks
-
-Run the core scenarios from the comparison UI and confirm that both implementations report the expected result shape.
-
-Recommended scenarios:
-
-- successful order
-- insufficient inventory
-- payment failure with compensation
-- concurrent orders
-- duplicate request
-- hot product contention
-- payment timeout after reservation
-
-Expected validation focus:
-
-- successful scenarios create the expected number of unique successful orders
-- rejected submissions are reported separately from successful orders
-- duplicate submissions do not reserve inventory more than once
-- remaining inventory matches the expected scenario outcome
-- timeout and compensation scenarios release inventory when the sample policy requires it
-
-## Observability checks
-
-For a completed scenario run, confirm that the UI displays a correlation ID.
-
-Use that correlation ID to search logs across the relevant processes:
-
-- `Comparison.Gateway`
+- `Workbench.Ui`
+- `Workbench.Gateway`
 - `Orders.Api`
 - `Inventory.Api`
 - `Payments.Api`
 - `Ordering.Api`
+- `Ordering.Silo`
 
 Expected result:
 
-- the same correlation ID appears in gateway and backend logs
-- the correlation ID is diagnostic metadata, not part of the business contract
+- all required resources start successfully
+- project references and service discovery resolve correctly
+- required dependencies reach a ready state
+- the Workbench UI endpoint is available from the Aspire dashboard
+- no resource enters a repeated failure or restart cycle
 
-## Practical validation order
+If a resource does not start, inspect its console output, structured logs, health state, environment, and dependency references in the Aspire dashboard before changing application code.
 
-A safe local validation order is:
+## Workbench validation
 
-1. Run build and tests.
-2. Start the stack using Visual Studio, scripts, or Docker Compose.
-3. Open the comparison UI.
-4. Run scenarios with architecture set to `Both`.
-5. Confirm result terminology and remaining inventory are correct.
-6. Confirm correlation IDs appear in logs.
-7. Run build and tests one final time.
+Open `Workbench.Ui` from its Aspire dashboard endpoint.
 
-The goal is to verify both architecture implementations through the same externally visible behavior, not to validate one implementation with different rules than the other.
+Confirm that:
+
+- the application shell and navigation render correctly
+- the Scenario page loads at the root route
+- the Health page loads
+- the Topology page loads
+- the Trade-offs page loads
+- interactive controls respond without a circuit or browser error
+
+The Workbench pages have distinct responsibilities:
+
+- the Scenario page executes and compares deterministic workflows
+- the Health page combines live observations with the shared topology model
+- the Topology page explains the intended architecture and is not a live availability view
+- the Trade-offs page provides a concise comparison summary
+
+## Scenario validation
+
+Run every supported scenario from the Scenario page:
+
+- successful order
+- insufficient inventory
+- payment failure compensation
+- payment timeout after reservation
+- concurrent orders
+- duplicate request
+- hot product contention
+
+For each scenario, confirm that both implementations return normalized results and that the UI presents them consistently.
+
+Validate the following semantics:
+
+- total request submissions reflect the submitted workload
+- unique successful orders represent logical orders rather than successful HTTP responses
+- rejected submissions are reported separately
+- idempotent duplicate responses are reported separately from unique outcomes
+- remaining inventory matches the expected terminal state
+- compensation restores inventory when the scenario policy requires it
+- inventory never becomes negative
+- duplicate submissions reserve inventory at most once for one logical order
+- timeline events and reason values match the scenario outcome
+
+Use the [Scenario guide](12-scenario-guide.md) for exact defaults, expected counts, reason values, and interpretation.
+
+## Health validation
+
+Open the Health page after all resources have started.
+
+Confirm that it presents:
+
+- the system health summary
+- architecture and service groups
+- configured nodes
+- required and optional dependencies
+- resource availability
+- direct and aggregate health
+- unknown state when an observation is unavailable
+
+Validate the distinction between:
+
+- `/alive`, which represents process liveness
+- `/health`, which represents readiness and can include dependency or persistence checks
+- resource availability, which represents whether a configured service endpoint can be reached
+- evaluated health, which can include direct node and dependency observations
+
+To validate failure presentation, stop or restart a resource from the Aspire dashboard when safe to do so, refresh the Health page, and confirm that the affected availability and dependency state changes without breaking the page. Restore the resource and confirm that health recovers.
+
+Health is not a proof of business correctness. A ready resource can still return an incorrect scenario result, so health checks and scenario validation must both pass.
+
+## Topology validation
+
+Open the Topology page and confirm that it explains the intended application structure and dependency relationships.
+
+Verify that:
+
+- the displayed services and actor-runtime components match the current repository topology
+- the microservices and virtual actor paths are distinguishable
+- dependency relationships are understandable
+- the page does not present live availability or health as topology facts
+
+Runtime availability and dependency health belong on the Health page.
+
+## Observability validation
+
+Run a scenario and inspect the Aspire dashboard.
+
+### Logs
+
+Confirm that structured logs are available for the relevant path, including:
+
+- `Workbench.Gateway`
+- `Orders.Api`, `Inventory.Api`, and `Payments.Api` for the microservices path
+- `Ordering.Api` and `Ordering.Silo` for the virtual actor path
+
+Verify that logs contain useful operation context without exposing:
+
+- credentials
+- connection strings
+- complete request bodies
+- idempotency keys
+- personal or sensitive data
+
+### Traces
+
+Open the trace view and locate the scenario execution.
+
+Confirm that:
+
+- the gateway activity is present
+- downstream HTTP and runtime activities are connected where instrumentation applies
+- service and scenario context is useful for following the workflow
+- failures and cancellations are represented accurately
+- trace collection follows the configured sampling mode
+
+### Metrics
+
+Open the metrics view and confirm that scenario metrics are emitted after completed runs.
+
+Validate that metric dimensions remain bounded and identify the service client and scenario without including unbounded request identifiers.
+
+The Aspire dashboard and Workbench UI are complementary:
+
+- the Aspire dashboard provides detailed resource, log, trace, and metric diagnostics
+- the Workbench UI provides normalized scenario results and application-specific health interpretation
+
+## Cancellation and recovery validation
+
+Where practical, validate cancellation and recovery behavior:
+
+- cancel a request or stop a required resource while a scenario is running
+- confirm cancellation is not reported as a successful result
+- confirm the UI returns to an interactive state
+- restart the affected resource through Aspire
+- confirm readiness recovers
+- rerun the scenario and verify the expected result
+
+Do not treat every interrupted workflow as safely recoverable. The sample demonstrates deterministic scenario behavior, not a complete production reconciliation system.
+
+## Final validation sequence
+
+Use this order for a complete local validation pass:
+
+1. Restore, build, and test the solution in Release configuration.
+2. Start the complete topology through `Hosting.AppHost`.
+3. Confirm all required Aspire resources become ready.
+4. Open the Workbench UI from the Aspire dashboard.
+5. Validate the Scenario, Health, Topology, and Trade-offs pages.
+6. Run all supported scenarios and compare normalized results.
+7. Inspect relevant logs, traces, and metrics in the Aspire dashboard.
+8. Validate a safe health failure and recovery when appropriate.
+9. Stop the AppHost cleanly.
+10. Run the Release build and test sequence again if validation required code or configuration changes.
+
+The goal is to verify both implementations through the same externally visible business semantics while also confirming that the development topology and diagnostics behave consistently.
+
+## Related documentation
+
+- [Problem](01-problem.md)
+- [Microservices design](02-microservices-design.md)
+- [Virtual actors design](03-virtual-actors-design.md)
+- [UI dashboard](10-ui-dashboard.md)
+- [End-to-end validation](11-end-to-end-validation.md)
+- [Scenario guide](12-scenario-guide.md)
+- [Correlation ID logging](13-correlation-id-logging.md)
+- [Observability and operations](16-observability-and-operations.md)
+- [Known limitations](17-known-limitations.md)

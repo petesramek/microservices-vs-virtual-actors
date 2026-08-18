@@ -4,11 +4,11 @@
 
 <!--
 README goals
-- Explain the repository in approximately five minutes.
-- Target 1,200 to 1,800 words when complete.
-- Keep implementation detail in project READMEs and docs.
-- Avoid duplicating scenario matrices, operational guides, or exhaustive documentation indexes.
-- Create a new document only when no existing document is an appropriate home.
+- Explain the repository in approximately five minutes
+- Target 1,200 to 1,800 words when complete
+- Keep implementation detail in project READMEs and docs
+- Avoid duplicating scenario matrices, operational guides, or exhaustive documentation indexes
+- Create a new document only when no existing document is an appropriate home
 -->
 
 ## What you can explore
@@ -17,13 +17,13 @@ README goals
 
 Include six to eight concise points covering:
 
-- state ownership and invariant protection;
-- workflow coordination;
-- concurrency and hot-identity contention;
-- idempotency under concurrent duplicate submissions;
-- compensation after payment failure or timeout;
-- deployment, scaling, and operational differences;
-- maintenance and organizational fit.
+- state ownership and invariant protection
+- workflow coordination
+- concurrency and hot-identity contention
+- idempotency under concurrent duplicate submissions
+- compensation after payment failure or timeout
+- deployment, scaling, and operational differences
+- maintenance and organizational fit
 
 Keep detailed answers in:
 
@@ -51,10 +51,10 @@ Keep this section conceptual. Do not include persistence internals, complete dep
 
 Summarize in two or three bullets:
 
-- `Orders.Api` coordinates the workflow;
-- `Inventory.Api` owns inventory and reservation invariants;
-- `Payments.Api` owns payment behavior;
-- communication crosses explicit HTTP boundaries.
+- `Orders.Api` coordinates the workflow
+- `Inventory.Api` owns inventory and reservation invariants
+- `Payments.Api` owns payment behavior
+- communication crosses explicit HTTP boundaries
 
 Link to:
 
@@ -65,10 +65,10 @@ Link to:
 
 Summarize in two or three bullets:
 
-- `OrderGrain` owns an order identity;
-- `InventoryItemGrain` owns a product identity;
-- `PaymentAccountGrain` owns a customer payment identity;
-- Orleans serializes calls for each grain identity.
+- `OrderGrain` owns an order identity
+- `InventoryItemGrain` owns a product identity
+- `PaymentAccountGrain` owns a customer payment identity
+- Orleans serializes calls for each grain identity
 
 Link to:
 
@@ -83,10 +83,10 @@ Link to:
 
 Explain that the scenario runner:
 
-- executes deterministic workflows against either or both implementations;
-- supports scenario defaults and advanced inputs;
-- presents normalized results side by side;
-- covers concurrency, idempotency, compensation, timeout, and contention behavior.
+- executes deterministic workflows against either or both implementations
+- supports scenario defaults and advanced inputs
+- presents normalized results side by side
+- covers concurrency, idempotency, compensation, timeout, and contention behavior
 
 Link to:
 
@@ -98,10 +98,10 @@ Link to:
 
 Explain that the Health page:
 
-- combines live health reports with the shared topology model;
-- organizes resources into architecture groups, nodes, and dependencies;
-- evaluates required and optional dependency health;
-- presents readiness, liveness, and current resource availability.
+- combines live health reports with the shared topology model
+- organizes resources into architecture groups, nodes, and dependencies
+- evaluates required and optional dependency health
+- presents readiness, liveness, and current resource availability
 
 Clarify that health indicates runtime reachability and readiness, not business correctness.
 
@@ -115,9 +115,9 @@ Link to:
 
 Explain that the Topology page:
 
-- presents the intended architecture;
-- explains service, actor, and dependency relationships;
-- is a static explanatory view rather than a live availability dashboard.
+- presents the intended architecture
+- explains service, actor, and dependency relationships
+- is a static explanatory view rather than a live availability dashboard
 
 State explicitly that runtime dependency health and current resource availability belong on the Health page.
 
@@ -136,13 +136,13 @@ Keep detailed reasoning in:
 
 Include one sentence for each scenario:
 
-- **Successful order:** inventory and payment succeed.
-- **Insufficient inventory:** rejection occurs before payment.
-- **Payment failure compensation:** reserved inventory is released after failure.
-- **Payment timeout after reservation:** timeout is treated as failure and compensated.
-- **Concurrent orders:** independent orders compete for limited stock.
-- **Duplicate request:** concurrent duplicate submissions return one logical result.
-- **Hot product contention:** many requests target one inventory identity.
+- **Successful order:** inventory and payment succeed
+- **Insufficient inventory:** rejection occurs before payment
+- **Payment failure compensation:** reserved inventory is released after failure
+- **Payment timeout after reservation:** timeout is treated as failure and compensated
+- **Concurrent orders:** independent orders compete for limited stock
+- **Duplicate request:** concurrent duplicate submissions return one logical result
+- **Hot product contention:** many requests target one inventory identity
 
 Do not include expected count matrices or reason-code tables here. Link to the [Scenario guide](docs/12-scenario-guide.md) for defaults, expected counts, reasons, and architecture-specific interpretation.
 
@@ -152,12 +152,12 @@ Do not include expected count matrices or reason-code tables here. Link to the [
 
 Define briefly:
 
-- total request submissions;
-- unique successful orders;
-- rejected submissions;
-- idempotent duplicate responses;
-- remaining inventory;
-- local elapsed time.
+- total request submissions
+- unique successful orders
+- rejected submissions
+- idempotent duplicate responses
+- remaining inventory
+- local elapsed time
 
 Keep examples and scenario-specific values in the [Scenario guide](docs/12-scenario-guide.md).
 
@@ -169,8 +169,8 @@ Keep examples and scenario-specific values in the [Scenario guide](docs/12-scena
 
 Mention only verified prerequisites:
 
-- the repository's required .NET SDK;
-- a suitable .NET development environment.
+- the repository's required .NET SDK
+- a suitable .NET development environment
 
 Do not state a specific SDK version unless repository configuration verifies it.
 
@@ -184,12 +184,12 @@ dotnet run --project src/Hosting/Hosting.AppHost/Hosting.AppHost.csproj
 
 Explain that Aspire is used to:
 
-- compose and start the development topology;
-- provide service discovery and resource visibility;
-- open service endpoints;
-- inspect structured logs;
-- inspect distributed traces;
-- inspect metrics during development.
+- compose and start the development topology
+- provide service discovery and resource visibility
+- open service endpoints
+- inspect structured logs
+- inspect distributed traces
+- inspect metrics during development
 
 Link to:
 
@@ -229,10 +229,10 @@ dotnet test microservices-vs-virtual-actors.slnx --configuration Release --no-bu
 
 Summarize the four test projects:
 
-- `Microservices.Tests` for the HTTP-service workflow;
-- `VirtualActors.Tests` for Orleans workflow and SQLite grain persistence;
-- `Workbench.AcceptanceTests` for externally visible gateway behavior;
-- `Workbench.ScenarioRegressionTests` for normalized scenario-result semantics.
+- `Microservices.Tests` for the HTTP-service workflow
+- `VirtualActors.Tests` for Orleans workflow and SQLite grain persistence
+- `Workbench.AcceptanceTests` for externally visible gateway behavior
+- `Workbench.ScenarioRegressionTests` for normalized scenario-result semantics
 
 Mention `.github/workflows/build.yml` as the repository's automated build and test validation.
 
@@ -247,17 +247,17 @@ Keep exhaustive validation expectations in:
 
 Cover briefly:
 
-- `X-Correlation-ID` for request correlation;
-- shared OpenTelemetry configuration;
-- scenario traces and metrics;
-- readiness and liveness;
-- safe structured logging without request secrets or identifiers.
+- `X-Correlation-ID` for request correlation
+- shared OpenTelemetry configuration
+- scenario traces and metrics
+- readiness and liveness
+- safe structured logging without request secrets or identifiers
 
 Make the distinction explicit:
 
-- **Aspire dashboard:** development inspection of composed resources, logs, traces, and metrics.
-- **Workbench Health page:** application-specific interpretation of live health through groups, nodes, dependencies, and availability.
-- **Workbench Topology page:** static explanation of the intended architecture.
+- **Aspire dashboard:** development inspection of composed resources, logs, traces, and metrics
+- **Workbench Health page:** application-specific interpretation of live health through groups, nodes, dependencies, and availability
+- **Workbench Topology page:** static explanation of the intended architecture
 
 Link to:
 
@@ -288,21 +288,21 @@ Link to `docs/README.md` for the complete categorized documentation map.
 
 Create `docs/README.md` because the repository currently needs a documentation landing page. Group the existing documents by reader intent:
 
-- **Understand the problem:** documents 01 to 03.
-- **Compare the architectures:** documents 04 to 08.
-- **Run and validate:** documents 09 to 12.
-- **Operate and evolve:** documents 13 to 16.
-- **Interpret responsibly:** documents 17 and 18.
+- **Understand the problem:** documents 01 to 03
+- **Compare the architectures:** documents 04 to 08
+- **Run and validate:** documents 09 to 12
+- **Operate and evolve:** documents 13 to 16
+- **Interpret responsibly:** documents 17 and 18
 
 Do not create another new document unless the missing material cannot fit coherently into an existing document.
 
 Add missing information to existing documents as follows:
 
-- Aspire development telemetry belongs in `docs/16-observability-and-operations.md` and the Hosting READMEs.
-- Health versus Topology behavior belongs in `docs/10-ui-dashboard.md` and `docs/16-observability-and-operations.md`.
-- Workbench internals belong in `src/Workbench/README.md`.
-- Scenario semantics belong in `docs/12-scenario-guide.md`.
-- Validation behavior belongs in `docs/09-local-validation.md` and `docs/11-end-to-end-validation.md`.
+- Aspire development telemetry belongs in `docs/16-observability-and-operations.md` and the Hosting READMEs
+- Health versus Topology behavior belongs in `docs/10-ui-dashboard.md` and `docs/16-observability-and-operations.md`
+- Workbench internals belong in `src/Workbench/README.md`
+- Scenario semantics belong in `docs/12-scenario-guide.md`
+- Validation behavior belongs in `docs/09-local-validation.md` and `docs/11-end-to-end-validation.md`
 
 ## Scope and interpretation
 
@@ -310,11 +310,11 @@ Add missing information to existing documents as follows:
 
 State that:
 
-- the repository is not a benchmark;
-- local timings depend on environment and topology;
-- the sample is not production guidance for security, recovery, scaling, deployment, or monitoring;
-- health does not prove business correctness;
-- the repository demonstrates trade-offs rather than declaring a winner.
+- the repository is not a benchmark
+- local timings depend on environment and topology
+- the sample is not production guidance for security, recovery, scaling, deployment, or monitoring
+- health does not prove business correctness
+- the repository demonstrates trade-offs rather than declaring a winner
 
 Link to:
 

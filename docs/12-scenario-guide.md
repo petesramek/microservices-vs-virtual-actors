@@ -1,45 +1,49 @@
 # Scenario guide
 
-This guide consolidates the scenario-specific documentation for the architecture comparison sample.
+This guide documents the deterministic scenarios used by the architecture workbench.
 
-The scenarios compare the same order workflow across two implementation styles:
+Each scenario exercises the same order workflow through two implementation styles:
 
-- a microservices-style implementation with explicit HTTP service boundaries
-- a virtual actor-style implementation with identity-based grains and serialized execution per actor identity
+- a microservices implementation with explicit HTTP service and persistence boundaries
+- a virtual actor implementation with stateful grain identities and identity-oriented coordination
 
-The goal is not to prove that one architecture is universally better. The goal is to make trade-offs visible across state ownership, concurrency, failure handling, idempotency, release/versioning, and operations.
+Every scenario run compares both implementations through the same request semantics and normalized result contract. The goal is not to identify a universal winner. The goal is to make differences in state ownership, concurrency, failure policy, idempotency, contention, and operations visible.
 
 ## How to read this guide
 
-Each scenario is described with the same structure:
+Each scenario follows the same structure:
 
-- **Purpose**: what the scenario demonstrates
-- **Expected result**: what the scenario should show in the UI
-- **Microservices interpretation**: how the responsibility is expressed in the service-based design
-- **Virtual actors interpretation**: how the responsibility is expressed in the actor-based design
-- **State ownership lesson**: where the important state or invariant lives
-- **Concurrency or failure lesson**: what can go wrong and how the design handles it
-- **Release and versioning note**: what must be considered when this behavior changes over time
-- **Operational note**: what operators should observe when diagnosing the scenario
+- **Purpose** explains what the scenario demonstrates
+- **Default inputs** records the values used by the Workbench UI
+- **Expected result** describes the normalized outcome for each implementation
+- **Microservices interpretation** identifies the relevant service and persistence boundaries
+- **Virtual actors interpretation** identifies the relevant grain identities and runtime behavior
+- **Architecture lesson** explains the ownership, concurrency, or failure-handling principle
+- **Operational validation** identifies useful evidence in the Workbench UI and Aspire dashboard
+- **Evolution note** highlights compatibility or policy implications when the behavior changes
+
+The expected values describe the default scenario configuration. Advanced settings can produce different counts while preserving the same semantic rules.
 
 ## Common result terminology
 
-Result cards use the following terminology consistently:
+Result cards use the following terms consistently:
 
-- **Total request submissions**: how many requests were submitted for this scenario run
-- **Unique successful orders**: how many unique logical orders completed successfully
-- **Rejected submissions**: how many logical submissions were rejected
-- **Idempotent duplicate responses**: how many duplicate submissions returned an existing logical result
-- **Remaining inventory**: final inventory quantity after the scenario run
-- **Elapsed time**: local run feedback, not a benchmark result
+- **Total request submissions** is the number of attempts sent to one implementation
+- **Unique successful orders** is the number of distinct logical orders that completed
+- **Rejected submissions** is the number of logical submissions that were rejected
+- **Idempotent duplicate responses** is the number of repeated submissions that returned an established logical result
+- **Remaining inventory** is the final observed inventory quantity
+- **Elapsed time** is local workbench feedback, not benchmark evidence
 
-A request submission is an attempt sent to the backend. A unique successful order is a logical order that completed successfully. These counts are not always the same, especially in duplicate request and concurrent scenarios.
+A request submission and a unique logical order are not always the same thing. This distinction is especially important for duplicate and concurrent scenarios.
 
-The following diagrams summarize the main scenario shapes without replacing the detailed scenario notes below.
+## Scenario shapes
+
+### Successful workflow
 
 ```mermaid
 sequenceDiagram
-    participant Runner as Scenario runner
+    participant Runner as Workbench.Gateway
     participant Workflow as Workflow owner
     participant Inventory as Inventory owner
     participant Payment as Payment owner
@@ -52,9 +56,11 @@ sequenceDiagram
     Workflow-->>Runner: Fulfilled result
 ```
 
+### Compensated workflow
+
 ```mermaid
 sequenceDiagram
-    participant Runner as Scenario runner
+    participant Runner as Workbench.Gateway
     participant Workflow as Workflow owner
     participant Inventory as Inventory owner
     participant Payment as Payment owner
@@ -69,14 +75,16 @@ sequenceDiagram
     Workflow-->>Runner: Rejected result
 ```
 
+### Duplicate workflow
+
 ```mermaid
 flowchart LR
     Requests[Duplicate request submissions]
     SameIdentity[Same order identity and idempotency key]
     Owner[Idempotency owner]
-    Unique[One unique successful order]
+    Unique[One unique logical result]
     Duplicates[Idempotent duplicate responses]
-    Inventory[Inventory reserved once]
+    Inventory[Inventory reserved at most once]
 
     Requests --> SameIdentity
     SameIdentity --> Owner
@@ -85,6 +93,7 @@ flowchart LR
     Unique --> Inventory
 ```
 
+The diagrams explain the scenario shape. They do not represent live workflow events or replace distributed traces.
 
 ## Successful order
 
@@ -92,331 +101,359 @@ flowchart LR
 
 Demonstrates the happy path. Inventory is available, payment succeeds, and the order completes.
 
+### Default inputs
+
+- Initial stock: `10`
+- Quantity: `1`
+- Request submissions: `1`
+
 ### Expected result
 
-With initial stock `10` and quantity `1`:
-
-- total request submissions: `1`
-- unique successful orders: `1`
-- rejected submissions: `0`
-- idempotent duplicate responses: `0`
-- remaining inventory: `9`
-- status: `Fulfilled`
+- Total request submissions: `1`
+- Unique successful orders: `1`
+- Rejected submissions: `0`
+- Idempotent duplicate responses: `0`
+- Remaining inventory: `9`
+- Status: `Fulfilled`
 
 ### Microservices interpretation
 
-`Orders.Api` orchestrates the workflow. `Inventory.Api` owns product inventory state. `Payments.Api` owns payment authorization. The order workflow crosses explicit HTTP boundaries and must handle each downstream response.
+`Orders.Api` coordinates the workflow. `Inventory.Api` owns product inventory and reservation state. `Payments.Api` owns payment authorization. The workflow crosses explicit HTTP and persistence boundaries, and the order coordinator must interpret each downstream result.
 
 ### Virtual actors interpretation
 
-`OrderGrain(orderId)` owns the order workflow. `InventoryItemGrain(productId)` owns inventory for one product identity. `PaymentAccountGrain(customerId)` owns payment behavior. The workflow is expressed as grain interactions rather than service-to-service HTTP orchestration inside the domain model.
+`OrderGrain(orderId)` owns the order workflow. `InventoryItemGrain(productId)` owns inventory for one product identity. `PaymentAccountGrain(customerId)` owns payment behavior. Coordination is expressed through grain calls and persisted grain state.
 
-### State ownership lesson
+### Architecture lesson
 
-Both designs need a clear owner for inventory state. The difference is how ownership is expressed:
+Both designs require explicit ownership of inventory, payment behavior, and the terminal order result. The difference is whether ownership is expressed through services and their data boundaries or through actor identities and actor state.
 
-- microservices: service and persistence boundary
-- virtual actors: actor identity boundary
+### Operational validation
 
-### Concurrency or failure lesson
+The Workbench UI should show one completed logical order and the expected remaining inventory for both implementations. Use the Aspire dashboard to inspect the corresponding logs and distributed trace across the Gateway and relevant backend resources.
 
-The happy path does not stress concurrency, but it establishes the baseline invariants that the other scenarios challenge.
+### Evolution note
 
-### Release and versioning note
-
-Changing the successful order contract is high impact because every client and every scenario depends on the happy-path response shape. Additive response changes are safer than renaming fields or changing status semantics.
-
-### Operational note
-
-Use the correlation ID shown in the UI to trace the scenario through gateway and backend logs. In the microservices path, expect log entries across `Orders.Api`, `Inventory.Api`, and `Payments.Api`. In the virtual actor path, expect log entries around `Ordering.Api` and grain workflow execution.
+The happy-path result is a shared semantic contract. Renaming status values, changing count meanings, or altering terminal-result behavior can affect the UI, tests, clients, metrics, and documentation even when the transport shape remains compatible.
 
 ## Insufficient inventory
 
 ### Purpose
 
-Demonstrates business rejection before payment. The requested quantity is greater than available inventory, so the order should be rejected and payment should not be attempted.
+Demonstrates business rejection before payment. The requested quantity exceeds available inventory, so the workflow must stop before payment authorization.
+
+### Default inputs
+
+- Initial stock: `1`
+- Quantity: `2`
+- Request submissions: `1`
 
 ### Expected result
 
-With initial stock `1` and quantity `2`:
-
-- total request submissions: `1`
-- unique successful orders: `0`
-- rejected submissions: `1`
-- idempotent duplicate responses: `0`
-- remaining inventory: `1`
-- reason: `InsufficientInventory`
+- Total request submissions: `1`
+- Unique successful orders: `0`
+- Rejected submissions: `1`
+- Idempotent duplicate responses: `0`
+- Remaining inventory: `1`
+- Reason: `InsufficientInventory`
 
 ### Microservices interpretation
 
-`Inventory.Api` rejects the reservation. `Orders.Api` must stop the workflow and avoid calling `Payments.Api`. The inventory service owns the invariant that stock cannot be reserved when unavailable.
+`Inventory.Api` rejects the reservation. `Orders.Api` stops the workflow and must not continue to `Payments.Api`. The inventory service remains the owner of the availability decision and inventory invariant.
 
 ### Virtual actors interpretation
 
-`InventoryItemGrain(productId)` rejects the reservation for the product identity. `OrderGrain(orderId)` stops the workflow and returns a rejected order result.
+`InventoryItemGrain(productId)` rejects the reservation for the product identity. `OrderGrain(orderId)` stops the workflow and records the rejected result.
 
-### State ownership lesson
+### Architecture lesson
 
-The inventory owner decides whether stock is available. Other components should not duplicate inventory availability rules in a way that can diverge.
+The component that owns inventory state must decide whether stock can be reserved. Callers should not duplicate availability logic in a way that can diverge from the state owner.
 
-### Concurrency or failure lesson
+### Operational validation
 
-This scenario is primarily a business-rule failure. It becomes more complex under concurrency, which is covered by the concurrent orders and hot product contention scenarios.
+The result should show one rejection and unchanged inventory. Logs and traces should not show a successful payment authorization attempt after the reservation is rejected.
 
-### Release and versioning note
+### Evolution note
 
-Changing rejection reasons is a semantic contract change. Clients, dashboards, alerts, and tests may rely on `InsufficientInventory` to distinguish a business rejection from a technical failure.
+Reason values are semantic contracts. Changing `InsufficientInventory` can affect clients, result mapping, tests, dashboards, and diagnostic rules even when the request and response properties do not change.
 
-### Operational note
-
-A correct run should not show payment authorization for this scenario. If payment appears in logs, the orchestration sequence is wrong.
-
-## Payment failure with compensation
+## Payment failure compensation
 
 ### Purpose
 
-Demonstrates compensation after a known downstream failure. Inventory is reserved first, payment explicitly fails, and the reservation is released.
+Demonstrates compensation after a known downstream failure. Inventory is reserved, payment explicitly fails, and the reservation is released.
+
+### Default inputs
+
+- Initial stock: `10`
+- Quantity: `2`
+- Request submissions: `1`
 
 ### Expected result
 
-With initial stock `10` and quantity `2`:
-
-- total request submissions: `1`
-- unique successful orders: `0`
-- rejected submissions: `1`
-- idempotent duplicate responses: `0`
-- remaining inventory: `10`
-- reason: `PaymentFailed`
+- Total request submissions: `1`
+- Unique successful orders: `0`
+- Rejected submissions: `1`
+- Idempotent duplicate responses: `0`
+- Remaining inventory: `10`
+- Reason: `PaymentFailed`
 
 ### Microservices interpretation
 
-`Orders.Api` coordinates a multi-service workflow. It calls `Inventory.Api` to reserve stock, calls `Payments.Api`, receives an explicit payment failure, and calls `Inventory.Api` again to release the reservation.
+`Orders.Api` asks `Inventory.Api` to reserve stock, calls `Payments.Api`, receives an explicit failure, and asks `Inventory.Api` to release the reservation.
 
 ### Virtual actors interpretation
 
-`OrderGrain(orderId)` coordinates the workflow across `InventoryItemGrain(productId)` and `PaymentAccountGrain(customerId)`. When payment fails, `OrderGrain(orderId)` explicitly asks `InventoryItemGrain(productId)` to release the reservation.
+`OrderGrain(orderId)` coordinates the same policy through `InventoryItemGrain(productId)` and `PaymentAccountGrain(customerId)`. After payment failure, the order grain requests release from the inventory grain.
 
-### State ownership lesson
+### Architecture lesson
 
-Inventory remains owned by the inventory component. Compensation does not mean the orchestrator owns inventory; it means the orchestrator requests the inventory owner to undo a previous reservation.
+Compensation does not transfer ownership of inventory to the workflow coordinator. The coordinator decides that compensation is required, the inventory owner performs and protects the state transition.
 
-### Concurrency or failure lesson
+### Operational validation
 
-Compensation is part of distributed workflow design. The failure is known, so releasing inventory is safe in this simplified sample.
+The Workbench result should show rejection and restored inventory. The Aspire trace and logs should show reservation, payment failure, release, and final rejection as one causal workflow.
 
-### Release and versioning note
+### Evolution note
 
-Changing compensation semantics can be breaking even if the API shape does not change. For example, changing from immediate release to delayed release affects inventory availability and client expectations.
-
-### Operational note
-
-Logs should show reservation, payment failure, and reservation release under the same correlation ID. Missing release logs indicate a potential compensation bug.
+Changing compensation from immediate release to delayed or asynchronous recovery changes observable inventory availability and failure semantics. Such a change requires coordinated tests, UI wording, telemetry, and operational guidance.
 
 ## Payment timeout after reservation
 
 ### Purpose
 
-Demonstrates timeout handling after inventory has already been reserved. The sample treats timeout as failed, releases inventory, and rejects the order.
+Demonstrates timeout handling after inventory has already been reserved. The sample treats the timeout as a failed authorization, releases inventory, and rejects the order.
+
+### Default inputs
+
+- Initial stock: `10`
+- Quantity: `2`
+- Request submissions: `1`
 
 ### Expected result
 
-With initial stock `10` and quantity `2`:
-
-- total request submissions: `1`
-- unique successful orders: `0`
-- rejected submissions: `1`
-- idempotent duplicate responses: `0`
-- remaining inventory: `10`
-- reason: `PaymentTimeout`
+- Total request submissions: `1`
+- Unique successful orders: `0`
+- Rejected submissions: `1`
+- Idempotent duplicate responses: `0`
+- Remaining inventory: `10`
+- Reason: `PaymentTimeout`
 
 ### Microservices interpretation
 
-`Orders.Api` reserves inventory, observes a simulated payment timeout, and releases the reservation. The timeout is presented separately from explicit payment failure because the operational meaning is different.
+`Orders.Api` reserves inventory, observes the modeled payment timeout, releases the reservation, and records the rejected result.
 
 ### Virtual actors interpretation
 
-`OrderGrain(orderId)` coordinates the same policy through grain calls. The actor model helps express workflow state, but timeout policy remains a business decision rather than something solved automatically by actors.
+`OrderGrain(orderId)` coordinates the same deterministic policy through grain calls. Actor-based workflow state can make the decision visible, but the actor model does not choose the timeout policy automatically.
 
-### State ownership lesson
+### Architecture lesson
 
-The order workflow owns the decision policy, while inventory still owns stock state. The workflow decides whether to release, retry, or hold a reservation; the inventory owner performs the actual state transition.
+The workflow owner decides how to interpret an ambiguous downstream outcome. The inventory owner remains responsible for applying the requested release safely.
 
-### Concurrency or failure lesson
+### Operational validation
 
-A timeout is ambiguous in real systems. This sample uses the simple policy `timeout => release and reject` to keep the demo deterministic. A production system might use pending confirmation and reconciliation instead.
+The result must distinguish `PaymentTimeout` from `PaymentFailed`. Logs and traces should connect reservation, timeout handling, release, and rejection. Final inventory should return to its initial value.
 
-### Release and versioning note
+### Evolution note
 
-Changing timeout behavior from rejected to pending would be a semantic breaking change. UI labels, alerts, tests, retry behavior, and client expectations would all need to be reviewed.
-
-### Operational note
-
-Logs should clearly distinguish `PaymentTimeout` from `PaymentFailed`. The correlation ID should connect the reservation, timeout decision, release, and final rejected result.
+A production system may use a pending state and later reconciliation because a timeout does not prove that payment failed. Changing this sample from rejected to pending would be a significant semantic change across contracts, UI, tests, retries, metrics, and operations.
 
 ## Concurrent orders
 
 ### Purpose
 
-Demonstrates multiple independent order submissions competing for the same product stock at the same time.
+Demonstrates independent order submissions competing for limited stock at the same time.
+
+### Default inputs
+
+- Initial stock: `3`
+- Quantity: `1`
+- Concurrent request submissions: `10`
 
 ### Expected result
 
-With initial stock `3`, quantity `1`, and `10` concurrent requests:
-
-- total request submissions: `10`
-- unique successful orders: `3`
-- rejected submissions: `7`
-- idempotent duplicate responses: `0`
-- remaining inventory: `0`
-- reason: `SomeOrdersRejected`
+- Total request submissions: `10`
+- Unique successful orders: `3`
+- Rejected submissions: `7`
+- Idempotent duplicate responses: `0`
+- Remaining inventory: `0`
+- Reason: `SomeOrdersRejected`
 
 ### Microservices interpretation
 
-`Inventory.Api` must explicitly protect the reservation invariant with service-owned concurrency control. `Orders.Api` submits independent orders and relies on `Inventory.Api` for correct stock decisions.
+`Orders.Api` submits independent workflows. `Inventory.Api` must protect reservation state atomically at its service and persistence boundary so several API calls cannot over-reserve stock.
 
 ### Virtual actors interpretation
 
-`InventoryItemGrain(productId)` owns the product identity. Calls for that product identity are serialized through the grain activation, so the inventory invariant is protected at the actor identity boundary.
+The independent workflows converge on `InventoryItemGrain(productId)`. The grain identity owns the product state and coordinates reservation attempts for that identity under the configured Orleans scheduling model.
 
-### State ownership lesson
+### Architecture lesson
 
-The important invariant is not owned by the caller. It is owned by the component responsible for product inventory state.
+The inventory invariant belongs to the inventory owner, not to callers. Scaling callers or workflow coordinators does not remove the consistency boundary around one stock record or identity.
 
-### Concurrency or failure lesson
+### Operational validation
 
-Correctness means completed orders must not exceed available stock and remaining inventory must not go below zero. Rejections are expected when demand exceeds stock.
+Interpret this as one batch containing separate submissions. Completed and rejected counts refer to different logical orders. The final inventory must not become negative, and successful orders must not exceed available stock.
 
-### Release and versioning note
+### Evolution note
 
-Changing concurrency behavior can alter business outcomes even if contracts stay the same. For example, switching reservation strategy from pessimistic locking to optimistic retries can affect latency, rejection timing, and operational profiles.
-
-### Operational note
-
-The result should be interpreted as a batch outcome. Completed and rejected counts refer to different request submissions, not the same submission being both completed and rejected.
+Changing the reservation strategy can preserve the response contract while changing latency, retry behavior, fairness, and contention. Scenario regression tests should protect the business invariant while allowing intentional implementation changes.
 
 ## Hot product contention
 
 ### Purpose
 
-Demonstrates many concurrent requests targeting one hot product identity. The scenario shows that both designs still have a contention point when all work targets the same state identity.
+Demonstrates many concurrent requests targeting one product identity. The scenario separates correctness from scalability by making the shared contention point visible.
+
+### Default inputs
+
+- Initial stock: `25`
+- Quantity: `1`
+- Concurrent request submissions: `50`
 
 ### Expected result
 
-With initial stock `25`, quantity `1`, and `50` concurrent requests:
-
-- total request submissions: `50`
-- unique successful orders: `25`
-- rejected submissions: `25`
-- idempotent duplicate responses: `0`
-- remaining inventory: `0`
-- reason: `SomeOrdersRejected`
+- Total request submissions: `50`
+- Unique successful orders: `25`
+- Rejected submissions: `25`
+- Idempotent duplicate responses: `0`
+- Remaining inventory: `0`
+- Reason: `SomeOrdersRejected`
 
 ### Microservices interpretation
 
-`Inventory.Api` owns product inventory state and must protect the reservation invariant. Even with separate services, one hot product can concentrate load on one state key, database row, or partition.
+`Inventory.Api` owns the product state and must protect its invariant. One hot product can concentrate load on one database row, key, lock, transaction, or partition even when several service instances are available.
 
 ### Virtual actors interpretation
 
-`InventoryItemGrain(productId)` owns the hot product identity. Orleans-style per-identity serialization prevents over-reservation for that product, but the same identity can still become a hot grain and therefore a throughput bottleneck.
+`InventoryItemGrain(productId)` owns the hot product identity. Identity-local coordination protects correctness, but the same identity can become a hot grain and a throughput boundary.
 
-### State ownership lesson
+### Architecture lesson
 
-State ownership protects correctness but does not eliminate contention. If all requests target one identity, the owner of that identity becomes the coordination point.
+State ownership protects correctness but does not eliminate contention. Adding service instances or silos does not automatically partition one hot key or actor identity.
 
-### Concurrency or failure lesson
+### Operational validation
 
-This scenario separates correctness from scalability. The correct result includes rejected submissions when demand exceeds stock. Faster local timings should not be interpreted as a universal benchmark.
+Confirm the completed and rejected counts and final inventory. Use Aspire metrics and traces to inspect the runtime shape, but do not treat one local elapsed-time comparison as benchmark evidence.
 
-### Release and versioning note
+### Evolution note
 
-Optimizing hot product behavior may require partitioning, sharding, reservation queues, or product-specific scaling strategies. Those changes can affect deployment topology and operational procedures.
-
-### Operational note
-
-Watch completed/rejected counts, remaining inventory, elapsed time, and logs for the hot product ID. Correlation ID helps connect UI results to backend logs, but product ID is the key diagnostic dimension for contention.
+Relieving one hot identity may require repartitioning, batching, reservations, quotas, rate limiting, asynchronous admission, or weaker consistency. Such changes affect the domain model and operational behavior, not only infrastructure capacity.
 
 ## Duplicate request
 
 ### Purpose
 
-Demonstrates idempotency under repeated duplicate submissions. The scenario submits the same logical order multiple times concurrently using the same order identity and idempotency key.
+Demonstrates idempotency when the same logical order is submitted concurrently with the same order identity and idempotency key.
+
+### Default inputs
+
+- Initial stock: `10`
+- Quantity: `2`
+- Duplicate request submissions: `20`
 
 ### Expected result
 
-With initial stock `10`, quantity `2`, and `20` duplicate request submissions:
-
-- total request submissions: `20`
-- unique successful orders: `1`
-- rejected submissions: `0`
-- idempotent duplicate responses: `19`
-- remaining inventory: `8`
-- reason: `IdempotentResultReturned`
+- Total request submissions: `20`
+- Unique successful orders: `1`
+- Rejected submissions: `0`
+- Idempotent duplicate responses: `19`
+- Remaining inventory: `8`
+- Reason: `IdempotentResultReturned`
 
 ### Microservices interpretation
 
-`Orders.Api` must explicitly protect idempotency key creation and lookup. A unique index is useful, but a unique index alone can surface a concurrency race as a database exception unless the service coordinates concurrent duplicate submissions or handles unique-key conflicts correctly.
+`Orders.Api` must atomically protect the relationship between the idempotency key and one logical order result. An initial lookup and unique index are not sufficient by themselves unless the service also handles concurrent insertion races and returns the established result.
 
 ### Virtual actors interpretation
 
-`OrderGrain(orderId)` uses a stable order identity. Duplicate submissions for the same order identity are naturally serialized at the grain boundary and can return the existing logical result.
+Duplicate submissions target `OrderGrain(orderId)`. Stable identity routes the workflow to the same logical owner, while persisted grain state records the established result.
 
-### State ownership lesson
+### Architecture lesson
 
-Idempotency state is real state. The system needs a clear owner for the mapping between idempotency key and logical order result.
+Idempotency state is domain state. The system needs one owner for the relationship between request identity and logical outcome.
 
-### Concurrency or failure lesson
+### Operational validation
 
-Idempotency is not only about retrying after a completed request. It must also work when duplicate submissions arrive concurrently before the first request has finished.
+The key values are total submissions, one unique successful order, idempotent duplicate responses, and inventory reduced once. Logs and traces should not show successful reservation for every duplicate submission.
 
-### Release and versioning note
+### Evolution note
 
-Changing idempotency semantics is a behavior contract change. Clients may rely on whether duplicate submissions return the original result, a special duplicate result, or an error. This must be versioned and documented carefully.
-
-### Operational note
-
-The key metrics are total request submissions, unique successful orders, and idempotent duplicate responses. Inventory should be reduced once by the requested quantity, not once per duplicate submission.
+Idempotency policy must define key scope, request mismatch behavior, in-progress duplicates, retention, failed outcomes, and restart behavior. Changing those semantics is a behavior-contract change even when the endpoint signature remains the same.
 
 ## Cross-scenario lessons
 
-### State ownership is the central comparison point
+### State ownership is the central comparison
 
-Most scenarios are about identifying the correct owner for state and invariants:
+Most scenarios identify the correct owner of state and invariants:
 
 - product inventory belongs to `Inventory.Api` or `InventoryItemGrain(productId)`
-- order workflow belongs to `Orders.Api` or `OrderGrain(orderId)`
+- order workflow state belongs to `Orders.Api` or `OrderGrain(orderId)`
 - payment behavior belongs to `Payments.Api` or `PaymentAccountGrain(customerId)`
-- idempotency belongs to the component that creates and returns logical order results
+- idempotency belongs to the component that establishes and returns the logical result
 
-The architectures differ less in whether ownership is needed and more in how ownership is expressed.
+The architectures differ less in whether ownership is required than in how ownership is represented and operated.
 
-### Concurrency guarantees are not free
+### Concurrency guarantees require a boundary
 
-Microservices require explicit concurrency control at service, database, or partition boundaries.
+Microservices require explicit concurrency control at service-owned persistence or partition boundaries.
 
-Virtual actors provide serialized execution per actor identity, which is useful for per-identity invariants, but hot identities can still become bottlenecks.
+Virtual actors align identity-local coordination with the actor runtime, but request scheduling, reentrancy, persistence, cross-actor workflows, and hot identities remain part of the correctness and capacity model.
 
-### Failure handling is a policy decision
+### Failure handling is policy
 
-The architecture does not decide whether timeout means rejection, retry, compensation, or pending confirmation.
+Architecture does not decide whether timeout means rejection, retry, compensation, pending confirmation, or reconciliation. It changes how the workflow records and applies that decision.
 
-The architecture affects how clearly the workflow can express and enforce that policy.
+### Scenario semantics are versioned behavior
 
-### Versioning is part of architecture
+Status values, reason strings, idempotency rules, timeout policy, count meanings, and compensation behavior are part of the externally visible contract. Compatibility is broader than JSON shape or method signature.
 
-Changing status values, reason strings, idempotency behavior, timeout policy, or metric meanings can break clients even when method signatures or JSON shapes remain compatible.
+### Timings are local observations
 
-Scenario behavior is part of the contract.
+Elapsed values help explain this development topology. They do not prove general throughput, latency, cost, or scalability advantages.
 
-### Timings are demo-local, not benchmark proof
+## Observability guidance
 
-Elapsed times in this sample are useful for observing shape and coordination overhead in the local topology.
+Use the Workbench UI to inspect normalized outcomes and explanatory timelines.
 
-They should not be interpreted as a general performance benchmark for either architecture.
+Use the Aspire dashboard to inspect detailed runtime evidence:
 
-## What these scenarios do not prove
+- resource state and endpoints
+- structured logs
+- distributed traces
+- scenario metrics
+- health and readiness
+- runtime dependencies
 
-These scenarios do not prove that one architecture is universally better.
+The Workbench timeline explains the intended scenario. The Aspire trace shows the operations that actually occurred in the composed application.
 
-They also do not prove production performance, operational cost, or correctness under every possible failure mode.
+Do not place customer IDs, product IDs, order IDs, idempotency keys, or other unbounded identifiers into metric dimensions. Use logs and traces for high-cardinality investigation, subject to the repository's data-handling guidance.
 
-The scenarios are intentionally small and deterministic so the comparison remains focused on where each architecture places state ownership, workflow coordination, concurrency control, idempotency, and failure handling.
+## What the scenarios do not prove
+
+The scenarios do not prove:
+
+- that one architecture is universally better
+- production performance or cost
+- production security or resilience
+- correctness under every failure combination
+- safe multi-region operation
+- complete timeout reconciliation
+- automatic scalability for hot keys or identities
+
+They are intentionally small and deterministic so the comparison remains focused on state ownership, workflow coordination, concurrency, idempotency, compensation, and operational visibility.
+
+## Related documentation
+
+- [Problem](01-problem.md)
+- [Microservices design](02-microservices-design.md)
+- [Virtual actors design](03-virtual-actors-design.md)
+- [Trade-offs](07-tradeoffs.md)
+- [Local validation](09-local-validation.md)
+- [UI dashboard](10-ui-dashboard.md)
+- [End-to-end validation](11-end-to-end-validation.md)
+- [Release, versioning, and rollback](14-release-versioning-and-rollback.md)
+- [Observability and operations](16-observability-and-operations.md)
+- [Known limitations](17-known-limitations.md)
+- [Out of scope](18-out-of-scope.md)
