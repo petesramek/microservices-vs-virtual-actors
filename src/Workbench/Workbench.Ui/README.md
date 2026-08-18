@@ -318,14 +318,6 @@ Configuration may include:
 
 Environment-specific values should be supplied through standard configuration providers. Do not commit credentials, access tokens, private endpoints, or other secrets.
 
-## Docker
-
-The project includes a `Dockerfile` for container builds. Keep it aligned with the target framework, repository build layout, project references, static assets, exposed ports, and runtime user.
-
-Container-specific ports, filesystem permissions, user configuration, health checks, and image-stage details should be reviewed directly in the `Dockerfile`, those details are not duplicated here.
-
-A gateway address configured as `localhost` inside the UI container points to the UI container itself, not to a separate gateway container.
-
 ## Local development
 
 The preferred way to run the complete workbench is through the repository AppHost so service discovery, endpoints, observability, and environment variables are configured consistently.

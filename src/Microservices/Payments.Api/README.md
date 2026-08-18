@@ -26,39 +26,6 @@ The project performs six main tasks:
 - Adds correlation information and source-generated structured logging
 - Exposes database readiness and shared liveness endpoints
 
-## Project structure
-
-Generated `bin` and `obj` directories, the user-specific `.csproj.user` file, and the local `payments.db` artifact are intentionally omitted.
-
-```text
-appsettings.json
-Dockerfile
-Payments.Api.csproj
-Program.cs
-
-Extensions/
-  EndpointRouteBuilderExtensions.cs
-
-Internal/
-  Infrastructure/
-    PaymentAttemptEntityConfiguration.cs
-    PaymentsDbContext.cs
-
-  Observability/
-    Health/
-      PaymentsDatabaseHealthCheck.cs
-
-    Logging/
-      LogError.cs
-      LogInformation.cs
-
-Models/
-  PaymentAttempt.cs
-
-Properties/
-  launchSettings.json
-```
-
 ## Startup flow
 
 `Program.cs` performs application composition:
@@ -243,12 +210,6 @@ The database health check verifies connectivity only. It does not validate schem
 `Properties/launchSettings.json` contains local launch profiles.
 
 Environment-specific values should be supplied through normal ASP.NET Core configuration providers. Do not commit secrets or credentials to either file.
-
-## Docker
-
-The project includes a `Dockerfile` for container builds. Keep it aligned with the target framework, repository build layout, database path, and runtime user when project references or output paths change.
-
-Container-specific ports, user configuration, filesystem permissions, and health checks should be reviewed directly in the `Dockerfile`, those details are not duplicated here.
 
 ## Local development
 

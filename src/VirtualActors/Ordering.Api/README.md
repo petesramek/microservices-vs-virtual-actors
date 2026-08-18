@@ -235,12 +235,6 @@ Shared tracing, metrics, logging, service discovery, resilience, and exporter be
 
 Environment-specific values should be supplied through the normal ASP.NET Core configuration providers. Do not commit secrets or credentials to either file.
 
-## Docker
-
-The project includes a `Dockerfile` for container builds. Keep it aligned with the target framework and repository build layout when project references or output paths change.
-
-Container-specific runtime, user, port, and health-check behavior should be reviewed directly in the `Dockerfile`, those details are not duplicated here.
-
 ## Local development
 
 The API requires a reachable local Orleans silo configured for the same cluster. Start the repository through its AppHost when using the complete architecture workbench, or start the Silo before running the API directly.

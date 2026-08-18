@@ -79,7 +79,7 @@ GET /alive
 
 `MicroservicesServiceClient` adapts the HTTP-service implementation to the common scenario runner contract. `VirtualActorsServiceClient` performs the equivalent adaptation for the Orleans-backed implementation. Architecture-specific path details belong in these clients rather than in the UI or shared contracts.
 
-See `Workbench.Gateway/README.md` for detailed gateway behavior, configuration, observability, Docker, and endpoint guidance.
+See `Workbench.Gateway/README.md` for detailed gateway behavior, configuration, observability, and endpoint guidance.
 
 ### Workbench.Ui
 

@@ -272,12 +272,6 @@ The database health check verifies connectivity only. It does not validate schem
 
 Environment-specific values should be supplied through normal ASP.NET Core configuration providers. Do not commit secrets or credentials to either file.
 
-## Docker
-
-The project includes a `Dockerfile` for container builds. Keep it aligned with the target framework, repository build layout, database path, and runtime user when project references or output paths change.
-
-Container-specific ports, user configuration, filesystem permissions, and health checks should be reviewed directly in the `Dockerfile`, those details are not duplicated here.
-
 ## Local development
 
 The service has no runtime HTTP dependency on Payments.Api or Orders.Api. It requires writable access to the configured SQLite database path.

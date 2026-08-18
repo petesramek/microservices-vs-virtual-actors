@@ -296,14 +296,6 @@ The gateway registers problem details and enables the ASP.NET Core exception han
 
 `OperationCanceledException` is not converted into a generic internal-server error. It is marked on the current activity and rethrown so ASP.NET Core can observe request cancellation correctly.
 
-## Docker
-
-The project includes a `Dockerfile` for container builds. Keep it aligned with the target framework, repository build layout, project references, configured backend addresses, exposed ports, and runtime user.
-
-Container-specific ports, filesystem permissions, user configuration, health checks, and image-stage details should be reviewed directly in the `Dockerfile`, those details are not duplicated here.
-
-Backend URLs supplied to a container must be reachable from the container network. Localhost inside the gateway container refers to the gateway container itself, not another service container.
-
 ## Local development
 
 Workbench.Gateway depends at runtime on the selected architecture backends:

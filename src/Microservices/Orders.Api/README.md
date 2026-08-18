@@ -197,14 +197,6 @@ Environment-specific values should be supplied through standard ASP.NET Core con
 
 Client registration and health checks should use the same configured downstream service identities so operational readiness reflects the dependencies used by the workflow.
 
-## Docker
-
-The project includes a `Dockerfile` for container builds. Keep it aligned with the target framework, repository build layout, SQLite path, project references, and runtime user when the service changes.
-
-Container-specific ports, user configuration, filesystem permissions, and health checks should be reviewed directly in the `Dockerfile`, those details are not duplicated here.
-
-The runtime container requires writable access to the configured SQLite database location.
-
 ## Local development
 
 Orders.Api depends at runtime on:
