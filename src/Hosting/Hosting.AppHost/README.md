@@ -1,190 +1,257 @@
-# Hosting.AppHost
+# Microservices vs Virtual Actors
 
-`Hosting.AppHost` is the .NET Aspire orchestration project for the **Microservices vs Virtual Actors** architecture workbench. It starts the projects required by the interactive comparison, supplies Aspire-managed service endpoints, defines startup dependencies and health checks, and publishes the application topology used by the Workbench experience.
+This repository is an architecture workbench for comparing the same order workflow implemented in two styles:
 
-This project does not implement either order-processing workflow. Its responsibility is to compose the local distributed application from the projects that do.
+- **Microservices**, with explicit HTTP service boundaries and service-owned persistence.
+- **Virtual actors**, with Orleans grains that own state and behavior by durable identity.
 
-## Repository context
+The comparison focuses on how each architecture expresses state ownership, concurrency, idempotency, compensation, contention, deployment, observability, and evolution. It includes a Blazor Workbench UI, deterministic scenarios, topology-aware health, shared observability, and a .NET Aspire development environment.
 
-The repository implements the same order workflow in two architectural styles:
+> This repository is a teaching and comparison tool. It is not a production reference architecture or a controlled benchmark.
 
-- **Microservices**, with explicit HTTP service boundaries for order orchestration, inventory, and payments
-- **Virtual actors**, with Orleans grains providing identity-based state ownership and serialized execution per actor identity
+## What you can explore
 
-The Workbench runs equivalent scenarios against both implementations so their behavior and trade-offs can be examined side by side. It is an architecture case study, not a benchmark. Local timings describe this sample topology only and should not be treated as general performance conclusions.
+Use the workbench to investigate questions such as:
 
-See the repository-level README and `docs` directory for the scenario guide, architecture discussions, operational interpretation, known limitations, and scope boundaries.
+- Who owns inventory state and protects its invariants?
+- Where does order workflow coordination live?
+- How are concurrent requests prevented from over-reserving stock?
+- How are duplicate submissions resolved idempotently?
+- How is inventory compensated after payment failure or timeout?
+- What happens when many requests target one hot product identity?
+- How do deployment and operational responsibilities differ?
+- How do the architectures affect long-term maintenance and team ownership?
 
-## Responsibilities
+Start with the [problem statement](docs/01-problem.md), then explore the [microservices design](docs/02-microservices-design.md), [virtual actors design](docs/03-virtual-actors-design.md), and detailed [trade-offs](docs/07-tradeoffs.md).
 
-The AppHost performs five main tasks:
-
-1. Registers the Workbench, microservices, and virtual actor projects with Aspire.
-2. Replaces configured service URLs with Aspire-managed endpoint references.
-3. Applies health checks and shared observability configuration.
-4. Declares startup dependencies between project resources.
-5. Publishes a neutral observability topology for the Workbench UI.
-
-## Application model
-
-### Workbench
-
-| Resource | Role |
-| --- | --- |
-| Workbench UI | Hosts the interactive scenario dashboard and receives the serialized observability topology. |
-| Workbench Gateway | Runs scenarios against the microservices and virtual actor entry points through a common interface. |
-
-### Microservices path
-
-| Resource | Role |
-| --- | --- |
-| Orders API | Owns order workflow orchestration. |
-| Inventory API | Owns inventory state and reservation invariants. |
-| Payments API | Owns payment authorization behavior. |
-
-### Virtual actor path
-
-| Resource | Role |
-| --- | --- |
-| Ordering API | Exposes the actor-backed ordering workflow. |
-| Ordering Silo | Hosts the Orleans grains and Orleans Dashboard. |
-
-## Runtime topology
+## Architecture at a glance
 
 ```text
-Workbench UI
-    |
-    v
-Workbench Gateway
-    |--------------------------------|
-    v                                v
-Orders API                      Ordering API
-    |          |                      |
-    v          v                      v
-Inventory API  Payments API      Ordering Silo
+Workbench.Ui
+  -> Workbench.Gateway
+      -> Microservices
+          -> Orders.Api
+              -> Inventory.Api
+              -> Payments.Api
+      -> Virtual actors
+          -> Ordering.Api
+              -> Ordering.Silo
+                  -> OrderGrain
+                  -> InventoryItemGrain
+                  -> PaymentAccountGrain
 ```
 
-The observability model also includes storage nodes for the orders, inventory, payments, and ordering data stores. These nodes describe health and dependency relationships, they are not separately registered Aspire project resources.
+`Workbench.Gateway` runs each scenario through both implementations and returns normalized results to `Workbench.Ui`.
 
-## Startup dependencies
+### Microservices
 
-The AppHost declares the following startup relationships:
+- `Orders.Api` coordinates the order workflow.
+- `Inventory.Api` owns inventory state and reservation invariants.
+- `Payments.Api` owns payment authorization behavior.
+- Workflow coordination crosses explicit HTTP and persistence boundaries.
 
-- Orders API waits for Inventory API and Payments API
-- Ordering API waits for Ordering Silo
-- Workbench UI waits for Workbench Gateway
+See the [Microservices folder overview](src/Microservices/README.md) and [Microservices design](docs/02-microservices-design.md).
 
-A startup relationship controls orchestration order. It is separate from visual topology grouping and from the complete set of runtime dependency edges shown by the Workbench.
+### Virtual actors
 
-## Service discovery and endpoint configuration
+- `OrderGrain(orderId)` owns one logical order workflow.
+- `InventoryItemGrain(productId)` owns inventory for one product identity.
+- `PaymentAccountGrain(customerId)` owns payment behavior for one customer or account identity.
+- `Ordering.Api` is the HTTP entry point and Orleans client, while `Ordering.Silo` hosts the Orleans runtime.
 
-The AppHost uses Aspire endpoint references instead of fixed local ports. It supplies the following configuration overrides to dependent projects:
+See the [Virtual actors folder overview](src/VirtualActors/README.md) and [Virtual actors design](docs/03-virtual-actors-design.md).
 
-| Configuration key | Consumer | Aspire resource endpoint |
-| --- | --- | --- |
-| `Services__InventoryBaseUrl` | Orders API | Inventory API |
-| `Services__PaymentsBaseUrl` | Orders API | Payments API |
-| `ServiceEndpoints__MicroservicesBaseUrl` | Workbench Gateway | Orders API |
-| `ServiceEndpoints__VirtualActorsBaseUrl` | Workbench Gateway | Ordering API |
-| `Gateway__BaseUrl` | Workbench UI | Workbench Gateway |
+## Workbench experience
 
-The double underscore follows the .NET environment-variable convention for hierarchical configuration keys.
+`Workbench.Ui` provides four focused views.
 
-## Health checks
+### Scenario runner
 
-Every registered project resource exposes an HTTP readiness check at:
+The Scenario runner executes the selected deterministic workflow through both implementations and presents normalized results side by side. It supports scenario defaults and optional advanced inputs for stock, quantity, concurrency, and identity values.
 
-```text
-/health
-```
+The result cards show request submissions, unique successful orders, rejected submissions, idempotent duplicate responses, remaining inventory, elapsed time, terminal reasons, and explanatory timelines.
 
-The Aspire Dashboard uses these checks to report resource health. The topology additionally associates service dependencies and storage nodes with named health-report entries so the Workbench can distinguish direct resource health from dependency health.
+See the [UI dashboard guide](docs/10-ui-dashboard.md), [Scenario guide](docs/12-scenario-guide.md), and [Workbench folder overview](src/Workbench/README.md).
 
-## Observability configuration
+### Health
 
-The AppHost forwards the configured observability section to participating project resources as environment variables. Nested configuration keys are flattened with `__` separators.
+The Health page combines live readiness and liveness reports with the shared topology model. It organizes resources into groups, nodes, and dependencies, and presents:
 
-The AppHost also publishes a neutral topology containing:
+- service availability
+- direct and aggregate health
+- required and optional dependency health
+- group health
+- unknown or missing observations
 
-- service nodes
-- storage nodes
-- directed dependency edges
-- visual resource groups
-- health-source mappings
+Health describes runtime reachability and readiness. It does not prove business correctness.
 
-Topology registration is order-dependent. Nodes must be registered before an edge or group refers to them. Project-backed node identifiers come from Aspire resource names, non-project storage nodes and visual groups use stable identifiers declared by the AppHost.
+See [Observability and operations](docs/16-observability-and-operations.md), the [Health model](src/Observability/Observability.Health/README.md), and the [Topology model](src/Observability/Observability.Topology/README.md).
 
-### Visual groups
+### Topology
 
-The topology is organized into three Dashboard groups:
+The Topology page is a text-based explanation of the intended architecture. It describes the Workbench request path, service ownership, actor identities, Orleans runtime boundary, and dependency relationships.
 
-- **Workbench**: Workbench UI and Workbench Gateway
-- **Microservices**: Orders, Inventory, and Payments APIs plus their storage nodes
-- **Virtual Actors**: Ordering API, Ordering Silo, and the ordering storage node
+It does not display live resource state or availability. Runtime topology-aware health belongs on the Health page.
 
-Groups are visual only. Membership does not imply dependency direction or startup ordering.
+### Trade-offs
 
-## Prerequisites
+The Trade-offs page provides a concise in-product comparison of the two architecture styles. Detailed reasoning remains in [Trade-offs](docs/07-tradeoffs.md) and [Organizational scaling and architecture fit](docs/08-organizational-scaling-and-architecture-fit.md).
 
-Use the .NET SDK required by the repository and the version of Aspire referenced by this project. An OCI-compatible container runtime is required only when a resource in the application model depends on containers.
+## Scenarios
 
-Before running the AppHost, restore the repository dependencies:
+The workbench includes seven scenarios:
 
-```bash
-dotnet restore
-```
+- **Successful order:** inventory is available and payment succeeds.
+- **Insufficient inventory:** the workflow is rejected before payment.
+- **Payment failure compensation:** reserved inventory is released after explicit payment failure.
+- **Payment timeout after reservation:** timeout is treated as failure and compensated.
+- **Concurrent orders:** independent orders compete for limited stock.
+- **Duplicate request:** concurrent duplicate submissions resolve to one logical result.
+- **Hot product contention:** many requests target one product identity.
+
+See the [Scenario guide](docs/12-scenario-guide.md) for default inputs, expected counts, reason values, architecture interpretation, and operational validation.
+
+## Result semantics
+
+The normalized result contract distinguishes attempts from logical outcomes:
+
+- **Total request submissions** counts attempts sent to one implementation.
+- **Unique successful orders** counts distinct logical orders that completed.
+- **Rejected submissions** counts logical submissions that were rejected.
+- **Idempotent duplicate responses** counts repeated submissions that returned an established result.
+- **Remaining inventory** is the final observed quantity.
+- **Elapsed time** is local workbench feedback, not benchmark evidence.
+
+This distinction is especially important for concurrent and duplicate-request scenarios.
 
 ## Run locally
 
-From the `Hosting.AppHost` project directory:
+### Prerequisites
+
+Install the .NET SDK required by the repository and use a suitable .NET development environment.
+
+Confirm the installed SDKs with:
 
 ```bash
-dotnet run
+dotnet --list-sdks
 ```
 
-Alternatively, run the project from the repository root by passing its actual project-file path:
+### Start with Aspire
+
+The supported development path uses the Aspire AppHost:
 
 ```bash
-dotnet run --project <path-to-Hosting.AppHost.csproj>
+dotnet run --project src/Hosting/Hosting.AppHost/Hosting.AppHost.csproj
 ```
 
-The AppHost prints the Aspire Dashboard URL after startup. Use the Dashboard to inspect resource state, logs, endpoints, health checks, and links to the Workbench UI and Orleans Dashboard.
+Open the Aspire dashboard URL printed by the AppHost, then open the `Workbench.Ui` endpoint from the resource list.
 
-## Validate changes
+Aspire is used to:
 
-From the repository root:
+- compose and start the development topology
+- provide service discovery and dependency wiring
+- expose project endpoints and resource health
+- inspect structured logs
+- inspect distributed traces
+- inspect metrics
+- manage resource lifecycle during development
+
+See the [Hosting overview](src/Hosting/README.md) and [AppHost overview](src/Hosting/Hosting.AppHost/README.md).
+
+## Repository map
+
+```text
+src/
+  Hosting/         Aspire composition and shared service defaults
+  Microservices/   Orders, inventory, and payment services
+  Observability/   Shared health and topology models
+  VirtualActors/   Orleans API, grains, persistence, and silo
+  Workbench/       Shared contracts, gateway, and Blazor UI
+tests/             Workflow, persistence, acceptance, and regression tests
+docs/              Architecture, validation, and operational guidance
+```
+
+Each major source area contains a focused README with implementation-specific guidance.
+
+## Testing and validation
+
+Run the standard validation sequence from the repository root:
 
 ```bash
-dotnet restore
-dotnet build --configuration Release
-dotnet test --configuration Release --no-build
+dotnet restore microservices-vs-virtual-actors.slnx
+dotnet build microservices-vs-virtual-actors.slnx --configuration Release --no-restore
+dotnet test microservices-vs-virtual-actors.slnx --configuration Release --no-build
 ```
 
-The repository's regression tests protect the scenario result semantics, including successful orders, business rejection, compensation, timeout handling, contention, and duplicate-request idempotency. When orchestration changes affect scenario behavior, update the relevant tests and repository documentation together.
+The test projects provide complementary coverage:
 
-## Adding or changing a resource
+- `Microservices.Tests` covers the HTTP-service workflow.
+- `VirtualActors.Tests` covers the Orleans workflow and SQLite grain persistence.
+- `Workbench.AcceptanceTests` covers externally visible gateway behavior.
+- `Workbench.ScenarioRegressionTests` protects normalized scenario-result semantics.
 
-When modifying the application model:
+The GitHub Actions workflow under `.github/workflows/build.yml` performs automated build and test validation.
 
-1. Register the project with a stable lowercase kebab-case resource name.
-2. Configure its Dashboard endpoint label and `/health` readiness check.
-3. Supply downstream URLs through Aspire endpoint references rather than fixed ports.
-4. Add `WaitFor` only when startup ordering is required.
-5. Apply the shared observability configuration where appropriate.
-6. Register the topology node before adding dependencies or group membership.
-7. Add dependency edges in source-to-target direction.
-8. Add non-project storage nodes with stable topology identifiers.
-9. Place each node in the appropriate visual group.
-10. Update this README if the AppHost contract or application shape changes.
+See [Local validation](docs/09-local-validation.md) and [End-to-end validation](docs/11-end-to-end-validation.md) for the complete validation workflow.
 
-## Naming conventions
+## Observability in development
 
-- Aspire resource names use lowercase kebab-case
-- Configuration overrides use .NET's `__` hierarchy separator
-- Topology node and group identifiers are stable and case-sensitive
-- Dashboard display names are user-facing labels and are independent of stable IDs
-- Workbench, Microservices, and Virtual Actors are the domain names used for resource collections and registration helpers, a redundant `Services` suffix is avoided
+The repository uses shared service defaults and custom scenario instrumentation:
 
-## Scope
+- W3C trace context and .NET `Activity`
+- OpenTelemetry traces and metrics
+- structured logging and `X-Correlation-ID` propagation
+- scenario activities and bounded metrics
+- custom trace collection and sampling
+- readiness and liveness endpoints
+- topology-aware health evaluation
 
-`Hosting.AppHost` is local orchestration and topology composition for the architecture workbench. It does not establish a production deployment platform, security model, autoscaling strategy, multi-region design, or production observability backend. Refer to the repository documentation for those limitations and for guidance on interpreting the sample responsibly.
+The observability surfaces are complementary:
+
+- **Aspire dashboard:** detailed development inspection of resources, endpoints, logs, traces, metrics, configuration, and lifecycle.
+- **Workbench Health page:** application-specific interpretation of live health through groups, nodes, dependencies, and availability.
+- **Workbench Topology page:** text-based explanation of the intended architecture.
+
+Do not place credentials, connection strings, request bodies, customer identifiers, order identifiers, product identifiers, or idempotency keys in normal telemetry or metric dimensions.
+
+See [Correlation and trace context](docs/13-correlation-id-logging.md), [Observability and operations](docs/16-observability-and-operations.md), and [Service defaults](src/Hosting/Hosting.ServiceDefaults/README.md).
+
+## Documentation
+
+Recommended reading path:
+
+1. [Problem](docs/01-problem.md)
+2. [Microservices design](docs/02-microservices-design.md)
+3. [Virtual actors design](docs/03-virtual-actors-design.md)
+4. [Trade-offs](docs/07-tradeoffs.md)
+5. [Scenario guide](docs/12-scenario-guide.md)
+6. [Local validation](docs/09-local-validation.md)
+7. [Observability and operations](docs/16-observability-and-operations.md)
+8. [Known limitations](docs/17-known-limitations.md)
+
+See the [documentation index](docs/README.md) for categorized reading paths and links to every detailed document.
+
+## Contributing
+
+Contributions are welcome. Use GitHub Issues for reproducible bugs and concrete feature requests, and GitHub Discussions for questions, observations, and early architecture ideas.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before making a change.
+
+## Scope and interpretation
+
+Keep these guardrails in mind:
+
+- The repository is not a benchmark.
+- Local timings depend on the machine, runtime state, persistence, topology, and workload.
+- Aspire is the supported development composition, not a production deployment blueprint.
+- The sample does not provide production security, recovery, reconciliation, scaling, telemetry retention, alerting, or incident management.
+- Health does not prove business correctness.
+- The comparison demonstrates trade-offs rather than declaring a winner.
+
+See [Known limitations](docs/17-known-limitations.md) and [Out of scope](docs/18-out-of-scope.md).
+
+## Key takeaway
+
+The useful question is not whether microservices or virtual actors are universally better. It is how each style expresses and evolves state ownership, concurrency, coordination, compensation, idempotency, deployment, observability, and operational responsibility.
+
+The best fit depends on workload identity, consistency requirements, team ownership, deployment boundaries, platform maturity, and expected evolution. See [Trade-offs](docs/07-tradeoffs.md) for the detailed comparison.
