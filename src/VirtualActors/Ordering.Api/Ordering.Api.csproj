@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
     <PackageReference Include="Microsoft.Orleans.Analyzers" />
+    <PackageReference Include="Microsoft.Orleans.Persistence.Memory" />
     <PackageReference Include="Microsoft.Orleans.Server" />
     <ProjectReference Include="../../Workbench/Workbench.Contracts/Workbench.Contracts.csproj" />
     <ProjectReference Include="../Ordering.Grains/Ordering.Grains.csproj" />
