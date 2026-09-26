@@ -1,8 +1,4 @@
 namespace Ordering.Grains.Grains.Abstraction;
-
-using Ordering.Grains.Contracts;
-using Orleans;
-
 /// <summary>
 /// Defines the workflow operations for one order identity.
 /// </summary>

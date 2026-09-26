@@ -32,41 +32,41 @@ public sealed record TopologyDefinition {
         IReadOnlyList<TopologyNodeDefinition> nodes,
         IReadOnlyList<TopologyEdgeDefinition> edges,
         IReadOnlyList<TopologyGroupDefinition> groups) {
-        ArgumentNullException.ThrowIfNull(nodes);
-        ArgumentNullException.ThrowIfNull(edges);
-        ArgumentNullException.ThrowIfNull(groups);
+    ArgumentNullException.ThrowIfNull(nodes);
+    ArgumentNullException.ThrowIfNull(edges);
+    ArgumentNullException.ThrowIfNull(groups);
 
-        Nodes = Snapshot(nodes);
-        Edges = Snapshot(edges);
-        Groups = Snapshot(groups);
-    }
+    Nodes = Snapshot(nodes);
+    Edges = Snapshot(edges);
+    Groups = Snapshot(groups);
+}
 
-    /// <summary>
-    /// Gets an ordered snapshot of the topology nodes.
-    /// </summary>
-    public IReadOnlyList<TopologyNodeDefinition> Nodes { get; }
+/// <summary>
+/// Gets an ordered snapshot of the topology nodes.
+/// </summary>
+public IReadOnlyList<TopologyNodeDefinition> Nodes { get; }
 
-    /// <summary>
-    /// Gets an ordered snapshot of the directed dependency edges.
-    /// </summary>
-    public IReadOnlyList<TopologyEdgeDefinition> Edges { get; }
+/// <summary>
+/// Gets an ordered snapshot of the directed dependency edges.
+/// </summary>
+public IReadOnlyList<TopologyEdgeDefinition> Edges { get; }
 
-    /// <summary>
-    /// Gets an ordered snapshot of the visual and health-aggregation groups.
-    /// </summary>
-    public IReadOnlyList<TopologyGroupDefinition> Groups { get; }
+/// <summary>
+/// Gets an ordered snapshot of the visual and health-aggregation groups.
+/// </summary>
+public IReadOnlyList<TopologyGroupDefinition> Groups { get; }
 
-    /// <summary>
-    /// Creates an ordered, read-only snapshot of a definition collection.
-    /// </summary>
-    /// <typeparam name="T">The definition element type.</typeparam>
-    /// <param name="items">The source items to copy.</param>
-    /// <returns>An ordered, read-only snapshot of <paramref name="items"/>.</returns>
-    [SuppressMessage(
-    "Performance",
-    "CA1859:Use concrete types when possible for improved performance",
-    Justification = "Prioritizing design clarity, encapsulation, and abstractions over micro-optimization.")]
-    private static IReadOnlyList<T> Snapshot<T>(IReadOnlyList<T> items) {
-        return new ReadOnlyCollection<T>(items.ToArray());
-    }
+/// <summary>
+/// Creates an ordered, read-only snapshot of a definition collection.
+/// </summary>
+/// <typeparam name="T">The definition element type.</typeparam>
+/// <param name="items">The source items to copy.</param>
+/// <returns>An ordered, read-only snapshot of <paramref name="items"/>.</returns>
+[SuppressMessage(
+"Performance",
+"CA1859:Use concrete types when possible for improved performance",
+Justification = "Prioritizing design clarity, encapsulation, and abstractions over micro-optimization.")]
+private static IReadOnlyList<T> Snapshot<T>(IReadOnlyList<T> items) {
+    return new ReadOnlyCollection<T>(items.ToArray());
+}
 }

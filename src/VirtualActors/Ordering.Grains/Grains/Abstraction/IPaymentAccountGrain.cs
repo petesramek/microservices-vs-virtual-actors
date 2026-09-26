@@ -1,8 +1,4 @@
 namespace Ordering.Grains.Grains.Abstraction;
-
-using Ordering.Grains.Contracts;
-using Orleans;
-
 /// <summary>
 /// Defines payment-authorization operations for one customer or account
 /// identity.

@@ -1,7 +1,4 @@
 namespace Payments.Api.Internal.Observability.Logging;
-
-using Microsoft.Extensions.Logging;
-
 /// <summary>
 /// Defines source-generated informational log messages for payment operations.
 /// </summary>

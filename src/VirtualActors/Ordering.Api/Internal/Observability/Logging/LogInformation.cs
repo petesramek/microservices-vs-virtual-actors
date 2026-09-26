@@ -1,7 +1,4 @@
 namespace Ordering.Api.Internal.Observability.Logging;
-
-using Microsoft.Extensions.Logging;
-
 /// <summary>
 /// Defines source-generated informational log messages for ordering API
 /// operations.

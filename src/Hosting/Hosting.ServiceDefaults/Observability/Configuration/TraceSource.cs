@@ -1,7 +1,4 @@
 namespace Hosting.ServiceDefaults.Observability.Configuration;
-
-using System;
-
 /// <summary>
 /// Specifies the trace sources enabled for shared OpenTelemetry collection.
 /// </summary>

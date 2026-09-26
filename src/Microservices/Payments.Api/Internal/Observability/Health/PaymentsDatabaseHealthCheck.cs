@@ -1,6 +1,5 @@
 namespace Payments.Api.Internal.Observability.Health;
 
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Payments.Api.Internal.Infrastructure;
 
 /// <summary>

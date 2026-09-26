@@ -32,25 +32,25 @@ public sealed record TopologyGroupDefinition {
         string id,
         string displayName,
         IReadOnlyList<string> nodeIds) {
-        ArgumentNullException.ThrowIfNull(nodeIds);
+    ArgumentNullException.ThrowIfNull(nodeIds);
 
-        Id = id;
-        DisplayName = displayName;
-        NodeIds = new ReadOnlyCollection<string>(nodeIds.ToArray());
-    }
+    Id = id;
+    DisplayName = displayName;
+    NodeIds = new ReadOnlyCollection<string>(nodeIds.ToArray());
+}
 
-    /// <summary>
-    /// Gets the stable identifier used to reference and serialize the group.
-    /// </summary>
-    public string Id { get; }
+/// <summary>
+/// Gets the stable identifier used to reference and serialize the group.
+/// </summary>
+public string Id { get; }
 
-    /// <summary>
-    /// Gets the user-facing name displayed in topology views.
-    /// </summary>
-    public string DisplayName { get; }
+/// <summary>
+/// Gets the user-facing name displayed in topology views.
+/// </summary>
+public string DisplayName { get; }
 
-    /// <summary>
-    /// Gets an ordered snapshot of the node identifiers included in the group.
-    /// </summary>
-    public IReadOnlyList<string> NodeIds { get; }
+/// <summary>
+/// Gets an ordered snapshot of the node identifiers included in the group.
+/// </summary>
+public IReadOnlyList<string> NodeIds { get; }
 }

@@ -51,46 +51,46 @@ public sealed record RunScenarioRequest {
     /// </value>
     public Guid OrderId { get; set; } = Guid.NewGuid();
 
-    /// <summary>
-    /// Gets or sets the key used to identify repeated order requests.
-    /// </summary>
-    /// <value>
-    /// A required idempotency key containing at most 200 characters. A new
-    /// compact GUID value is generated for each request instance by default.
-    /// </value>
-    [Required]
-    [MaxLength(200)]
-    public string IdempotencyKey { get; set; } = Guid.NewGuid().ToString("N");
+/// <summary>
+/// Gets or sets the key used to identify repeated order requests.
+/// </summary>
+/// <value>
+/// A required idempotency key containing at most 200 characters. A new
+/// compact GUID value is generated for each request instance by default.
+/// </value>
+[Required]
+[MaxLength(200)]
+public string IdempotencyKey { get; set; } = Guid.NewGuid().ToString("N");
 
-    /// <summary>
-    /// Gets or sets the product quantity requested by each order.
-    /// </summary>
-    /// <value>A value from 1 through 100,000. The default is 1.</value>
-    [Range(1, 100_000)]
-    public int Quantity { get; set; } = 1;
+/// <summary>
+/// Gets or sets the product quantity requested by each order.
+/// </summary>
+/// <value>A value from 1 through 100,000. The default is 1.</value>
+[Range(1, 100_000)]
+public int Quantity { get; set; } = 1;
 
-    /// <summary>
-    /// Gets or sets the inventory quantity used to prepare the scenario.
-    /// </summary>
-    /// <value>A value from 0 through 100,000. The default is 10.</value>
-    [Range(0, 100_000)]
-    public int InitialStock { get; set; } = 10;
+/// <summary>
+/// Gets or sets the inventory quantity used to prepare the scenario.
+/// </summary>
+/// <value>A value from 0 through 100,000. The default is 10.</value>
+[Range(0, 100_000)]
+public int InitialStock { get; set; } = 10;
 
-    /// <summary>
-    /// Gets or sets the number of order requests issued by concurrency
-    /// scenarios.
-    /// </summary>
-    /// <value>A value from 1 through 50. The default is 10.</value>
-    [Range(1, 50)]
-    public int ConcurrentRequests { get; set; } = 10;
+/// <summary>
+/// Gets or sets the number of order requests issued by concurrency
+/// scenarios.
+/// </summary>
+/// <value>A value from 1 through 50. The default is 10.</value>
+[Range(1, 50)]
+public int ConcurrentRequests { get; set; } = 10;
 
-    /// <summary>
-    /// Gets or sets a value indicating whether the deterministic payment-failure
-    /// path is requested.
-    /// </summary>
-    /// <value>
-    /// <see langword="true"/> to request simulated payment failure; otherwise,
-    /// <see langword="false"/>.
-    /// </value>
-    public bool SimulatePaymentFailure { get; set; }
+/// <summary>
+/// Gets or sets a value indicating whether the deterministic payment-failure
+/// path is requested.
+/// </summary>
+/// <value>
+/// <see langword="true"/> to request simulated payment failure; otherwise,
+/// <see langword="false"/>.
+/// </value>
+public bool SimulatePaymentFailure { get; set; }
 }

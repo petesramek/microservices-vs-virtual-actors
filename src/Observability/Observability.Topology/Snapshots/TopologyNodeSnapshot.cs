@@ -1,5 +1,3 @@
-using Observability.Health;
-
 namespace Observability.Topology.Snapshots;
 
 /// <summary>

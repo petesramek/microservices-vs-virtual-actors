@@ -26,12 +26,12 @@ internal sealed record HealthProbeResult(
     public static HealthProbeResult Unavailable(
         DateTimeOffset checkedAtUtc,
         string description) {
-        return new HealthProbeResult(
-            HealthStatus.Unknown,
-            checkedAtUtc,
-            Duration: null,
-            description,
-            new Dictionary<string, HealthEntryProbeResult>(
-                StringComparer.Ordinal));
-    }
+    return new HealthProbeResult(
+        HealthStatus.Unknown,
+        checkedAtUtc,
+        Duration: null,
+        description,
+        new Dictionary<string, HealthEntryProbeResult>(
+            StringComparer.Ordinal));
+}
 }

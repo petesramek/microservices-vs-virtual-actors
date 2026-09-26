@@ -1,7 +1,5 @@
 namespace Payments.Api;
 
-using Hosting.ServiceDefaults.Extensions;
-using Microsoft.EntityFrameworkCore;
 using Payments.Api.Internal.Extensions;
 using Payments.Api.Internal.Infrastructure;
 using Payments.Api.Internal.Observability.Health;

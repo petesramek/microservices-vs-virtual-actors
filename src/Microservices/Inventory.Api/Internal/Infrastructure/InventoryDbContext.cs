@@ -1,7 +1,6 @@
 namespace Inventory.Api.Internal.Infrastructure;
 
 using Inventory.Api.Models;
-using Microsoft.EntityFrameworkCore;
 
 /// <summary>
 /// Provides Entity Framework Core access to inventory items and reservations.

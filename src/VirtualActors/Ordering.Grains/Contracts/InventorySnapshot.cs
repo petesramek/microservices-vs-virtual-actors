@@ -1,7 +1,4 @@
 namespace Ordering.Grains.Contracts;
-
-using Orleans;
-
 /// <summary>
 /// Represents a point-in-time view of the available inventory for one product.
 /// </summary>

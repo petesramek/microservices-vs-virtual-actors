@@ -1,11 +1,4 @@
 namespace VirtualActors.Tests;
-
-using Ordering.Grains.Contracts;
-using Ordering.Grains.Grains.Abstraction;
-using Shouldly;
-using Workbench.Contracts.Orders;
-using Xunit;
-
 /// <summary>
 /// Tests for the virtual actor-style order workflow.
 /// </summary>

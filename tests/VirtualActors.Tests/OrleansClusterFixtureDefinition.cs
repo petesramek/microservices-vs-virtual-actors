@@ -1,7 +1,4 @@
 namespace VirtualActors.Tests;
-
-using Xunit;
-
 /// <summary>
 /// Collection fixture definition for Orleans cluster tests.
 /// </summary>

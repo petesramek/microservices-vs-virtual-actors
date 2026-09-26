@@ -1,20 +1,4 @@
 namespace Workbench.ScenarioRegressionTests;
-
-using Hosting.ServiceDefaults.Observability.Metrics;
-using Microsoft.Extensions.DependencyInjection;
-using Shouldly;
-using System.Collections.Concurrent;
-using System.Net;
-using System.Text;
-using System.Text.Json;
-using Workbench.Contracts.Inventory;
-using Workbench.Contracts.Orders;
-using Workbench.Contracts.Scenarios;
-using Workbench.Gateway.Internal.Clients.Abstraction;
-using Workbench.Gateway.Internal.Runners;
-using Workbench.Gateway.Internal.Runners.Abstraction;
-using Xunit;
-
 /// <summary>
 /// Regression tests for scenario result metrics produced by the workbench gateway client.
 /// </summary>

@@ -1,10 +1,7 @@
 namespace Ordering.Grains.Grains;
 
-using Ordering.Grains.Contracts;
 using Ordering.Grains.Grains.Abstraction;
 using Ordering.Grains.State;
-using Orleans;
-using Orleans.Runtime;
 
 /// <summary>
 /// Owns the available quantity and active reservations for one inventory item.

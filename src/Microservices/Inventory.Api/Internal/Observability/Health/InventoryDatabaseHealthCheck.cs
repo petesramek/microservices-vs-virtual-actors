@@ -1,7 +1,6 @@
 namespace Inventory.Api.Internal.Observability.Health;
 
 using Inventory.Api.Internal.Infrastructure;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 /// <summary>
 /// Verifies that the inventory database is reachable.

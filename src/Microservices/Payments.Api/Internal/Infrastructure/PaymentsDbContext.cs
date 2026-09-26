@@ -1,6 +1,5 @@
 namespace Payments.Api.Internal.Infrastructure;
 
-using Microsoft.EntityFrameworkCore;
 using Payments.Api.Models;
 
 /// <summary>

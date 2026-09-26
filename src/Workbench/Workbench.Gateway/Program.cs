@@ -1,5 +1,3 @@
-using Hosting.ServiceDefaults.Extensions;
-using Hosting.ServiceDefaults.Observability.Metrics;
 using Workbench.Gateway.Internal.Configuration;
 using Workbench.Gateway.Internal.Endpoints;
 using Workbench.Gateway.Internal.Extensions;

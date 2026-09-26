@@ -1,6 +1,5 @@
 namespace Orders.Api.Internal.Extensions;
 
-using Microsoft.EntityFrameworkCore;
 using Orders.Api.Internal.Clients;
 using Orders.Api.Internal.Clients.Abstraction;
 using Orders.Api.Internal.Infrastructure;

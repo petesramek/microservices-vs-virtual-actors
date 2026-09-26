@@ -1,6 +1,5 @@
 namespace Workbench.Gateway.Internal.Extensions;
 
-using Microsoft.Extensions.Options;
 using Workbench.Gateway.Internal.Clients;
 using Workbench.Gateway.Internal.Configuration;
 

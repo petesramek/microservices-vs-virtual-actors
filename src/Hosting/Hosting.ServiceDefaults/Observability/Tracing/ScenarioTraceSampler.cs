@@ -1,7 +1,4 @@
 namespace Hosting.ServiceDefaults.Observability.Tracing;
-
-using OpenTelemetry.Trace;
-
 /// <summary>
 /// Selects scenario root spans for recording and export.
 /// </summary>

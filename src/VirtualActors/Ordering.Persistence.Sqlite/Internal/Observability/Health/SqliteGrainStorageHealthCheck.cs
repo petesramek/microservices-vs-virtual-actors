@@ -1,7 +1,5 @@
 namespace Ordering.Persistence.Sqlite.Internal.Observability.Health;
 
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Ordering.Persistence.Sqlite.Internal.Infrastructure;
 
 /// <summary>

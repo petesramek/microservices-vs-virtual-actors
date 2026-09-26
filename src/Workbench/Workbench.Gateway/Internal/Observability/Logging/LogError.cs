@@ -1,7 +1,4 @@
 namespace Workbench.Gateway.Logging;
-
-using Workbench.Contracts.Scenarios;
-
 /// <summary>
 /// Defines source-generated error log messages for scenario execution.
 /// </summary>

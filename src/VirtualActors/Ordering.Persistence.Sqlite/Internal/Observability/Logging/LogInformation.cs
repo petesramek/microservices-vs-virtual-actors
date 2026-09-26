@@ -1,7 +1,4 @@
 namespace Ordering.Persistence.Sqlite.Internal.Observability.Logging;
-
-using Microsoft.Extensions.Logging;
-
 /// <summary>
 /// Defines source-generated informational log messages for SQLite grain-state
 /// persistence.

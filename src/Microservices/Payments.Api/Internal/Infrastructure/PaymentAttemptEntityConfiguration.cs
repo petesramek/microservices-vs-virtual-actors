@@ -1,7 +1,5 @@
 namespace Payments.Api.Internal.Infrastructure;
 
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Payments.Api.Models;
 
 /// <summary>

@@ -1,16 +1,6 @@
 namespace Workbench.Ui.Internal.Observability.Health.Probing;
 
-using global::Observability.Health;
-using global::Observability.Topology.Definitions;
-using global::Observability.Topology.Snapshots;
-using Microsoft.Extensions.Options;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Workbench.Ui.Internal.Observability.Health.Configuration;
-using Workbench.Ui.Internal.Observability.Health.Probing.Results;
 
 /// <summary>
 /// Collects availability and detailed health observations from configured

@@ -1,10 +1,5 @@
 namespace Workbench.Gateway.Internal.Runners.Abstraction;
 
-using Hosting.ServiceDefaults.Observability.Metrics;
-using System.Diagnostics;
-using Workbench.Contracts.Inventory;
-using Workbench.Contracts.Orders;
-using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Internal.Clients.Abstraction;
 
 /// <summary>

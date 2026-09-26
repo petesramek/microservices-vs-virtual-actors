@@ -1,15 +1,6 @@
 namespace Ordering.Persistence.Sqlite.Internal.Infrastructure;
 
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Ordering.Persistence.Sqlite.Internal.Observability.Logging;
-using Orleans;
-using Orleans.Configuration;
-using Orleans.Runtime;
-using Orleans.Storage;
-using System.Globalization;
 
 /// <summary>
 /// Stores serialized Orleans grain state in SQLite through Entity Framework Core.

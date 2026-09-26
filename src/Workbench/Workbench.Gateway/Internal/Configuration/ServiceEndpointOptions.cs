@@ -1,7 +1,4 @@
 namespace Workbench.Gateway.Internal.Configuration;
-
-using System.ComponentModel.DataAnnotations;
-
 /// <summary>
 /// Represents the configured backend endpoints for the compared architecture
 /// implementations.

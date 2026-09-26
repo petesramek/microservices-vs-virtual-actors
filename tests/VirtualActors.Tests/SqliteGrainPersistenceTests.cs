@@ -1,20 +1,4 @@
 namespace VirtualActors.Tests;
-
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.DependencyInjection;
-using Ordering.Grains.Contracts;
-using Ordering.Grains.Grains.Abstraction;
-using Ordering.Grains.State;
-using Ordering.Persistence.Sqlite.Extensions;
-using Orleans;
-using Orleans.Runtime;
-using Orleans.Storage;
-using Orleans.TestingHost;
-using Shouldly;
-using System.Globalization;
-using Workbench.Contracts.Orders;
-using Xunit;
-
 /// <summary>
 /// Verifies SQLite-backed grain persistence.
 /// </summary>

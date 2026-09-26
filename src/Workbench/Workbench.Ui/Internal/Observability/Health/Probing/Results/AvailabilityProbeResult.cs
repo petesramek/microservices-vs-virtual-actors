@@ -1,7 +1,4 @@
 namespace Workbench.Ui.Internal.Observability.Health.Probing.Results;
-
-using global::Observability.Topology.Snapshots;
-
 /// <summary>
 /// Represents the result of probing a service alive endpoint.
 /// </summary>

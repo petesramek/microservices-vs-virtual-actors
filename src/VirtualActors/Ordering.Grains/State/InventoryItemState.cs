@@ -1,8 +1,4 @@
 namespace Ordering.Grains.State;
-
-using Orleans;
-using System.Diagnostics.CodeAnalysis;
-
 /// <summary>
 /// Represents the persisted state of one inventory item grain.
 /// </summary>

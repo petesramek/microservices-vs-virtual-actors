@@ -1,11 +1,9 @@
 namespace Inventory.Api;
 
-using Hosting.ServiceDefaults.Extensions;
 using Inventory.Api.Extensions;
 using Inventory.Api.Internal.Infrastructure;
 using Inventory.Api.Internal.Observability.Health;
 using Inventory.Api.Internal.Observability.Logging;
-using Microsoft.EntityFrameworkCore;
 
 /// <summary>
 /// Configures and runs the inventory microservice.

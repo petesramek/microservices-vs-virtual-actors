@@ -1,9 +1,4 @@
 namespace VirtualActors.Tests;
-
-using Orleans.Hosting;
-using Orleans.TestingHost;
-using Xunit;
-
 /// <summary>
 /// Provides an in-process Orleans cluster for virtual actor tests.
 /// </summary>

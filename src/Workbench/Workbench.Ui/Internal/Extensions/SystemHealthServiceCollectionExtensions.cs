@@ -1,9 +1,5 @@
 namespace Workbench.Ui.Internal.Extensions;
 
-using global::Observability.Health;
-using global::Observability.Health.Abstraction;
-using global::Observability.Topology.Evaluators;
-using global::Observability.Topology.Evaluators.Abstraction;
 using Workbench.Ui.Internal.Observability.Health;
 using Workbench.Ui.Internal.Observability.Health.Builders;
 using Workbench.Ui.Internal.Observability.Health.Configuration;

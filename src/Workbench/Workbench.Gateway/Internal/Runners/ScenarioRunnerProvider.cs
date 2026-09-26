@@ -1,7 +1,5 @@
 namespace Workbench.Gateway.Internal.Runners;
 
-using System.Diagnostics.CodeAnalysis;
-using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Internal.Runners.Abstraction;
 
 /// <summary>

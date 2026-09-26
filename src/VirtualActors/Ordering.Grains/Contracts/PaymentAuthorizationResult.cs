@@ -1,7 +1,4 @@
 namespace Ordering.Grains.Contracts;
-
-using Orleans;
-
 /// <summary>
 /// Represents a payment authorization result returned by a payment-account
 /// grain.

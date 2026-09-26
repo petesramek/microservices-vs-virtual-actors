@@ -1,7 +1,4 @@
 namespace Inventory.Api.Internal.Observability.Logging;
-
-using Microsoft.Extensions.Logging;
-
 /// <summary>
 /// Defines source-generated error log messages for inventory operations.
 /// </summary>
