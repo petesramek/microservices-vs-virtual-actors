@@ -1,6 +1,8 @@
 namespace Inventory.Api.Internal.Infrastructure;
 
 using Inventory.Api.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 /// <summary>
 /// Configures the Entity Framework Core mapping for

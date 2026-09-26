@@ -1,4 +1,9 @@
 namespace Workbench.Ui.Internal.Observability.Topology;
+
+using global::Observability.Topology.Definitions;
+using Microsoft.Extensions.Options;
+using System.Text.Json;
+
 /// <summary>
 /// Provides the graph topology definition supplied through application
 /// configuration.

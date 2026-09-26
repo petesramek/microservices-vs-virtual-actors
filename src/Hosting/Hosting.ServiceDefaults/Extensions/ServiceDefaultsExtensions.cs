@@ -1,9 +1,21 @@
 namespace Hosting.ServiceDefaults.Extensions;
 
+using global::Observability.Health;
 using Hosting.ServiceDefaults.Observability;
 using Hosting.ServiceDefaults.Observability.Configuration;
 using Hosting.ServiceDefaults.Observability.Tracing;
-
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FrameworkHealthCheckOptions = Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions;
 using FrameworkHealthCheckResult = Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult;
 using FrameworkHealthReport = Microsoft.Extensions.Diagnostics.HealthChecks.HealthReport;

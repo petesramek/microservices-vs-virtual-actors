@@ -1,4 +1,9 @@
 namespace Workbench.Gateway.Internal.Clients.Abstraction;
+
+using Workbench.Contracts.Inventory;
+using Workbench.Contracts.Orders;
+using Workbench.Contracts.Scenarios;
+
 /// <summary>
 /// Defines the service operations required to run workbench scenarios.
 /// </summary>

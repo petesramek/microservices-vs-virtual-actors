@@ -1,6 +1,12 @@
 namespace Microservices.Tests;
 
 using Microservices.Tests.Infrastructure;
+using Shouldly;
+using System.Net.Http.Json;
+using Workbench.Contracts.Inventory;
+using Workbench.Contracts.Orders;
+using Workbench.Contracts.Scenarios;
+using Xunit;
 
 /// <summary>
 /// Tests for the microservice-style order workflow through Orders.Api.

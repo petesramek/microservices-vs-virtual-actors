@@ -1,5 +1,6 @@
 namespace Workbench.Gateway.Internal.Runners.Abstraction;
 
+using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Internal.Clients.Abstraction;
 
 /// <summary>

@@ -1,4 +1,7 @@
 namespace Hosting.ServiceDefaults.Observability;
+
+using System.Diagnostics;
+
 /// <summary>
 /// Defines the shared names and objects used to emit scenario traces and
 /// workflow metrics.

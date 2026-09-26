@@ -1,4 +1,12 @@
 namespace Workbench.Ui.Internal.Observability.Health.Builders;
+
+using global::Observability.Health;
+using global::Observability.Topology.Definitions;
+using global::Observability.Topology.Evaluators.Abstraction;
+using global::Observability.Topology.Snapshots;
+using System.Diagnostics.CodeAnalysis;
+using Workbench.Ui.Internal.Observability.Health.Probing.Results;
+
 /// <summary>
 /// Builds evaluated topology snapshots from topology definitions and collected
 /// service observations.

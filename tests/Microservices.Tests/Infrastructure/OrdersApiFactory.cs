@@ -1,4 +1,15 @@
 namespace Microservices.Tests.Infrastructure;
+
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Orders.Api;
+using Orders.Api.Internal.Clients.Abstraction;
+using Orders.Api.Internal.Infrastructure;
+
 /// <summary>
 /// Test factory for the Orders API with replaceable downstream clients.
 /// </summary>

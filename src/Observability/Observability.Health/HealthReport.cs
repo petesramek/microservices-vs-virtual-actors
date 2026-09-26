@@ -30,30 +30,30 @@ public sealed record HealthReport {
         HealthStatus status,
         long durationMilliseconds,
         IReadOnlyDictionary<string, HealthEntry> entries) {
-    ArgumentOutOfRangeException.ThrowIfNegative(durationMilliseconds);
-    ArgumentNullException.ThrowIfNull(entries);
+        ArgumentOutOfRangeException.ThrowIfNegative(durationMilliseconds);
+        ArgumentNullException.ThrowIfNull(entries);
 
-    Status = status;
-    DurationMilliseconds = durationMilliseconds;
-    Entries = new ReadOnlyDictionary<string, HealthEntry>(
-        new Dictionary<string, HealthEntry>(
-            entries,
-            StringComparer.Ordinal));
-}
+        Status = status;
+        DurationMilliseconds = durationMilliseconds;
+        Entries = new ReadOnlyDictionary<string, HealthEntry>(
+            new Dictionary<string, HealthEntry>(
+                entries,
+                StringComparer.Ordinal));
+    }
 
-/// <summary>
-/// Gets the aggregate application health status.
-/// </summary>
-public HealthStatus Status { get; }
+    /// <summary>
+    /// Gets the aggregate application health status.
+    /// </summary>
+    public HealthStatus Status { get; }
 
-/// <summary>
-/// Gets the total health-check execution duration in milliseconds.
-/// </summary>
-public long DurationMilliseconds { get; }
+    /// <summary>
+    /// Gets the total health-check execution duration in milliseconds.
+    /// </summary>
+    public long DurationMilliseconds { get; }
 
-/// <summary>
-/// Gets a snapshot of the health-check results keyed by their registered
-/// check names.
-/// </summary>
-public IReadOnlyDictionary<string, HealthEntry> Entries { get; }
+    /// <summary>
+    /// Gets a snapshot of the health-check results keyed by their registered
+    /// check names.
+    /// </summary>
+    public IReadOnlyDictionary<string, HealthEntry> Entries { get; }
 }

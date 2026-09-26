@@ -1,6 +1,9 @@
 namespace Orders.Api.Internal.Clients;
 
+using Hosting.ServiceDefaults.Observability;
 using Orders.Api.Internal.Clients.Abstraction;
+using System.Net.Http.Json;
+using Workbench.Contracts.Payments;
 
 /// <summary>
 /// Implements <see cref="IPaymentsClient"/> by sending HTTP requests to the

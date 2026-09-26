@@ -1,7 +1,6 @@
 namespace Workbench.Gateway.Internal.Runners;
 
 using Hosting.ServiceDefaults.Observability.Metrics;
-
 using Workbench.Contracts.Inventory;
 using Workbench.Contracts.Orders;
 using Workbench.Contracts.Scenarios;

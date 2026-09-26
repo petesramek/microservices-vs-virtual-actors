@@ -1,4 +1,8 @@
 namespace Hosting.AppHost.Internal.Observability.Topology;
+
+using Aspire.Hosting.ApplicationModel;
+using global::Observability.Topology.Definitions;
+
 /// <summary>
 /// Builds a neutral observability topology from Aspire project resources and
 /// explicitly registered non-project nodes.

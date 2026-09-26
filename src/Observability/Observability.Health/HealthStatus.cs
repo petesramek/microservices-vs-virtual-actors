@@ -1,4 +1,7 @@
 namespace Observability.Health;
+
+using System.Text.Json.Serialization;
+
 /// <summary>
 /// Defines the health state of a resource or an aggregate health observation.
 /// </summary>

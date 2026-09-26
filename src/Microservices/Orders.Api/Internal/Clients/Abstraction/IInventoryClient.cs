@@ -1,4 +1,7 @@
 namespace Orders.Api.Internal.Clients.Abstraction;
+
+using Workbench.Contracts.Inventory;
+
 /// <summary>
 /// Defines operations for communicating with the Inventory API.
 /// </summary>

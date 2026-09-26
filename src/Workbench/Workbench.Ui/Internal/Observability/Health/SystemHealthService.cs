@@ -1,7 +1,10 @@
 namespace Workbench.Ui.Internal.Observability.Health;
 
+using global::Observability.Topology.Definitions;
+using global::Observability.Topology.Snapshots;
 using Workbench.Ui.Internal.Observability.Health.Builders;
 using Workbench.Ui.Internal.Observability.Health.Probing;
+using Workbench.Ui.Internal.Observability.Health.Probing.Results;
 using Workbench.Ui.Internal.Observability.Topology;
 
 /// <summary>

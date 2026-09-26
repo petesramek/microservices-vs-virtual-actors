@@ -1,4 +1,9 @@
 namespace Observability.Topology.Evaluators.Abstraction;
+
+using Observability.Health;
+using Observability.Topology.Definitions;
+using Observability.Topology.Snapshots;
+
 /// <summary>
 /// Defines a service that evaluates aggregate health for topology dependencies.
 /// </summary>

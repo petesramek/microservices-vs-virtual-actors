@@ -1,4 +1,7 @@
 namespace Orders.Api.Logging;
+
+using Microsoft.Extensions.Logging;
+
 /// <summary>
 /// Defines source-generated error log messages for order orchestration and
 /// inventory operations initiated by the Orders API.

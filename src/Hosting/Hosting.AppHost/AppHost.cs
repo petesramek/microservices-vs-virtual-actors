@@ -1,7 +1,10 @@
 namespace Hosting.AppHost;
 
+using global::Observability.Health;
+using global::Observability.Health.Abstraction;
 using Hosting.AppHost.Internal.Extensions;
 using Hosting.AppHost.Internal.Observability.Topology;
+using System.Diagnostics.CodeAnalysis;
 
 /// <summary>
 /// Defines and runs the distributed application model for the Workbench host.

@@ -1,4 +1,8 @@
 namespace Ordering.Grains.Grains.Abstraction;
+
+using Ordering.Grains.Contracts;
+using Orleans;
+
 /// <summary>
 /// Defines inventory operations for one product identity.
 /// </summary>

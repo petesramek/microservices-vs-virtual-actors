@@ -1,5 +1,10 @@
 namespace Workbench.Gateway.Internal.Endpoints;
 
+using Hosting.ServiceDefaults.Observability;
+using Hosting.ServiceDefaults.Observability.Configuration;
+using Microsoft.Extensions.Options;
+using System.Diagnostics;
+using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Internal.Clients;
 using Workbench.Gateway.Internal.Clients.Abstraction;
 using Workbench.Gateway.Internal.Runners;

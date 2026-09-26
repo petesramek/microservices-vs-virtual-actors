@@ -1,4 +1,8 @@
 namespace Microservices.Tests.Infrastructure;
+
+using Orders.Api.Internal.Clients.Abstraction;
+using Workbench.Contracts.Payments;
+
 /// <summary>
 /// Fake payments client used by Orders API tests.
 /// </summary>

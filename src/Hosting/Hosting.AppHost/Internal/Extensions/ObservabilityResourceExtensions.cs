@@ -1,4 +1,8 @@
 namespace Hosting.AppHost.Internal.Extensions;
+
+using Hosting.ServiceDefaults.Observability.Configuration;
+using Microsoft.Extensions.Configuration;
+
 /// <summary>
 /// Provides extensions that copy AppHost observability configuration into
 /// .NET Aspire resource environments.

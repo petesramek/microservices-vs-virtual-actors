@@ -26,25 +26,25 @@ public sealed record HealthEntry {
         HealthStatus status,
         string? description,
         long durationMilliseconds) {
-    ArgumentOutOfRangeException.ThrowIfNegative(durationMilliseconds);
+        ArgumentOutOfRangeException.ThrowIfNegative(durationMilliseconds);
 
-    Status = status;
-    Description = description;
-    DurationMilliseconds = durationMilliseconds;
-}
+        Status = status;
+        Description = description;
+        DurationMilliseconds = durationMilliseconds;
+    }
 
-/// <summary>
-/// Gets the status reported by the health check.
-/// </summary>
-public HealthStatus Status { get; }
+    /// <summary>
+    /// Gets the status reported by the health check.
+    /// </summary>
+    public HealthStatus Status { get; }
 
-/// <summary>
-/// Gets the optional, non-sensitive diagnostic description of the result.
-/// </summary>
-public string? Description { get; }
+    /// <summary>
+    /// Gets the optional, non-sensitive diagnostic description of the result.
+    /// </summary>
+    public string? Description { get; }
 
-/// <summary>
-/// Gets the health-check execution duration in milliseconds.
-/// </summary>
-public long DurationMilliseconds { get; }
+    /// <summary>
+    /// Gets the health-check execution duration in milliseconds.
+    /// </summary>
+    public long DurationMilliseconds { get; }
 }

@@ -1,4 +1,7 @@
 namespace Ordering.Grains.Contracts;
+
+using Orleans;
+
 /// <summary>
 /// Represents the result of an inventory reservation attempt.
 /// </summary>

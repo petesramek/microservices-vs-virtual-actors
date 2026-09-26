@@ -1,4 +1,8 @@
 namespace Ordering.Grains.State;
+
+using Ordering.Grains.Contracts;
+using Orleans;
+
 /// <summary>
 /// Represents the persisted state of one order grain.
 /// </summary>

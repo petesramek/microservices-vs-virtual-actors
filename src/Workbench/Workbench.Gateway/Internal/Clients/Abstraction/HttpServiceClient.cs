@@ -1,5 +1,10 @@
 namespace Workbench.Gateway.Internal.Clients.Abstraction;
 
+using Hosting.ServiceDefaults.Observability;
+using System.Net.Http.Json;
+using Workbench.Contracts.Inventory;
+using Workbench.Contracts.Orders;
+using Workbench.Contracts.Scenarios;
 using Workbench.Gateway.Internal.Extensions;
 
 /// <summary>

@@ -1,4 +1,7 @@
 namespace Ordering.Api.Logging;
+
+using Microsoft.Extensions.Logging;
+
 /// <summary>
 /// Defines source-generated error log messages for ordering API operations.
 /// </summary>

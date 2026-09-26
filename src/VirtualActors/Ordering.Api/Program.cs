@@ -1,5 +1,6 @@
 namespace Ordering.Api;
 
+using Hosting.ServiceDefaults.Extensions;
 using Ordering.Api.Internal.Extensions;
 using Ordering.Api.Internal.Observability.Logging;
 

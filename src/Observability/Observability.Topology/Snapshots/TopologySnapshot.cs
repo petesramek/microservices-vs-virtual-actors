@@ -35,43 +35,43 @@ public sealed record TopologySnapshot {
         IReadOnlyList<TopologyNodeSnapshot> nodes,
         IReadOnlyList<TopologyEdgeSnapshot> edges,
         IReadOnlyList<TopologyGroupSnapshot> groups) {
-    ArgumentNullException.ThrowIfNull(nodes);
-    ArgumentNullException.ThrowIfNull(edges);
-    ArgumentNullException.ThrowIfNull(groups);
+        ArgumentNullException.ThrowIfNull(nodes);
+        ArgumentNullException.ThrowIfNull(edges);
+        ArgumentNullException.ThrowIfNull(groups);
 
-    GeneratedAtUtc = generatedAtUtc;
-    Nodes = Snapshot(nodes);
-    Edges = Snapshot(edges);
-    Groups = Snapshot(groups);
-}
+        GeneratedAtUtc = generatedAtUtc;
+        Nodes = Snapshot(nodes);
+        Edges = Snapshot(edges);
+        Groups = Snapshot(groups);
+    }
 
-/// <summary>
-/// Gets the UTC timestamp at which the topology snapshot was generated.
-/// </summary>
-public DateTimeOffset GeneratedAtUtc { get; }
+    /// <summary>
+    /// Gets the UTC timestamp at which the topology snapshot was generated.
+    /// </summary>
+    public DateTimeOffset GeneratedAtUtc { get; }
 
-/// <summary>
-/// Gets an ordered snapshot of the evaluated topology nodes.
-/// </summary>
-public IReadOnlyList<TopologyNodeSnapshot> Nodes { get; }
+    /// <summary>
+    /// Gets an ordered snapshot of the evaluated topology nodes.
+    /// </summary>
+    public IReadOnlyList<TopologyNodeSnapshot> Nodes { get; }
 
-/// <summary>
-/// Gets an ordered snapshot of the evaluated topology edges.
-/// </summary>
-public IReadOnlyList<TopologyEdgeSnapshot> Edges { get; }
+    /// <summary>
+    /// Gets an ordered snapshot of the evaluated topology edges.
+    /// </summary>
+    public IReadOnlyList<TopologyEdgeSnapshot> Edges { get; }
 
-/// <summary>
-/// Gets an ordered snapshot of the evaluated topology groups.
-/// </summary>
-public IReadOnlyList<TopologyGroupSnapshot> Groups { get; }
+    /// <summary>
+    /// Gets an ordered snapshot of the evaluated topology groups.
+    /// </summary>
+    public IReadOnlyList<TopologyGroupSnapshot> Groups { get; }
 
-/// <summary>
-/// Creates an ordered, read-only snapshot of a collection.
-/// </summary>
-/// <typeparam name="T">The snapshot element type.</typeparam>
-/// <param name="items">The source items to copy.</param>
-/// <returns>An ordered, read-only copy of <paramref name="items"/>.</returns>
-private static ReadOnlyCollection<T> Snapshot<T>(IReadOnlyList<T> items) {
-    return new ReadOnlyCollection<T>(items.ToArray());
-}
+    /// <summary>
+    /// Creates an ordered, read-only snapshot of a collection.
+    /// </summary>
+    /// <typeparam name="T">The snapshot element type.</typeparam>
+    /// <param name="items">The source items to copy.</param>
+    /// <returns>An ordered, read-only copy of <paramref name="items"/>.</returns>
+    private static ReadOnlyCollection<T> Snapshot<T>(IReadOnlyList<T> items) {
+        return new ReadOnlyCollection<T>(items.ToArray());
+    }
 }

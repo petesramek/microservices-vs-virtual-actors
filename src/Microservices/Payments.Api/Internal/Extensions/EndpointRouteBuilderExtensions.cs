@@ -1,8 +1,14 @@
 namespace Payments.Api.Internal.Extensions;
 
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Payments.Api.Internal.Infrastructure;
 using Payments.Api.Internal.Observability.Logging;
 using Payments.Api.Models;
+using Workbench.Contracts.Payments;
 
 /// <summary>
 /// Provides endpoint-registration methods for the Payments API.

@@ -1,4 +1,7 @@
 namespace Ordering.Grains.Contracts;
+
+using Orleans;
+
 /// <summary>
 /// Represents the terminal result returned by an order grain.
 /// </summary>

@@ -1,4 +1,7 @@
 namespace Ordering.Persistence.Sqlite.Internal.Infrastructure;
+
+using Microsoft.EntityFrameworkCore;
+
 /// <summary>
 /// Provides Entity Framework Core access to persisted Orleans grain states.
 /// </summary>

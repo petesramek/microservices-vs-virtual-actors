@@ -1,5 +1,7 @@
 namespace Orders.Api.Internal.Infrastructure;
 
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Orders.Api.Models;
 
 /// <summary>

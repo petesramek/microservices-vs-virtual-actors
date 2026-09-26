@@ -1,4 +1,8 @@
 namespace Ordering.Persistence.Sqlite.Internal.Infrastructure;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 /// <summary>
 /// Configures the SQLite persistence mapping for
 /// <see cref="GrainStateEntity"/>.

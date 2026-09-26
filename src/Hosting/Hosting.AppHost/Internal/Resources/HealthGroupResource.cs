@@ -1,4 +1,7 @@
 namespace Hosting.AppHost.Internal.Resources;
+
+using Aspire.Hosting.ApplicationModel;
+
 /// <summary>
 /// Represents an Aspire Dashboard group whose displayed state is derived from
 /// its child resources.

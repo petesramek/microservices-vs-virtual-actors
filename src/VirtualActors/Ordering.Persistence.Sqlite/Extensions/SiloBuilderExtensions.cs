@@ -1,7 +1,12 @@
 namespace Ordering.Persistence.Sqlite.Extensions;
 
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Ordering.Persistence.Sqlite.Internal.Infrastructure;
 using Ordering.Persistence.Sqlite.Internal.Observability.Health;
+using Orleans.Hosting;
+using Orleans.Runtime.Hosting;
 
 /// <summary>
 /// Provides registration methods for SQLite-backed Orleans grain-state

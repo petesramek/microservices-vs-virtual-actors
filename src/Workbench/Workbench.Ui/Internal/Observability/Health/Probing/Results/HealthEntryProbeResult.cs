@@ -1,4 +1,8 @@
 namespace Workbench.Ui.Internal.Observability.Health.Probing.Results;
+
+using global::Observability.Health;
+
+
 /// <summary>
 /// Represents one entry reported by a service health endpoint.
 /// </summary>

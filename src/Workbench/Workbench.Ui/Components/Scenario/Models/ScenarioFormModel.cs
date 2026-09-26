@@ -1,7 +1,6 @@
 namespace Workbench.Ui.Components.Scenario.Models;
 
 using System.ComponentModel.DataAnnotations;
-
 using Workbench.Contracts.Scenarios;
 
 /// <summary>
@@ -191,21 +190,21 @@ public sealed class ScenarioFormModel : IValidatableObject {
         /// mapping.
         /// </returns>
         public static ScenarioDefaults For(ScenarioKind scenario) {
-        return scenario switch {
-            ScenarioKind.InsufficientInventory =>
-                new ScenarioDefaults(1, 2, 10),
-            ScenarioKind.PaymentFailureCompensation =>
-                new ScenarioDefaults(10, 2, 10),
-            ScenarioKind.PaymentTimeoutAfterReservation =>
-                new ScenarioDefaults(10, 2, 10),
-            ScenarioKind.ConcurrentOrders =>
-                new ScenarioDefaults(3, 1, 10),
-            ScenarioKind.HotProductContention =>
-                new ScenarioDefaults(25, 1, 50),
-            ScenarioKind.DuplicateRequest =>
-                new ScenarioDefaults(10, 2, 20),
-            _ => new ScenarioDefaults(10, 1, 10),
-        };
+            return scenario switch {
+                ScenarioKind.InsufficientInventory =>
+                    new ScenarioDefaults(1, 2, 10),
+                ScenarioKind.PaymentFailureCompensation =>
+                    new ScenarioDefaults(10, 2, 10),
+                ScenarioKind.PaymentTimeoutAfterReservation =>
+                    new ScenarioDefaults(10, 2, 10),
+                ScenarioKind.ConcurrentOrders =>
+                    new ScenarioDefaults(3, 1, 10),
+                ScenarioKind.HotProductContention =>
+                    new ScenarioDefaults(25, 1, 50),
+                ScenarioKind.DuplicateRequest =>
+                    new ScenarioDefaults(10, 2, 20),
+                _ => new ScenarioDefaults(10, 1, 10),
+            };
+        }
     }
-}
 }

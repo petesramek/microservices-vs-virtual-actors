@@ -1,5 +1,6 @@
 namespace Orders.Api.Internal.Observability.Health;
 
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Orders.Api.Internal.Infrastructure;
 
 /// <summary>

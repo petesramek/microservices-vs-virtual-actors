@@ -1,7 +1,17 @@
 namespace Ordering.Api.Internal.Extensions;
 
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging;
 using Ordering.Api.Internal.Observability.Logging;
 using Ordering.Api.Logging;
+using Ordering.Grains.Contracts;
+using Ordering.Grains.Grains.Abstraction;
+using Orleans;
+using Workbench.Contracts.Inventory;
+using Workbench.Contracts.Orders;
+using Workbench.Contracts.Scenarios;
 
 /// <summary>
 /// Provides endpoint-registration methods for the ordering API.
